@@ -57,7 +57,7 @@
 - **Alternatives considered:** Hand-authored Lua data levels — rejected.
 
 ### Q13: Visuals
-**Decision:** 1280×720 virtual, letterboxed. Thin lines on black, no fills. P1 cyan, P2 magenta. No bloom in v1. F1 field overlay, F2 grid + collision shapes.
+**Decision:** 1280×720 virtual, letterboxed. Thin lines on black, no fills. P1 cyan, P2 magenta. No bloom in v1. Key 1 toggles the field overlay, key 2 toggles grid + collision shapes (changed from F1/F2 during slice 04 review — number keys are easier to reach on some keyboards).
 
 ### Q14: LÖVE version
 **Decision:** Run on both 11.5 and 12.

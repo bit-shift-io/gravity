@@ -32,7 +32,7 @@
 - [ ] Ships, projectiles, and asteroids visibly curve under world gravity and under each other's pull.
 - [ ] A ship can land on a world or a slowly spinning asteroid, refuel, and lift off.
 - [ ] Running out of fuel leaves a ship drifting; drifting off the soft boundary destroys it.
-- [ ] F1 shows the combined gravity field; F2 shows grid lines and collision shapes.
+- [ ] Key 1 shows the combined gravity field; key 2 shows grid lines and collision shapes.
 - [ ] The same seed reproduces the same level and asteroid spawns.
 - [ ] `./test-all.sh` passes.
 

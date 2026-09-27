@@ -8,6 +8,12 @@ local defaultTestFiles = {
 	"tests/unit/vec2_test.lua",
 	"tests/unit/poly_test.lua",
 	"tests/unit/level_test.lua",
+	"tests/unit/gravity_test.lua",
+	"tests/unit/field_test.lua",
+	"tests/unit/bodies_test.lua",
+	"tests/unit/integrate_test.lua",
+	"tests/unit/fuel_test.lua",
+	"tests/unit/thruster_test.lua",
 }
 
 local tests = {}

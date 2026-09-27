@@ -8,6 +8,10 @@
 local Level = require("src.game.level")
 local Match = require("src.game.match")
 local WorldsRender = require("src.app.render.worlds")
+local ShipsRender = require("src.app.render.ships")
+local Hud = require("src.app.render.hud")
+local DebugOverlay = require("src.app.render.debug_overlay")
+local Input = require("src.app.input")
 
 local MatchState = {}
 
@@ -17,10 +21,17 @@ function MatchState.enter(level, config)
 		error("invalid level: " .. tostring(err))
 	end
 
-	return Match.new(level, config)
+	local ctx = Match.new(level, config)
+	-- Debug-only UI state (1/2 overlay toggles), not sim data -- lives on
+	-- ctx so draw can read it, but is set up here in the app layer rather
+	-- than in src/game/match.lua, which may never touch `love.*`.
+	ctx.debug = Input.newDebugState()
+	return ctx
 end
 
 function MatchState.update(ctx, dt)
+	Input.update(ctx.debug)
+	Input.updateIntents(ctx)
 	ctx.dt = dt
 	ctx.time = ctx.time + dt
 	Match.step(ctx)
@@ -28,6 +39,9 @@ end
 
 function MatchState.draw(ctx)
 	WorldsRender.draw(ctx.level)
+	ShipsRender.draw(ctx)
+	Hud.draw(ctx)
+	DebugOverlay.draw(ctx)
 end
 
 return MatchState

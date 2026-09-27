@@ -9,6 +9,10 @@ local Match = require("src.game.match")
 local Config = require("src.game.config")
 local Level = require("src.game.level")
 local WorldsRender = require("src.app.render.worlds")
+local ShipsRender = require("src.app.render.ships")
+local Hud = require("src.app.render.hud")
+local DebugOverlay = require("src.app.render.debug_overlay")
+local Input = require("src.app.input")
 
 local GameHarness = {}
 
@@ -25,10 +29,22 @@ function GameHarness.startMatch(level, opts)
 	end
 
 	local ctx = Match.new(level, opts.config or Config)
+	-- Same debug-toggle wiring as src/app/states/match_state.lua, so e2e
+	-- scenarios can press 1/2 (tests/support/fake_input.lua) against a
+	-- harnessed match exactly as they would against the real app.
+	ctx.debug = Input.newDebugState()
 
 	local game = { ctx = ctx }
 
 	function game:update(dt)
+		-- Only under the e2e tier (or a future integration `love` mock) is
+		-- there a `love` global to poll; the integration tier drives this
+		-- same harness with none (file header), so skip debug input there
+		-- rather than erroring on a missing love.keyboard.
+		if love then
+			Input.update(ctx.debug)
+			Input.updateIntents(ctx)
+		end
 		ctx.dt = dt
 		ctx.time = ctx.time + dt
 		Match.step(ctx)
@@ -38,6 +54,9 @@ function GameHarness.startMatch(level, opts)
 	-- capture shows the level's worlds, not a blank frame.
 	function game:draw()
 		WorldsRender.draw(ctx.level)
+		ShipsRender.draw(ctx)
+		Hud.draw(ctx)
+		DebugOverlay.draw(ctx)
 	end
 
 	if opts.real and _G.E2E_ON_GAME_STARTED then

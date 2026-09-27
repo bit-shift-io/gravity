@@ -3,6 +3,7 @@
 -- ./test-unit.sh stays fast and untouched.
 local defaultTestFiles = {
 	"tests/integration/harness_smoke_test.lua",
+	"tests/integration/ship_flight_test.lua",
 }
 
 local tests = {}

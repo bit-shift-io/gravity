@@ -6,7 +6,7 @@ Complexity: medium
 ## What to build
 - Every dynamic body attracts every other as a softened point mass, added to its static-field acceleration.
 - Ships visibly tug on each other when close.
-- The F1 overlay shows the combined field: static grid + dynamic bodies at each cell centre.
+- The key-1 overlay shows the combined field: static grid + dynamic bodies at each cell centre.
 
 ## Files to create/modify
 - src/sim/gravity.lua — `Gravity.pairwise(bodies, G, eps)` accumulates accel on each body
