@@ -1,4 +1,4 @@
-Status: pending
+Status: done
 Complexity: medium
 
 # Project skeleton and test tiers

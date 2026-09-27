@@ -1,4 +1,4 @@
-Status: pending
+Status: done
 Complexity: medium
 
 # Worlds on screen from a level table
