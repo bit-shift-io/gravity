@@ -1,4 +1,4 @@
-Status: pending
+Status: done
 Complexity: medium
 
 # Dynamic bodies pull on each other

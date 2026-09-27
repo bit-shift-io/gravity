@@ -1,8 +1,17 @@
--- Debug overlay for the baked gravity field: 1 draws one arrow per grid
--- cell (direction, with length and colour by magnitude); 2 draws the field
--- grid lines plus the worlds' collision outlines in a debug colour. Reads
+-- Debug overlay for the gravity field: 1 draws one arrow per grid cell
+-- (direction, with length and colour by magnitude), combining the baked
+-- static field with every live dynamic body's pairwise pull evaluated at
+-- that cell's centre (docs/adr/0002-hybrid-gravity-field.md "Debug overlay
+-- draws the combined field"), so arrows visibly bend around a ship as it
+-- moves; 2 draws the field grid lines plus the worlds' collision outlines
+-- in a debug colour. The combined vector is recomputed per cell at draw
+-- time -- the baked `field.cells` table itself is never mutated, since it
+-- must stay the pure static bake for the rest of the match
+-- (docs/CONTEXT.md "Static field: Never changes during a match"). Reads
 -- ctx only, never mutates it (docs/ARCHITECTURE.md "Rendering"). `love.*`
 -- only -- this lives in src/app/ (docs/ARCHITECTURE.md "Layers").
+local Gravity = require("src.sim.gravity")
+
 local DebugOverlay = {}
 
 -- An arrow's length approaches this as magnitude grows, so cells right next
@@ -34,20 +43,41 @@ local function magnitudeRatio(magnitude)
 	return magnitude / (magnitude + MAGNITUDE_HALF_SATURATION)
 end
 
-local function drawArrow(cell)
-	local magnitude = math.sqrt(cell.ax * cell.ax + cell.ay * cell.ay)
+-- The combined field vector at a cell's centre: the baked static value plus
+-- every live (non-dead) dynamic body's pairwise pull evaluated at that
+-- point, built on the same `Gravity.pointMass` the static bake and the
+-- pairwise step both use (src/sim/gravity.lua) -- never a duplicate of the
+-- inverse-square math. Pinned bodies still exert here, same as in
+-- `Sim.step`/`Gravity.pairwise` -- only the "receives acceleration" side of
+-- gravity ever excludes a pinned body, and a field cell isn't a body.
+local function combinedAccel(cell, bodies, G, eps)
+	local ax, ay = cell.ax, cell.ay
+	for _, body in pairs(bodies) do
+		if not body.dead then
+			local dx = cell.x - body.x
+			local dy = cell.y - body.y
+			local fx, fy = Gravity.pointMass(dx, dy, body.mass, G, eps)
+			ax = ax + fx
+			ay = ay + fy
+		end
+	end
+	return ax, ay
+end
+
+local function drawArrow(x, y, ax, ay)
+	local magnitude = math.sqrt(ax * ax + ay * ay)
 	if magnitude <= 0 then
 		return
 	end
 
 	local ratio = magnitudeRatio(magnitude)
 	local length = ratio * ARROW_MAX_LENGTH
-	local dirX, dirY = cell.ax / magnitude, cell.ay / magnitude
+	local dirX, dirY = ax / magnitude, ay / magnitude
 
 	love.graphics.setColor(ratio, 0.3 + 0.7 * (1 - ratio), 1 - ratio, 1)
 
-	local tipX, tipY = cell.x + dirX * length, cell.y + dirY * length
-	love.graphics.line(cell.x, cell.y, tipX, tipY)
+	local tipX, tipY = x + dirX * length, y + dirY * length
+	love.graphics.line(x, y, tipX, tipY)
 
 	-- Minimal arrowhead: two short backward-angled ticks at the tip, so the
 	-- overlay reads as directional arrows rather than plain line segments.
@@ -68,11 +98,19 @@ local function drawArrow(cell)
 end
 
 -- One arrow per non-world grid cell: direction, with length and colour by
--- magnitude.
-function DebugOverlay.drawFieldArrows(field)
+-- the COMBINED magnitude (static field + every live body's pairwise pull at
+-- that cell's centre) -- `bodies`/`G`/`eps` are optional so callers that
+-- only care about the static field (e.g. earlier tests) still work with the
+-- static value alone.
+function DebugOverlay.drawFieldArrows(field, bodies, G, eps)
 	for _, cell in ipairs(field.cells) do
 		if not isInsideWorld(cell) then
-			drawArrow(cell)
+			if bodies then
+				local ax, ay = combinedAccel(cell, bodies, G, eps)
+				drawArrow(cell.x, cell.y, ax, ay)
+			else
+				drawArrow(cell.x, cell.y, cell.ax, cell.ay)
+			end
 		end
 	end
 end
@@ -127,7 +165,13 @@ function DebugOverlay.draw(ctx)
 	end
 
 	if debug.showField then
-		DebugOverlay.drawFieldArrows(field)
+		local bodies = ctx.sim.bodies and ctx.sim.bodies.slots
+		local gravity = ctx.config and ctx.config.gravity
+		if bodies and gravity then
+			DebugOverlay.drawFieldArrows(field, bodies, gravity.G, gravity.softening)
+		else
+			DebugOverlay.drawFieldArrows(field)
+		end
 	end
 
 	love.graphics.setColor(1, 1, 1, 1)

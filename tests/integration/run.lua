@@ -4,6 +4,12 @@
 local defaultTestFiles = {
 	"tests/integration/harness_smoke_test.lua",
 	"tests/integration/ship_flight_test.lua",
+	"tests/integration/landing_test.lua",
+	"tests/integration/shooting_test.lua",
+	"tests/integration/ship_bounce_test.lua",
+	"tests/integration/lost_to_space_test.lua",
+	"tests/integration/asteroid_landing_test.lua",
+	"tests/integration/asteroid_collisions_test.lua",
 }
 
 local tests = {}

@@ -4,17 +4,17 @@
 -- src/app/ (docs/ARCHITECTURE.md "Layers").
 local Bodies = require("src.sim.bodies")
 local Vec2 = require("src.core.vec2")
+local Collide = require("src.sim.collide")
 
 local ShipsRender = {}
 
--- Local-space triangle: nose pointing "up" (angle 0), matching the nose
--- direction src/game/components/thruster.lua thrusts along, so the drawn
--- ship visibly points the way it accelerates.
-local SHAPE = {
-	{ x = 0, y = -10 },
-	{ x = 7, y = 8 },
-	{ x = -7, y = 8 },
-}
+-- Collide.SHIP_SHAPE (src/sim/collide.lua) is the single source of truth
+-- for the ship's local-space triangle -- nose pointing "up" (angle 0),
+-- matching the nose direction src/game/components/thruster.lua thrusts
+-- along -- so the drawn hull and the collided hull can never drift apart
+-- (docs/ARCHITECTURE.md "Layers": app may depend on sim, never the other
+-- way).
+local SHAPE = Collide.SHIP_SHAPE
 
 local PLAYER_COLOR = {
 	[1] = { 0.3, 0.8, 1, 1 },

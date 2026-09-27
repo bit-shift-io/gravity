@@ -1,4 +1,4 @@
-Status: pending
+Status: done
 Complexity: high
 
 # Asteroids: spawn, collide, land and ride

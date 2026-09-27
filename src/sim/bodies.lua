@@ -78,6 +78,33 @@ function Bodies.markDead(store, id)
 	end
 end
 
+-- Combined mass for `body` plus every rider currently docked to it
+-- (`body.riders`, a plain array of OTHER body ids -- slice 09: a ship
+-- landed/riding on an asteroid). Gravity doesn't need this (Gravity.pairwise
+-- already sums every live body's own pull independently via superposition
+-- -- a rider's own body keeps contributing its own mass with zero extra
+-- work); this is for momentum/impulse math, e.g. asteroid-asteroid bounce
+-- treating a docked asteroid as heavier by its rider's mass, since a docked
+-- ship is rigidly attached, not free-floating. A stale/removed rider id
+-- (Bodies.get returns nil) is skipped, not an error -- riders are added/
+-- removed by the game layer (src/game/components/lander.lua), which this
+-- file stays ignorant of (docs/ARCHITECTURE.md "Layers": sim knows nothing
+-- of ship/pool/lander concepts).
+function Bodies.effectiveMass(store, body)
+	local mass = body.mass or 0
+
+	if body.riders then
+		for _, riderId in ipairs(body.riders) do
+			local rider = Bodies.get(store, riderId)
+			if rider then
+				mass = mass + (rider.mass or 0)
+			end
+		end
+	end
+
+	return mass
+end
+
 -- Removes every body marked dead and frees its slot for reuse. The only
 -- place bodies are actually removed (docs/ARCHITECTURE.md "Despawn sweep").
 function Bodies.sweep(store)

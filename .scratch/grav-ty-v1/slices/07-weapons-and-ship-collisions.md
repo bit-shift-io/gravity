@@ -1,4 +1,4 @@
-Status: pending
+Status: done
 Complexity: high
 
 # Weapons, projectiles, and ship collisions
