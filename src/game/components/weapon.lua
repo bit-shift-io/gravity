@@ -80,6 +80,9 @@ function Weapon.update(ship, ctx, origin, direction)
 		local t = math.min(1, weapon.charge / chargeTime)
 		local speed = config.minSpeed + (config.maxSpeed - config.minSpeed) * t
 
+		-- Capture the fired charge level before clearing
+		weapon.prevChargeThisRound = weapon.charge
+
 		ProjectileSystem.spawn(ctx, ship, origin, direction, speed)
 		weapon.charge = 0
 	end

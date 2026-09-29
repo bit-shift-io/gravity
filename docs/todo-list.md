@@ -7,9 +7,6 @@ This should help the case where asteroids graze a world but currently just disap
 2. Currently the playing area is pretty small. Currently, when a player goes off the map (out of the playing area) you get an arrow showing where the direction to them. 
 Let's change this. as the player leaves the playing area, the camera should zoom out to encompass the player. Then there is an actual map boundary out futher. The boundary should have anti-gravity applied between the playing area and boundary. This should warp the gravity field to try to assist the player back into the playing area. If th eplayer manages to hit the boundary - they are killed. This should lead to some dynamic zoom as the player moves between the boundary and play area. The camera always remains centered on the play area.
 
-3. The weapon charge bar should be moved up under the thrust bar. This will give the player more precision. Additionally, we should show a line in the charge bar where the player's previous charge was when they fired. This lets the player adjust the power based on the previous shot. This will help the player hone in on a precise power.
-It would also be good to show the turret angle with the weapon charge bar. Again this helps the player hone in on a precise change.
-
 # Medium Priority
 
 1. A keyboard button such as "r" to reset the game to its initial state - this just helps development.

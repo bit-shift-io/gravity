@@ -24,7 +24,7 @@ local function newShip(bodies, ctx, overrides)
 		id = bodyId,
 		body = bodyId,
 		player = 1,
-		weapon = overrides.weapon or { kind = "shell", charging = false, charge = 0, prevFire = false },
+		weapon = overrides.weapon or { kind = "shell", charging = false, charge = 0, prevFire = false, prevChargeThisRound = 0 },
 	}
 	table.insert(ctx.pools.ships, ship)
 	return ship
@@ -264,4 +264,76 @@ test("a press after the shell despawns starts a charge", function()
 
 	assertTrue(ship.weapon.charging, "expected a new charge to start when slot is free")
 	assertTrue(ship.weapon.charge > 0, "expected charge to accumulate")
+end)
+
+test("prevChargeThisRound is set when firing at a given charge level", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	-- Hold for 1.5 seconds (half of chargeTime)
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	local chargeTime = ctx.config.weapon.chargeTime
+	local framesForHalfCharge = math.floor(chargeTime / 2 / ctx.dt) - 1
+	for _ = 1, framesForHalfCharge do
+		Weapon.update(ship, ctx, origin, direction)
+	end
+
+	-- Record the charge before firing
+	local chargeBeforeFire = ship.weapon.charge
+
+	-- Release to fire
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	-- Verify prevChargeThisRound was set to the fired charge
+	assertNear(chargeBeforeFire, ship.weapon.prevChargeThisRound, 0.01, "expected prevChargeThisRound to match fired charge")
+end)
+
+test("prevChargeThisRound is initialized to 0", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+
+	assertEqual(0, ship.weapon.prevChargeThisRound, "expected prevChargeThisRound to be initialized to 0")
+end)
+
+test("prevChargeThisRound is updated to most recent charge when firing multiple times", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+	local chargeTime = ctx.config.weapon.chargeTime
+
+	-- First fire: tap (very short charge)
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	local firstCharge = ship.weapon.prevChargeThisRound
+	assertTrue(firstCharge > 0, "first charge should be recorded")
+
+	-- Wait a couple frames for shell to despawn or fire slot to free
+	ship.weapon.shell = nil
+
+	-- Second fire: half charge
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	local framesForHalfCharge = math.floor(chargeTime / 2 / ctx.dt) - 1
+	for _ = 1, framesForHalfCharge do
+		Weapon.update(ship, ctx, origin, direction)
+	end
+
+	local secondChargeBeforeFire = ship.weapon.charge
+
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	-- Verify the second charge was recorded, and it's different from the first
+	assertNear(secondChargeBeforeFire, ship.weapon.prevChargeThisRound, 0.01, "expected prevChargeThisRound to be updated to second charge")
+	assertTrue(ship.weapon.prevChargeThisRound > firstCharge, "expected second charge to be greater than first charge")
 end)
