@@ -112,8 +112,6 @@ local function spawnAsteroid(ctx, candidate)
 		kind = "asteroid",
 		radius = shape.radius,
 		vertices = shape.vertices,
-		refuelMultiplier = config.refuelMultiplier,
-		riders = {},
 	}
 	local bodyId = Bodies.add(ctx.sim.bodies, body)
 
@@ -173,34 +171,10 @@ function AsteroidSystem.update(ctx)
 	end
 end
 
--- Kills every ship currently riding `asteroidBody` (docs/CONTEXT.md
--- "Riding": "If the asteroid is destroyed, the riding ship is destroyed
--- too") -- same death bookkeeping the existing crash paths use (dead flag,
--- body sweep, crash event for src/app/render/effects.lua's debris burst).
-local function killRidersOf(ctx, asteroidBody)
-	for _, ship in ipairs(ctx.pools.ships) do
-		if not ship.dead and ship.lander and ship.lander.state == "riding" and ship.lander.host == asteroidBody then
-			local body = Bodies.get(ctx.sim.bodies, ship.body)
-			if body then
-				ship.dead = true
-				Bodies.markDead(ctx.sim.bodies, ship.body)
-				table.insert(ctx.events, {
-					kind = "crash",
-					x = body.x,
-					y = body.y,
-					angle = body.angle,
-					time = ctx.time,
-				})
-			end
-		end
-	end
-end
-
 local function killAsteroid(ctx, asteroidBody)
 	for _, asteroid in ipairs(ctx.pools.asteroids) do
 		local body = Bodies.get(ctx.sim.bodies, asteroid.body)
 		if body and body == asteroidBody and not asteroid.dead then
-			killRidersOf(ctx, asteroidBody)
 			asteroid.dead = true
 			Bodies.markDead(ctx.sim.bodies, asteroid.body)
 		end
@@ -210,10 +184,7 @@ end
 -- Resolves an "asteroidAsteroid" bounce (docs "bounce off each other"),
 -- mirroring src/game/systems/ship_system.lua's resolveShipBounce -- a
 -- mass-weighted elastic impulse along the collision normal, plus a
--- positional separation push -- but using Bodies.effectiveMass instead of
--- raw mass, so a docked rider's mass makes its host asteroid behave as
--- heavier in the bounce (a docked ship is rigidly attached, not
--- free-floating).
+-- positional separation push.
 local function resolveAsteroidBounce(ctx, bodyA, bodyB, normal)
 	local relVel = { x = bodyA.vx - bodyB.vx, y = bodyA.vy - bodyB.vy }
 	local approachSpeed = Vec2.dot(relVel, normal)
@@ -260,7 +231,7 @@ local function killProjectile(ctx, projectileBody)
 end
 
 -- Systems handle contacts (docs/ARCHITECTURE.md "Systems and frame order",
--- step 5): "asteroidWorld" always destroys the asteroid (and any riders),
+-- step 5): "asteroidWorld" always destroys the asteroid ,
 -- "asteroidAsteroid" bounces (mass-weighted, effective mass), and
 -- "projectileAsteroid" always kills the projectile without ever touching
 -- the asteroid's momentum. The sim only reports contacts; outcomes are

@@ -1,13 +1,8 @@
 -- Sim.integrate(sim, dt, config) + Sim.collide(sim, worlds): the sim-layer
 -- half of Match.step's frame order (docs/ARCHITECTURE.md "Systems and frame
--- order", step 4). Split into two functions as of slice 09 (asteroids):
--- riding ships must be repositioned from their host's NEW position/angle
--- after the host integrates but before contacts are detected, or they
--- jitter (slice 09's Gotcha) -- src/game/match.lua's Match.step now calls
--- Sim.integrate, then src/game/systems/ship_system.lua's
--- ShipSystem.followRiders, then Sim.collide, in that order. Sim.step below
--- remains as a compatibility wrapper calling both in sequence, for any
--- caller that doesn't need a rider reposition in between.
+-- order", step 4). Split into two functions: src/game/match.lua's Match.step
+-- calls Sim.integrate, then Sim.collide. Sim.step below remains as a
+-- wrapper calling both in sequence.
 --
 -- Sim.integrate samples the baked static field plus pairwise dynamic
 -- gravity (src/sim/gravity.lua Gravity.pairwise, docs/adr/
@@ -16,7 +11,7 @@
 -- step 5 (the game-layer systems' handleContacts) to consume. Worlds aren't
 -- sim bodies (docs/CONTEXT.md "World": "Not stored in the body store"), so
 -- they're passed in separately rather than living on `sim`. Pinned bodies
--- (a landed ship, a riding ship, docs/CONTEXT.md "Landed"/"Riding") skip
+-- (a landed ship, docs/CONTEXT.md "Landed") skip
 -- integrate and collide -- a resting contact must not integrate away from
 -- the surface or re-collide with it every frame -- but still exert
 -- pairwise gravity on everyone else (Gravity.pairwise handles that split).
@@ -139,7 +134,7 @@ function Sim.collide(sim, worlds)
 		end
 	end
 
-	-- Ship-vs-asteroid: a ship already landed/riding is pinned and excluded
+	-- Ship-vs-asteroid: a ship already landed is pinned and excluded
 	-- (unpinnedShips), same as ship-vs-world above.
 	for _, body in ipairs(unpinnedShips) do
 		local hit = Collide.checkShipAsteroids(body, asteroids)
@@ -222,11 +217,7 @@ function Sim.collide(sim, worlds)
 	return contacts
 end
 
--- Compatibility wrapper: gravity + integrate + collide in one call, for any
--- caller that doesn't need a rider reposition between the two (grepped the
--- whole repo before this split -- src/game/match.lua was the only real
--- caller, and it now calls Sim.integrate/Sim.collide directly with
--- ShipSystem.followRiders in between).
+-- Wrapper: gravity + integrate + collide in one call.
 function Sim.step(sim, dt, worlds, config)
 	Sim.integrate(sim, dt, config)
 	return Sim.collide(sim, worlds)

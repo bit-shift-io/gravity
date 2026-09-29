@@ -8,7 +8,7 @@ local defaultTestFiles = {
 	"tests/integration/shooting_test.lua",
 	"tests/integration/ship_bounce_test.lua",
 	"tests/integration/lost_to_space_test.lua",
-	"tests/integration/asteroid_landing_test.lua",
+	"tests/integration/asteroid_crash_test.lua",
 	"tests/integration/asteroid_collisions_test.lua",
 }
 

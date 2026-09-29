@@ -38,33 +38,10 @@ test("Bodies.markDead makes a body invisible to Bodies.get even before sweep", f
 	assertTrue(Bodies.get(store, id) == nil)
 end)
 
-test("Bodies.effectiveMass is just the body's own mass with no riders", function()
+test("Bodies.effectiveMass is the body's own mass", function()
 	local store = Bodies.new()
 	local id = Bodies.add(store, { x = 0, y = 0, mass = 10 })
 	local body = Bodies.get(store, id)
 
 	assertNear(10, Bodies.effectiveMass(store, body))
-end)
-
-test("Bodies.effectiveMass sums the body's mass plus every live rider's mass", function()
-	local store = Bodies.new()
-	local hostId = Bodies.add(store, { x = 0, y = 0, mass = 10 })
-	local riderId = Bodies.add(store, { x = 0, y = 0, mass = 3 })
-	local host = Bodies.get(store, hostId)
-	host.riders = { riderId }
-
-	assertNear(13, Bodies.effectiveMass(store, host))
-end)
-
-test("Bodies.effectiveMass skips a stale rider id rather than erroring", function()
-	local store = Bodies.new()
-	local hostId = Bodies.add(store, { x = 0, y = 0, mass = 10 })
-	local riderId = Bodies.add(store, { x = 0, y = 0, mass = 3 })
-	local host = Bodies.get(store, hostId)
-	host.riders = { riderId }
-
-	Bodies.markDead(store, riderId)
-	Bodies.sweep(store)
-
-	assertNear(10, Bodies.effectiveMass(store, host))
 end)

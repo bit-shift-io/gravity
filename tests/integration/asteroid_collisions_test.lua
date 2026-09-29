@@ -28,8 +28,6 @@ local function injectAsteroid(ctx, fields)
 		kind = "asteroid",
 		radius = fields.radius or 42,
 		vertices = fields.vertices or squareAsteroidVertices(),
-		refuelMultiplier = ctx.config.asteroid.refuelMultiplier,
-		riders = {},
 	}
 	local bodyId = Bodies.add(ctx.sim.bodies, body)
 	local asteroid = { id = bodyId, body = bodyId, dead = false, kind = "asteroid" }

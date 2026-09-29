@@ -42,13 +42,11 @@ local Config = {
 	},
 	-- Landing tuning (src/game/components/lander.lua, src/game/systems/
 	-- ship_system.lua). maxSpeed is in px/s, measured relative to the
-	-- surface point touched (docs/CONTEXT.md "Landing"); maxAngle is in
-	-- radians, between the ship's nose and the contact's outward normal.
+	-- surface point touched (docs/CONTEXT.md "Landing"); any angle lands.
 	-- refuelRate is in the same fuel "tank" units as ship.fuel, per second
 	-- while landed.
 	landing = {
-		maxSpeed = 40,
-		maxAngle = 0.4,
+		maxSpeed = 150,
 		refuelRate = 5,
 	},
 	-- Projectile tuning (src/game/components/weapon.lua, src/game/systems/
@@ -93,9 +91,7 @@ local Config = {
 	-- `asteroids.maxAlive`, not a config value, caps how many can be alive
 	-- at once). safetyRadius/maxSpawnAttempts gate the "spawn line never
 	-- passes within a ship's safety radius" check, with a bounded retry
-	-- count (Guard Against Hangs). refuelMultiplier is how much faster than
-	-- a world a ship refuels while riding (src/game/components/
-	-- landable.lua's Landable.refuelMultiplier seam).
+	-- count (Guard Against Hangs)..
 	asteroid = {
 		minRadius = 20,
 		maxRadius = 55,
@@ -108,7 +104,6 @@ local Config = {
 		spawnDelay = 4,
 		safetyRadius = 150,
 		maxSpawnAttempts = 8,
-		refuelMultiplier = 2,
 		restitution = 1,
 	},
 	gravityField = {},

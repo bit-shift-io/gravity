@@ -31,31 +31,49 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Never updates or draws itself. The owning pool system calls it.
 
 ## Ship
-- **Definition:** A player-controlled triangular craft with fuel, thruster, lander, and weapon components.
+- **Definition:** A player-controlled craft with fuel, thruster, lander, turret, and weapon components. Triangular while flying, a dome in tank mode.
 - **Boundary:** One hit point. Two ships per match in v1.
 
 ## Projectile
-- **Definition:** A shot fired from a ship's nose, affected by gravity, with a lifetime.
-- **Boundary:** **Unarmed** until its arm delay elapses — bounces off ships. **Armed** afterwards — destroys any ship it hits, including its shooter.
+- **Definition:** A shell fired by releasing a charge — from the nose in flight, from the turret in tank mode. Affected by gravity.
+- **Boundary:** At most one alive per player. No lifetime: it ends by leaving the soft boundary (no blast), by contact, or by remote detonation.
+- **Unarmed** until its arm delay elapses — bounces off ships, cannot be remote-detonated. **Armed** afterwards — blasts on any ship contact.
+- Blasts on world or asteroid contact whether armed or not.
 
 ## Asteroid
-- **Definition:** A drifting convex rock that spawns off-screen, spins slowly, exerts gravity, and can be landed on.
-- **Boundary:** Not a world. Destroyed on world contact. At most 1–2 alive.
+- **Definition:** A drifting convex rock that spawns off-screen, spins slowly, and exerts gravity.
+- **Boundary:** Not a world. Cannot be landed on — ship contact is a crash. Destroyed on world contact. Pushed, not destroyed, by a blast. At most 1–2 alive.
 
 ## Landing
-- **Definition:** Touching a world or asteroid slowly enough, with the nose aligned to the surface normal.
-- **Boundary:** Speed is measured relative to the surface point touched. Failing either check is a crash.
+- **Definition:** Touching a world slowly enough. Any angle; the ship snaps upright along the surface normal and enters tank mode.
+- **Boundary:** Only speed is checked. Too fast is a crash. Asteroids cannot be landed on.
 
-## Landed
-- **Definition:** Ship state after landing: fixed to the surface, refuelling, unable to rotate or fire.
-- **Boundary:** Ends only on thrust (lift-off) or destruction.
+## Tank mode
+- **Definition:** Ship state after landing: fixed to the surface, refuelling, aiming a turret, able to charge and fire.
+- **Boundary:** Left/right aim the turret; the body never rotates. Ends only on thrust (lift-off, straight up the surface normal) or destruction.
 
-## Riding
-- **Definition:** Being landed on an asteroid; the ship moves and rotates with it.
-- **Boundary:** If the asteroid is destroyed, the riding ship is destroyed too.
+## Turret
+- **Definition:** A tank's barrel. Its aim is relative to the surface normal, clamped to a configured limit either side.
+- **Boundary:** Points straight up on every landing. Exists only in tank mode.
+
+## Morph
+- **Definition:** The cosmetic triangle ↔ dome animation on landing and lift-off.
+- **Boundary:** Visual only. Controls switch the instant the ship lands or lifts off.
+
+## Charge
+- **Definition:** Holding fire to build launch speed, from a minimum on a tap to a maximum after 3 s. Release fires.
+- **Boundary:** Works in flight and tank mode. Cannot start while the player's projectile is alive.
+
+## Remote detonation
+- **Definition:** A fire press that blasts the player's own armed projectile where it is.
+- **Boundary:** Ignored while the projectile is unarmed. The press never also starts a charge.
+
+## Blast
+- **Definition:** A projectile's circular explosion. Kills every ship in its radius, shooter included, and pushes asteroids outward.
+- **Boundary:** Does not damage worlds or destroy asteroids. One per projectile.
 
 ## Crash
-- **Definition:** Ship contact with a world or asteroid that fails the landing check. Destroys the ship.
+- **Definition:** Ship contact with a world that fails the landing speed check, or any ship contact with an asteroid. Destroys the ship.
 
 ## Lost to space
 - **Definition:** A ship that drifts past the soft-boundary margin is destroyed.

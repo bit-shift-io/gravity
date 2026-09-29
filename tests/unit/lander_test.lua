@@ -4,8 +4,7 @@ local Bodies = require("src.sim.bodies")
 
 local CONFIG = {
 	landing = {
-		maxSpeed = 40,
-		maxAngle = 0.4,
+		maxSpeed = 150,
 		refuelRate = 5,
 	},
 }
@@ -21,30 +20,30 @@ local function contactWithSpeed(speed)
 	}
 end
 
-test("Lander.check lands at 0.9x max speed with the nose aligned to the normal", function()
+test("Lander.check lands at 0.9x max speed", function()
 	local body = { angle = 0 }
 	local contact = contactWithSpeed(CONFIG.landing.maxSpeed * 0.9)
 
 	assertEqual("land", Lander.check(body, contact, CONFIG))
 end)
 
-test("Lander.check crashes at 1.1x max speed even with the nose aligned to the normal", function()
+test("Lander.check crashes at 1.1x max speed", function()
 	local body = { angle = 0 }
 	local contact = contactWithSpeed(CONFIG.landing.maxSpeed * 1.1)
 
 	assertEqual("crash", Lander.check(body, contact, CONFIG))
 end)
 
-test("Lander.check lands at 0.9x max angle at a safe speed", function()
-	local body = { angle = CONFIG.landing.maxAngle * 0.9 }
-	local contact = contactWithSpeed(0)
+test("Lander.check lands a 140 px/s touch with the nose 90 degrees off the normal", function()
+	local body = { angle = math.pi / 2 }
+	local contact = contactWithSpeed(140)
 
 	assertEqual("land", Lander.check(body, contact, CONFIG))
 end)
 
-test("Lander.check crashes at 1.1x max angle even at a safe speed", function()
-	local body = { angle = CONFIG.landing.maxAngle * 1.1 }
-	local contact = contactWithSpeed(0)
+test("Lander.check crashes a 160 px/s touch", function()
+	local body = { angle = 0 }
+	local contact = contactWithSpeed(160)
 
 	assertEqual("crash", Lander.check(body, contact, CONFIG))
 end)

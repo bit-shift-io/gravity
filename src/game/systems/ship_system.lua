@@ -14,7 +14,6 @@
 local Bodies = require("src.sim.bodies")
 local Thruster = require("src.game.components.thruster")
 local Lander = require("src.game.components.lander")
-local Landable = require("src.game.components.landable")
 local Weapon = require("src.game.components.weapon")
 local Collide = require("src.sim.collide")
 local Vec2 = require("src.core.vec2")
@@ -106,24 +105,6 @@ function ShipSystem.update(ctx)
 	end
 end
 
--- Repositions every riding ship's body from its host's CURRENT position/
--- angle (src/game/components/lander.lua's Lander.followHost), called from
--- src/game/match.lua's Match.step between Sim.integrate and Sim.collide --
--- the host asteroid has already moved/spun this frame by the time this
--- runs, but contacts haven't been detected yet (this slice's Gotcha: update
--- rider position from the host after integrate, before collide, or riders
--- jitter).
-function ShipSystem.followRiders(ctx)
-	for _, ship in ipairs(ctx.pools.ships) do
-		if not ship.dead and ship.lander and ship.lander.state == "riding" then
-			local body = Bodies.get(ctx.sim.bodies, ship.body)
-			if body then
-				Lander.followHost(ship, body)
-			end
-		end
-	end
-end
-
 -- The ship's un-rotated nose vector, matching src/game/components/
 -- thruster.lua's NOSE -- used to snap a landing ship's angle exactly flush
 -- with the contact's outward normal (nose pointing away from the surface,
@@ -141,21 +122,20 @@ local function angleFacing(direction)
 	return atan2(direction.x, -direction.y)
 end
 
--- Finds the point of `points` closest to `target`, returning it plus the
--- distance -- used below to find which of the ship's (freshly re-angled)
--- collision vertices is the one resting against `contact.point`, so the
--- body can be nudged by exactly that offset rather than overwritten to the
--- contact point itself (which is a point on the world's edge, not the
--- ship's center).
-local function nearestPoint(points, target)
-	local best, bestDist
+-- How far the deepest of `points` sits below the surface plane through
+-- `target` with outward `normal` (positive = penetrating). Used to lift a
+-- freshly upright-snapped ship exactly flush: at a sideways approach the
+-- vertex that touched first is a base corner, and the deepest vertex after
+-- re-angling is what would otherwise stay embedded.
+local function penetrationDepth(points, target, normal)
+	local depth = 0
 	for _, p in ipairs(points) do
-		local dist = Vec2.length(Vec2.sub(p, target))
-		if not bestDist or dist < bestDist then
-			best, bestDist = p, dist
+		local d = -Vec2.dot(Vec2.sub(p, target), normal)
+		if d > depth then
+			depth = d
 		end
 	end
-	return best
+	return depth
 end
 
 -- Seconds a crash event is kept on ctx.events before being pruned --
@@ -264,31 +244,17 @@ function ShipSystem.handleContacts(ctx, contacts)
 			for _, ship in ipairs(ctx.pools.ships) do
 				local body = Bodies.get(ctx.sim.bodies, ship.body)
 				if body and body == contact.a and not ship.dead then
-					local surfaceVel = Landable.surfaceVelocityAt(contact.b, contact.point)
-					local resolved = {
-						point = contact.point,
-						normal = contact.normal,
-						relVel = {
-							x = contact.relVel.x - surfaceVel.x,
-							y = contact.relVel.y - surfaceVel.y,
-						},
-					}
-
-					local outcome = Lander.check(body, resolved, ctx.config)
+					local outcome = Lander.check(body, contact, ctx.config)
 					if outcome == "land" then
-						-- Snap flush: orient the body so its nose faces exactly
-						-- along the surface normal, then nudge its position by
-						-- however far the (now re-angled) penetrating vertex
-						-- still sits from contact.point -- zeroing penetration
-						-- without teleporting the body's center onto an edge
-						-- point that belongs to the *hull*, not the center.
+						-- Snap upright along the surface normal, then lift
+						-- the body along the normal by however deep the
+						-- re-angled hull still sits below the surface.
 						body.angle = angleFacing(contact.normal)
 
 						local shipPoints = Collide.transform(Collide.SHIP_SHAPE, body.x, body.y, body.angle)
-						local penetrating = nearestPoint(shipPoints, contact.point)
-						local correction = Vec2.sub(contact.point, penetrating)
-						body.x = body.x + correction.x
-						body.y = body.y + correction.y
+						local depth = penetrationDepth(shipPoints, contact.point, contact.normal)
+						body.x = body.x + contact.normal.x * depth
+						body.y = body.y + contact.normal.y * depth
 
 						body.vx = 0
 						body.vy = 0
@@ -314,51 +280,19 @@ function ShipSystem.handleContacts(ctx, contacts)
 				end
 			end
 		elseif contact.kind == "shipAsteroid" then
+			-- Asteroids cannot be landed on (docs/CONTEXT.md "Crash").
 			for _, ship in ipairs(ctx.pools.ships) do
 				local body = Bodies.get(ctx.sim.bodies, ship.body)
 				if body and body == contact.a and not ship.dead then
-					local surfaceVel = Landable.surfaceVelocityAt(contact.b, contact.point)
-					local resolved = {
-						point = contact.point,
-						normal = contact.normal,
-						relVel = {
-							x = contact.relVel.x - surfaceVel.x,
-							y = contact.relVel.y - surfaceVel.y,
-						},
-					}
-
-					local outcome = Lander.check(body, resolved, ctx.config)
-					if outcome == "land" then
-						-- Same snap-flush dance as a world landing, then
-						-- Lander.startRiding stores the local offset that
-						-- keeps this ship pinned to the asteroid's moving,
-						-- spinning frame from here on (this slice's own
-						-- addition -- see src/game/components/lander.lua).
-						body.angle = angleFacing(contact.normal)
-
-						local shipPoints = Collide.transform(Collide.SHIP_SHAPE, body.x, body.y, body.angle)
-						local penetrating = nearestPoint(shipPoints, contact.point)
-						local correction = Vec2.sub(contact.point, penetrating)
-						body.x = body.x + correction.x
-						body.y = body.y + correction.y
-
-						body.vx = contact.b.vx or 0
-						body.vy = contact.b.vy or 0
-						body.angularVelocity = contact.b.angularVelocity or 0
-						body.pinned = true
-
-						Lander.startRiding(ship, contact.b, body)
-					else
-						ship.dead = true
-						Bodies.markDead(ctx.sim.bodies, ship.body)
-						table.insert(ctx.events, {
-							kind = "crash",
-							x = body.x,
-							y = body.y,
-							angle = body.angle,
-							time = ctx.time,
-						})
-					end
+					ship.dead = true
+					Bodies.markDead(ctx.sim.bodies, ship.body)
+					table.insert(ctx.events, {
+						kind = "crash",
+						x = body.x,
+						y = body.y,
+						angle = body.angle,
+						time = ctx.time,
+					})
 				end
 			end
 		elseif contact.kind == "shipShip" then

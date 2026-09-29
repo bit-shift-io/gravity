@@ -42,8 +42,7 @@ test("a ship dropped slowly nose-up onto a world lands, refuels to full, then li
 	assertEqual("flying", ship.lander.state)
 
 	-- Slow, nose-up descent straight toward the world's top surface -- well
-	-- under config.landing.maxSpeed (40) and maxAngle (0.4, and the ship's
-	-- angle is 0 here, a perfect match for the (0,-1) normal), so this
+	-- under config.landing.maxSpeed, so this
 	-- should land rather than crash.
 	body.vx = 0
 	body.vy = 30
@@ -85,7 +84,7 @@ test("a ship dropped fast crashes and its record is swept", function()
 	local bodyId = ship.body
 	local body = Bodies.get(ctx.sim.bodies, bodyId)
 
-	-- Far above config.landing.maxSpeed (40) -- guaranteed crash.
+	-- Far above config.landing.maxSpeed (150) -- guaranteed crash.
 	body.vx = 0
 	body.vy = 400
 
@@ -93,4 +92,31 @@ test("a ship dropped fast crashes and its record is swept", function()
 
 	assertEqual(0, #ctx.pools.ships, "expected the crashed ship's record to be swept")
 	assertTrue(Bodies.get(ctx.sim.bodies, bodyId) == nil, "expected the crashed ship's body to be swept too")
+end)
+
+test("a ship dropped sideways onto a world at moderate speed lands upright without embedding", function()
+	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
+	local game = GameHarness.startMatch(level)
+	local ctx = game.ctx
+	local ship = ctx.pools.ships[1]
+	local body = Bodies.get(ctx.sim.bodies, ship.body)
+
+	-- Nose pointing along +x (90 degrees off the surface normal), falling at
+	-- a speed under config.landing.maxSpeed.
+	body.angle = math.pi / 2
+	body.vx = 0
+	body.vy = 100
+
+	FrameStepper.step(game, 300)
+
+	assertEqual("landed", ship.lander.state, "expected a sideways touch under max speed to land")
+	assertNear(0, body.angle, 0.0001, "expected the ship to snap upright (nose along the surface normal)")
+
+	local Collide = require("src.sim.collide")
+	local points = Collide.transform(Collide.SHIP_SHAPE, body.x, body.y, body.angle)
+	local lowest = -math.huge
+	for _, p in ipairs(points) do
+		lowest = math.max(lowest, p.y)
+	end
+	assertTrue(lowest <= 310 + 0.01, "expected no hull vertex embedded below the surface at y=310")
 end)

@@ -86,9 +86,7 @@ end
 -- world in `worlds`, in order, returning the first contact found (nil if the
 -- ship touches none). `relVel` assumes a stationary world -- worlds don't
 -- move (docs/CONTEXT.md "World": "Does not move in v1") -- so it's simply
--- the body's own velocity; a moving host (asteroids, slice 09) is
--- src/game/components/landable.lua's concern, applied by
--- src/game/systems/ship_system.lua before the landing check.
+-- the body's own velocity.
 -- Circle-circle contact (ship-vs-ship, projectile-vs-ship, docs/CONTEXT.md
 -- "Contact"): reports plain data only, same as Collide.polygonContact --
 -- outcome (bounce vs kill) is entirely the calling system's job. `normal`
@@ -217,16 +215,12 @@ local function asteroidWorldPoints(asteroid)
 end
 
 -- Ship-vs-asteroid contact for one ship body this frame (docs/CONTEXT.md
--- "Landing"/"Riding", slice 09): mirrors Collide.checkShipWorlds almost
+-- "Crash"): mirrors Collide.checkShipWorlds almost
 -- exactly, except each "world" here is a moving/rotating asteroid body --
 -- its vertices are transformed by ITS current position/angle before the
 -- same Collide.polygonContact test (which already accepts any table with a
 -- `.vertices` field, so no new polygon-vs-polygon code is needed). `relVel`
--- is the ship's own velocity only, exactly like checkShipWorlds -- surface
--- velocity (the host's own motion plus its spin) is
--- src/game/components/landable.lua's job, applied by the calling system
--- before the landing check, same split checkShipWorlds already relies on
--- for a static host.
+-- is the ship's own velocity only, exactly like checkShipWorlds.
 function Collide.checkShipAsteroids(body, asteroids)
 	local shipPoints = Collide.transform(Collide.SHIP_SHAPE, body.x, body.y, body.angle)
 

@@ -96,12 +96,6 @@ function Match.step(ctx)
 	-- into Sim.integrate/Sim.collide -- see src/sim/step.lua's header).
 	Sim.integrate(ctx.sim, ctx.dt, ctx.config)
 
-	-- Riding ships must be repositioned from their host's NEW (just
-	-- integrated) position/angle before collide runs this same frame, or
-	-- they jitter (this slice's Gotcha) -- a stale rider position would
-	-- produce wrong/missed contacts below.
-	ShipSystem.followRiders(ctx)
-
 	-- Sim.collide: contact detection -> contact list.
 	local contacts = Sim.collide(ctx.sim, ctx.level.worlds)
 
