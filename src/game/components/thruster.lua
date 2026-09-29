@@ -15,6 +15,10 @@ local Thruster = {}
 -- "Rules") and angle 0 is drawn nose-up (src/app/render/ships.lua).
 local NOSE = { x = 0, y = -1 }
 
+-- Duration (seconds) of extra thrust boost after liftoff. Helps the ship
+-- build up enough velocity to escape gravity near the surface.
+local LIFTOFF_BOOST_DURATION = 0.3
+
 function Thruster.apply(ship, ctx)
 	local intent = ctx.intents[ship.player]
 	if not intent or not intent.thrust then
@@ -33,9 +37,19 @@ function Thruster.apply(ship, ctx)
 
 	Fuel.consume(fuel, ctx.dt)
 
+	local accel = ship.thruster.accel
+
+	-- Apply boost thrust for a short time after liftoff to help escape gravity
+	if ship.lander and ship.lander.liftOffTime and ship.lander.liftOffTime > 0 then
+		local timeSinceLiftOff = ctx.time - ship.lander.liftOffTime
+		if timeSinceLiftOff < LIFTOFF_BOOST_DURATION then
+			accel = accel * 2
+		end
+	end
+
 	local forward = Vec2.rotate(NOSE, body.angle or 0)
-	body.vx = body.vx + forward.x * ship.thruster.accel * ctx.dt
-	body.vy = body.vy + forward.y * ship.thruster.accel * ctx.dt
+	body.vx = body.vx + forward.x * accel * ctx.dt
+	body.vy = body.vy + forward.y * accel * ctx.dt
 end
 
 return Thruster
