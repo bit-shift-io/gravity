@@ -109,8 +109,8 @@ local Config = {
 		maxRadius = 55,
 		pointCount = 10,
 		density = 0.6,
-		spinRange = { min = -0.4, max = 0.4 },
-		speedRange = { min = 40, max = 90 },
+		spinRange = { min = -0.3, max = 0.3 },
+		speedRange = { min = 10, max = 90 },
 		aimSpread = 0.4,
 		spawnMargin = 60,
 		spawnDelay = 4,
@@ -122,7 +122,7 @@ local Config = {
 	world = {
 		-- Default mass-per-area for a world that doesn't set its own
 		-- density or an explicit mass (src/game/level.lua Level.validate).
-		density = 1,
+		density = 0.6,
 	},
 	match = {},
 	-- Softened inverse-square law shared by the baked static field
