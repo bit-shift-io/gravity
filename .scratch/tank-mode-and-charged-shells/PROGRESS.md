@@ -45,3 +45,12 @@
 - New exports/interfaces: `Weapon.update` routes press to detonate (armed shell exists), ignore (unarmed), or charge (no shell). `ProjectileSystem.spawn` sets `weapon.shell = bodyId`. ProjectileSystem clears shell on any projectile death (contact/stale/boundary).
 - Conventions confirmed: Bodies.get returns nil for stale ids (slot detection). Frame order: ShipSystem → ProjectileSystem → Sim → contacts → sweep. Weapon.consumed flag prevents charge start on same press.
 - Surprises: None. Lifetime component cleanly removed; no other code depended on it.
+
+## Slice 07 — blast-pushes-asteroids
+- Built: Blast detonation now adds outward velocity to asteroids within pushRadius, with impulse falling off linearly by distance and asteroid mass. Asteroids survive all blasts.
+- Files touched:
+  - Source: `src/game/config.lua` (added pushRadius=80, pushStrength=12000), `src/game/blast.lua` (added asteroid push loop with normalized direction, linear falloff, mass scaling)
+  - Tests: `tests/unit/blast_test.lua` (added newAsteroid helper, 4 new tests for push mechanics), `tests/integration/asteroid_collisions_test.lua` (updated pre-existing test to allow push, added 1 new integration test)
+- New exports/interfaces: `Config.projectile.pushRadius` and `pushStrength`. `Blast.detonate` enhanced (no signature change, behavior expands).
+- Conventions confirmed: Test helpers (newCtx, newAsteroid) consistent with existing patterns. Vec2.normalize safely returns zero vector for zero-length input (zero-distance case).
+- Surprises: None. Pre-existing test "projectiles never change asteroid momentum" correctly updated per gotcha (that v1 criterion now false).

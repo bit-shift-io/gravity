@@ -57,7 +57,7 @@ test("two asteroids colliding bounce apart and both survive", function()
 	assertTrue(bodyB.vx > 0, "expected asteroid B to have bounced back (positive vx)")
 end)
 
-test("a projectile hitting an asteroid dies and leaves the asteroid's velocity and spin unchanged", function()
+test("a projectile hitting an asteroid dies and the asteroid may be pushed by the blast", function()
 	local game = GameHarness.startMatch(bareLevel())
 	local ctx = game.ctx
 
@@ -100,7 +100,55 @@ test("a projectile hitting an asteroid dies and leaves the asteroid's velocity a
 	FrameStepper.step(game, 1)
 
 	assertEqual(0, #ctx.pools.projectiles, "expected the projectile to die on contact with the asteroid")
-	assertNear(asteroidVx, asteroidBody.vx, 0.0001, "expected the asteroid's vx to be unchanged")
-	assertNear(asteroidVy, asteroidBody.vy, 0.0001, "expected the asteroid's vy to be unchanged")
-	assertNear(asteroidSpin, asteroidBody.angularVelocity, 0.0001, "expected the asteroid's spin to be unchanged")
+	-- Asteroid survives the blast (not destroyed, only pushed)
+	assertEqual(1, #ctx.pools.asteroids, "expected the asteroid to survive the blast")
+	-- Asteroid's spin is unaffected by the linear push (rotation not affected)
+	assertNear(asteroidSpin, asteroidBody.angularVelocity, 0.0001, "expected the asteroid's spin to be unchanged (rotation unaffected)")
+end)
+
+test("a projectile's blast pushes a nearby asteroid outward", function()
+	local game = GameHarness.startMatch(bareLevel())
+	local ctx = game.ctx
+
+	-- Asteroid overlapping with the blast point, slightly offset so push direction is clear
+	local _, asteroidBody = injectAsteroid(ctx, {
+		x = 640,
+		y = 345,
+		vx = 0,
+		vy = 0,
+		mass = 100,
+	})
+
+	-- Projectile moving fast into the asteroid
+	-- Position nearby to guarantee collision on contact detection
+	local projectileBody = {
+		x = 620,
+		y = 360,
+		vx = 500,
+		vy = 0,
+		angle = 0,
+		mass = 0.001,
+		kind = "projectile",
+		radius = 3,
+		armed = true,
+	}
+	local projectileBodyId = Bodies.add(ctx.sim.bodies, projectileBody)
+	local projectile = {
+		id = projectileBodyId,
+		body = projectileBodyId,
+		shooter = 1,
+		dead = false,
+		age = 1,
+	}
+	table.insert(ctx.pools.projectiles, projectile)
+
+	-- Step one frame: projectile moves and collides, detonates, pushes asteroid
+	FrameStepper.step(game, 1)
+
+	-- The asteroid should still be alive
+	assertEqual(1, #ctx.pools.asteroids, "expected asteroid to survive the blast")
+	-- The projectile should be dead
+	assertEqual(0, #ctx.pools.projectiles, "expected projectile to be dead after detonation")
+	-- The asteroid should have been pushed upward (negative y) away from blast
+	assertTrue(asteroidBody.vy < 0, "expected asteroid to be pushed upward (away from blast at y=360)")
 end)

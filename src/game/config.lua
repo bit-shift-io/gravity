@@ -71,7 +71,10 @@ local Config = {
 	-- (destroys any ship it touches). Projectiles no longer expire on a timer
 	-- (slice 06) -- they live until contact or boundary check marks them dead.
 	-- blastRadius (px) is how far the blast kills and visible ring extends
-	-- when the projectile detonates. mass is deliberately tiny (this slice's
+	-- when the projectile detonates. pushRadius (px) is how far the blast
+	-- pushes asteroids outward. pushStrength is the impulse magnitude at the
+	-- blast centre (px/s * kg), divided by asteroid mass and falling off
+	-- linearly to zero at pushRadius. mass is deliberately tiny (this slice's
 	-- Gotcha) so a projectile's own pull on ships stays negligible even in a
 	-- dense volley -- do not raise it to "fix" flight distortion; that's what
 	-- a small mass is already for. radius/restitution feed Collide.circleContact
@@ -79,6 +82,8 @@ local Config = {
 	projectile = {
 		armDelay = 0.15,
 		blastRadius = 30,
+		pushRadius = 100,
+		pushStrength = 500000,
 		mass = 0.001,
 		radius = 3,
 		restitution = 1,

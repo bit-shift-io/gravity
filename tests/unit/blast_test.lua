@@ -9,7 +9,7 @@ local function newCtx(overrides)
 		dt = 1 / 60,
 		time = 0,
 		sim = { bodies = bodies },
-		pools = { ships = {}, projectiles = {} },
+		pools = { ships = {}, projectiles = {}, asteroids = {} },
 		config = overrides.config or Config,
 		events = {},
 	}
@@ -45,6 +45,21 @@ local function newProjectile(bodies, ctx, x, y, shooterId)
 	}
 	table.insert(ctx.pools.projectiles, projectile)
 	return projectile
+end
+
+local function newAsteroid(bodies, ctx, x, y, mass)
+	x = x or 0
+	y = y or 0
+	mass = mass or 100
+	local body = { x = x, y = y, vx = 0, vy = 0, angle = 0, mass = mass, kind = "asteroid", radius = 20 }
+	local bodyId = Bodies.add(bodies, body)
+	local asteroid = {
+		id = bodyId,
+		body = bodyId,
+		dead = false,
+	}
+	table.insert(ctx.pools.asteroids, asteroid)
+	return asteroid, body
 end
 
 test("detonating kills ships within the blast radius", function()
@@ -138,4 +153,75 @@ test("detonating does nothing if projectile is already dead", function()
 
 	assertEqual(eventsBefore, #ctx.events, "expected no events to be created for already-dead projectile")
 	assertFalse(target.dead, "expected target to survive when projectile was already dead")
+end)
+
+test("an asteroid at half the push radius gains half the impulse", function()
+	local ctx, bodies = newCtx()
+	local shooter = newShip(bodies, ctx, 0, 0)
+	local pushRadius = ctx.config.projectile.pushRadius
+	local halfRadius = pushRadius / 2
+
+	-- Asteroid directly to the right at half the push radius
+	local _, asteroidBody = newAsteroid(bodies, ctx, halfRadius, 0, 100)
+	local projectile = newProjectile(bodies, ctx, 0, 0, shooter.id)
+	local projBody = Bodies.get(bodies, projectile.body)
+
+	Blast.detonate(ctx, projectile, projBody)
+
+	-- At half radius, the falloff should be (1 - 0.5) = 0.5
+	-- So impulse should be pushStrength * 0.5 / mass
+	local expectedImpulse = ctx.config.projectile.pushStrength * 0.5 / 100
+	assertNear(expectedImpulse, asteroidBody.vx, 0.1, "expected asteroid at half radius to move away with half impulse")
+	assertNear(0, asteroidBody.vy, 0.1, "expected asteroid at half radius to move horizontally")
+end)
+
+test("an asteroid outside the push radius is not affected", function()
+	local ctx, bodies = newCtx()
+	local shooter = newShip(bodies, ctx, 0, 0)
+	local pushRadius = ctx.config.projectile.pushRadius
+
+	-- Asteroid far outside the push radius
+	local _, asteroidBody = newAsteroid(bodies, ctx, pushRadius + 50, 0, 100)
+	local projectile = newProjectile(bodies, ctx, 0, 0, shooter.id)
+	local projBody = Bodies.get(bodies, projectile.body)
+
+	Blast.detonate(ctx, projectile, projBody)
+
+	assertNear(0, asteroidBody.vx, 0.001, "expected asteroid outside radius to have zero vx")
+	assertNear(0, asteroidBody.vy, 0.001, "expected asteroid outside radius to have zero vy")
+end)
+
+test("a heavier asteroid moves less for the same blast", function()
+	local ctx, bodies = newCtx()
+	local shooter = newShip(bodies, ctx, 0, 0)
+	local pushRadius = ctx.config.projectile.pushRadius
+	local testDist = pushRadius / 2
+
+	local _, lightBody = newAsteroid(bodies, ctx, testDist, 0, 50)
+	local _, heavyBody = newAsteroid(bodies, ctx, testDist, 0, 200)
+	local projectile = newProjectile(bodies, ctx, 0, 0, shooter.id)
+	local projBody = Bodies.get(bodies, projectile.body)
+
+	Blast.detonate(ctx, projectile, projBody)
+
+	assertTrue(lightBody.vx > heavyBody.vx, "expected lighter asteroid to move more than heavier asteroid")
+	-- Light: pushStrength * 0.5 / 50 = strength / 50
+	-- Heavy: pushStrength * 0.5 / 200 = strength / 200
+	-- Light should be 200/50 = 4x heavier's velocity
+	assertNear(lightBody.vx / heavyBody.vx, 4, 0.1, "expected velocity ratio to match mass ratio")
+end)
+
+test("an asteroid at the blast centre is not pushed (zero direction)", function()
+	local ctx, bodies = newCtx()
+	local shooter = newShip(bodies, ctx, 0, 0)
+
+	-- Asteroid exactly at the blast centre
+	local _, asteroidBody = newAsteroid(bodies, ctx, 0, 0, 100)
+	local projectile = newProjectile(bodies, ctx, 0, 0, shooter.id)
+	local projBody = Bodies.get(bodies, projectile.body)
+
+	Blast.detonate(ctx, projectile, projBody)
+
+	assertNear(0, asteroidBody.vx, 0.001, "expected asteroid at centre to have zero vx")
+	assertNear(0, asteroidBody.vy, 0.001, "expected asteroid at centre to have zero vy")
 end)
