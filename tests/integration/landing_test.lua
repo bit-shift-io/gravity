@@ -42,7 +42,7 @@ test("a ship dropped slowly nose-up onto a world lands, refuels to full, then li
 	assertEqual("flying", ship.lander.state)
 
 	-- Slow, nose-up descent straight toward the world's top surface -- well
-	-- under config.landing.maxSpeed, so this
+	-- under config.landing.maxSpeed (400), so this
 	-- should land rather than crash.
 	body.vx = 0
 	body.vy = 30
@@ -50,7 +50,7 @@ test("a ship dropped slowly nose-up onto a world lands, refuels to full, then li
 
 	FrameStepper.step(game, 300) -- 5s: comfortably more than the ~2.3s fall
 
-	assertEqual("landed", ship.lander.state, "expected the slow, aligned contact to land")
+	assertEqual("tank", ship.lander.state, "expected the slow, aligned contact to land")
 	assertNear(0, body.vx, 0.0001)
 	assertNear(0, body.vy, 0.0001)
 	assertTrue(body.pinned, "expected a landed ship's body to be pinned")
@@ -61,11 +61,11 @@ test("a ship dropped slowly nose-up onto a world lands, refuels to full, then li
 	FrameStepper.step(game, FrameStepper.secondsToFrames(secondsToFull) + 10)
 	assertNear(capacity, ship.fuel.amount, 0.01)
 
-	-- Landed: cannot rotate.
+	-- Tank: cannot rotate body, but can aim turret.
 	ctx.intents[1] = { rotate = 1, thrust = false, fire = false }
 	FrameStepper.step(game, 10)
-	assertNear(0, body.angularVelocity, 0.0001, "expected a landed ship to ignore rotate intent")
-	assertEqual("landed", ship.lander.state)
+	assertNear(0, body.angularVelocity, 0.0001, "expected a tank ship to ignore body rotate intent")
+	assertEqual("tank", ship.lander.state)
 
 	-- Thrust lifts off with normal thrust.
 	ctx.intents[1] = { rotate = 0, thrust = true, fire = false }
@@ -84,7 +84,7 @@ test("a ship dropped fast crashes and its record is swept", function()
 	local bodyId = ship.body
 	local body = Bodies.get(ctx.sim.bodies, bodyId)
 
-	-- Far above config.landing.maxSpeed (150) -- guaranteed crash.
+	-- Far above config.landing.maxSpeed (400) -- guaranteed crash.
 	body.vx = 0
 	body.vy = 400
 
@@ -109,7 +109,7 @@ test("a ship dropped sideways onto a world at moderate speed lands upright witho
 
 	FrameStepper.step(game, 300)
 
-	assertEqual("landed", ship.lander.state, "expected a sideways touch under max speed to land")
+	assertEqual("tank", ship.lander.state, "expected a sideways touch under max speed to land")
 	assertNear(0, body.angle, 0.0001, "expected the ship to snap upright (nose along the surface normal)")
 
 	local Collide = require("src.sim.collide")

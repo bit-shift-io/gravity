@@ -5,33 +5,28 @@
 -- landing_test.lua exercises landing. No worlds are needed for most of
 -- these -- firing and hitting another ship don't require terrain -- so an
 -- empty `worlds = {}` level keeps each test focused on the one behaviour it
--- targets.
+-- targets. A tap release fires at minSpeed; longer charges reach higher
+-- speeds up to maxSpeed.
 local GameHarness = require("tests.support.game_harness")
 local FrameStepper = require("tests.support.frame_stepper")
 local Bodies = require("src.sim.bodies")
 local Config = require("src.game.config")
 
--- A shallow copy of the real config with config.projectile.muzzleSpeed
--- overridden. At the canonical muzzleSpeed (500px/s), a fired shot cannot
--- escape its own shooter's close-range gravity well (config.ship.mass is
--- large -- slice 06's own tuning, not this slice's to touch) and curves
--- back onto the shooter well within its arm delay (see "a shot curved back
--- by gravity kills its shooter" below, at the canonical speed) -- exactly
--- the acceptance criterion "Projectiles curve under static and dynamic
--- gravity" in action. A dedicated "reaches a distant target" test needs a
--- higher muzzle speed to clear that same well before turning back, so this
--- helper overrides only muzzleSpeed, leaving every other tuning number
--- (including armDelay) untouched.
-local function withMuzzleSpeed(muzzleSpeed)
+-- A shallow copy of the real config with weapon speed overridden. At the
+-- minSpeed (150px/s), a fired shot cannot escape its own shooter's
+-- close-range gravity well and curves back onto the shooter well within its
+-- arm delay. A test that needs the shot to reach a distant target overrides
+-- minSpeed to a higher value so the shot clears the gravity well.
+local function withMinSpeed(minSpeed)
 	local overridden = {}
 	for k, v in pairs(Config) do
 		overridden[k] = v
 	end
-	overridden.projectile = {}
-	for k, v in pairs(Config.projectile) do
-		overridden.projectile[k] = v
+	overridden.weapon = {}
+	for k, v in pairs(Config.weapon) do
+		overridden.weapon[k] = v
 	end
-	overridden.projectile.muzzleSpeed = muzzleSpeed
+	overridden.weapon.minSpeed = minSpeed
 	return overridden
 end
 
@@ -52,21 +47,31 @@ local function facingLevel(gap)
 end
 
 test("a point-blank shot bounces off the target when it hits before the arm delay", function()
-	local level = facingLevel(30) -- well inside the arm delay at muzzleSpeed
-	local game = GameHarness.startMatch(level)
+	-- Use a 15px gap and high minSpeed so the shot reaches the target in well
+	-- under 0.15s (armDelay), ensuring it hits unarmed and bounces. Close the gap
+	-- quickly enough that gravity doesn't affect the initial trajectory.
+	local level = facingLevel(15)
+	local config = withMinSpeed(400) -- High speed so impact is very quick
+	local game = GameHarness.startMatch(level, { config = config })
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 	local target = ctx.pools.ships[2]
 
+	-- Tap: press on frame 1
 	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
 	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
 	FrameStepper.step(game, 1)
 
-	assertEqual(1, #ctx.pools.projectiles, "expected the shot to spawn a projectile")
-
+	-- Release on frame 2 (fire is released, projectile spawns)
 	ctx.intents[1].fire = false
-	FrameStepper.step(game, 30) -- 0.5s: comfortably more than needed to close a 30px gap, well under armDelay's 0.15s at this range only if it hits fast -- close range means it arrives in a couple of frames, long before arming.
+	FrameStepper.step(game, 1)
 
+	assertEqual(1, #ctx.pools.projectiles, "expected the tap to spawn a projectile")
+
+	-- Let projectile travel. At 400 px/s, 15px takes 0.0375s, well before arming at 0.15s
+	FrameStepper.step(game, 3) -- 5 frames total; projectile should hit before arming
+
+	-- Check immediately after impact
 	assertFalse(shooter.dead, "expected the shooter to survive an unarmed bounce")
 	assertFalse(target.dead, "expected the point-blank target to survive an unarmed bounce")
 	assertEqual(1, #ctx.pools.projectiles, "expected the projectile to bounce, not despawn")
@@ -74,17 +79,18 @@ end)
 
 test("a shot that travels past the arm delay kills the target", function()
 	-- Far enough apart that the shot's flight time exceeds config.projectile.armDelay
-	-- before it reaches the target, so the hit is armed. A higher muzzle
-	-- speed (see withMuzzleSpeed above) so the shot actually clears the
-	-- shooter's own gravity well and reaches the target, rather than
-	-- curving back the way the canonical speed does (next test).
+	-- before it reaches the target, so the hit is armed. A higher min speed
+	-- (see withMinSpeed above) so the shot actually clears the shooter's own
+	-- gravity well and reaches the target, rather than curving back the way
+	-- the canonical minSpeed does (next test).
 	local level = facingLevel(300)
-	local config = withMuzzleSpeed(800)
+	local config = withMinSpeed(800)
 	local game = GameHarness.startMatch(level, { config = config })
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 	local target = ctx.pools.ships[2]
 
+	-- Tap to fire at minSpeed (which is now 800)
 	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
 	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
 	FrameStepper.step(game, 1)
@@ -101,7 +107,7 @@ test("a shot curved back by gravity kills its shooter", function()
 	-- the memory gotcha above the pull test files already follow) -- this
 	-- test is purely about the shooter's own gravity well curving its shot
 	-- back onto itself, not about hitting anything else. At the canonical
-	-- muzzleSpeed (500px/s, below the shooter's own escape speed for
+	-- minSpeed (150px/s, below the shooter's own escape speed for
 	-- config.ship.mass/config.gravity.G), a shot fired straight out decelerates,
 	-- turns around, and falls back onto its own shooter once armed.
 	local level = {
@@ -115,6 +121,7 @@ test("a shot curved back by gravity kills its shooter", function()
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 
+	-- Tap to fire at minSpeed
 	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
 	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
 	FrameStepper.step(game, 1)
@@ -125,21 +132,108 @@ test("a shot curved back by gravity kills its shooter", function()
 	assertTrue(shooter.dead, "expected the shooter's own shot to curve back and kill it once armed")
 end)
 
-test("a landed ship's fire intent does not spawn a projectile", function()
+test("a tank ship can charge and fire from the turret muzzle", function()
 	local level = facingLevel(200)
 	local game = GameHarness.startMatch(level)
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, shooter.body)
 
-	-- Fabricate a landed state directly (this test targets the fire gate,
+	-- Fabricate a tank state directly (this test targets tank firing,
 	-- not the landing sequence landing_test.lua already covers).
 	body.pinned = true
-	shooter.lander.state = "landed"
+	shooter.lander.state = "tank"
 	shooter.lander.host = { vertices = {} }
 
+	-- Tap to fire
 	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
-	FrameStepper.step(game, 5)
+	FrameStepper.step(game, 1)
+	ctx.intents[1].fire = false
+	FrameStepper.step(game, 1)
 
-	assertEqual(0, #ctx.pools.projectiles, "expected a landed ship's fire intent to be ignored")
+	assertEqual(1, #ctx.pools.projectiles, "expected a tank ship to fire a projectile from the turret muzzle")
+end)
+
+test("a tank with turret at +limit fires along the turret direction", function()
+	-- Place a target far to the right to check that the turret angle affects
+	-- the firing direction, not just the ship's angle.
+	local level = {
+		worlds = {},
+		spawnPoints = {
+			{ x = 640, y = 400 },
+			{ x = 1000, y = 400 },
+		},
+	}
+	local game = GameHarness.startMatch(level)
+	local ctx = game.ctx
+	local shooter = ctx.pools.ships[1]
+	local target = ctx.pools.ships[2]
+	local body = Bodies.get(ctx.sim.bodies, shooter.body)
+
+	-- Fabricate a tank state
+	body.pinned = true
+	shooter.lander.state = "tank"
+	shooter.lander.host = { vertices = {} }
+
+	-- Rotate turret to +limit (maximum right)
+	shooter.turret.angle = ctx.config.tank.turretLimit
+
+	-- Tap to fire: press on frame 1
+	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
+	FrameStepper.step(game, 1)
+
+	-- Release on frame 2 (projectile spawns)
+	ctx.intents[1].fire = false
+	FrameStepper.step(game, 1)
+
+	assertEqual(1, #ctx.pools.projectiles, "expected a projectile to spawn from tank turret")
+	-- The projectile should have positive vx since it's fired to the right
+	local projectile = ctx.pools.projectiles[1]
+	local projBody = Bodies.get(ctx.sim.bodies, projectile.body)
+	assertTrue(projBody.vx > 0, "expected projectile to fire rightward along turret direction")
+end)
+
+test("charge carries over landing and lift-off", function()
+	-- Simplified test: fabricate tank state, charge while landed, then fire
+	local level = {
+		worlds = {},
+		spawnPoints = {
+			{ x = 640, y = 400 },
+			{ x = 640, y = 400 - 1000000 },
+		},
+	}
+	local game = GameHarness.startMatch(level)
+	local ctx = game.ctx
+	local shooter = ctx.pools.ships[1]
+	local body = Bodies.get(ctx.sim.bodies, shooter.body)
+
+	-- Fabricate a tank state
+	body.pinned = true
+	shooter.lander.state = "tank"
+	shooter.lander.host = { vertices = {} }
+
+	-- Press fire (start charging)
+	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
+	FrameStepper.step(game, 1)
+
+	-- Hold and charge for 2 seconds
+	local chargeFrames = math.floor(2 / (1 / 60)) - 1
+	for _ = 1, chargeFrames do
+		FrameStepper.step(game, 1)
+	end
+
+	assertTrue(shooter.weapon.charging, "expected weapon to be charging while fire intent is held")
+	assertTrue(shooter.weapon.charge >= 1.9, "expected charge to accumulate to ~2 seconds")
+
+	-- Release to fire
+	ctx.intents[1] = { rotate = 0, thrust = false, fire = false }
+	FrameStepper.step(game, 1)
+
+	assertEqual(1, #ctx.pools.projectiles, "expected charge to carry and fire when released")
+	-- At 2 seconds into chargeTime (3), the speed should be well above minimum
+	local projectile = ctx.pools.projectiles[1]
+	local projBody = Bodies.get(ctx.sim.bodies, projectile.body)
+	local minSpeed = ctx.config.weapon.minSpeed
+	local chargeSpeed = math.abs(projBody.vy) -- direction.y = -1, so vy is negative
+	assertTrue(chargeSpeed > minSpeed, "expected the charged shot to exceed minSpeed")
 end)

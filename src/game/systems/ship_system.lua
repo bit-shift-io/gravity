@@ -14,11 +14,17 @@
 local Bodies = require("src.sim.bodies")
 local Thruster = require("src.game.components.thruster")
 local Lander = require("src.game.components.lander")
+local Turret = require("src.game.components.turret")
 local Weapon = require("src.game.components.weapon")
 local Collide = require("src.sim.collide")
 local Vec2 = require("src.core.vec2")
 
 local ShipSystem = {}
+
+-- The ship's un-rotated nose vector, matching src/game/components/
+-- thruster.lua's NOSE and src/game/components/lander.lua's NOSE -- straight
+-- up the screen at angle 0.
+local NOSE = { x = 0, y = -1 }
 
 -- Spawns a ship for `player` at `spawnPoint` (from the level's
 -- level.spawnPoints, src/game/levels/fixture_two_worlds.lua), floating with
@@ -52,7 +58,8 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 		},
 		thruster = { accel = shipConfig.thrustAccel },
 		lander = { state = "flying", host = nil },
-		weapon = { kind = "cannon", cooldown = 0 },
+		turret = { angle = 0 },
+		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false },
 	}
 
 	table.insert(ctx.pools.ships, ship)
@@ -60,18 +67,18 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 end
 
 -- Rotate, thrust, fire (docs/ARCHITECTURE.md "Systems and frame order",
--- step 2). Weapon.tick counts a weapon's cooldown down every frame
--- regardless of lander state (so a ship that lifts off mid-cooldown doesn't
--- get a free instant reload); Weapon.tryFire is only ever called from the
--- not-landed branch below, the same gating rotate/thrust already get --
--- "a landed ship cannot fire" (docs/CONTEXT.md "Landed") is enforced here,
--- not inside the weapon component itself.
+-- step 2). Weapon.update is called every frame for both flying and tank
+-- modes; it handles charge state and fires on release. A charge carries
+-- over landing and lift-off -- the weapon component persists. The caller
+-- provides the origin (nose for flying, turret muzzle for tank) and
+-- direction to Weapon.update, which knows nothing about lander state.
 --
--- A landed ship (docs/CONTEXT.md "Landed": "fixed to the surface,
--- refuelling, unable to rotate or fire") skips rotate and refuels instead
--- via Lander.tick; thrust intent lifts it off (Lander.liftOff) and then
--- applies normal thrust the same frame, so lift-off costs no extra frame of
--- stillness.
+-- A tank ship (docs/CONTEXT.md "Landed": "fixed to the surface,
+-- refuelling, aiming turret, unable to rotate body") skips body rotation
+-- and refuels instead via Lander.tick; turret rotation is controlled by
+-- Turret.aim; thrust intent lifts it off (Lander.liftOff) and then applies
+-- normal thrust the same frame, so lift-off costs no extra frame of
+-- stillness. A tank can charge and fire.
 function ShipSystem.update(ctx)
 	local rotationSpeed = ctx.config.ship.rotationSpeed
 
@@ -79,26 +86,37 @@ function ShipSystem.update(ctx)
 		local body = Bodies.get(ctx.sim.bodies, ship.body)
 		if body then
 			local intent = ctx.intents[ship.player]
-			local landed = Lander.isGrounded(ship)
+			local inTank = Lander.isGrounded(ship)
 
-			if ship.weapon then
-				Weapon.tick(ship, ctx)
-			end
-
-			if landed then
+			if inTank then
 				body.angularVelocity = 0
+				Turret.aim(ship, ctx, ship.player)
 				if intent and intent.thrust then
 					Lander.liftOff(ship, ctx)
 					Thruster.apply(ship, ctx)
 				else
 					Lander.tick(ship, ctx)
 				end
+
+				-- Tank mode fires from the turret muzzle
+				if ship.weapon then
+					local origin, direction = Turret.muzzle(ship, ctx)
+					Weapon.update(ship, ctx, origin, direction)
+				end
 			else
 				local rotate = intent and intent.rotate or 0
 				body.angularVelocity = rotate * rotationSpeed
 				Thruster.apply(ship, ctx)
+
+				-- Flying mode fires from the nose
 				if ship.weapon then
-					Weapon.tryFire(ship, ctx)
+					local direction = Vec2.rotate(NOSE, body.angle or 0)
+					-- Nose position is 10 px from the body center along the direction
+					local origin = {
+						x = body.x + direction.x * 10,
+						y = body.y + direction.y * 10,
+					}
+					Weapon.update(ship, ctx, origin, direction)
 				end
 			end
 		end
@@ -260,12 +278,13 @@ function ShipSystem.handleContacts(ctx, contacts)
 						body.vy = 0
 						body.angularVelocity = 0
 						-- Mark pinned so Sim.step skips integrate/collide for
-						-- it next frame (this slice's Gotcha: "landed ships
+						-- it next frame (this slice's Gotcha: "tank ships
 						-- must not be re-collided").
 						body.pinned = true
 
-						ship.lander.state = "landed"
+						ship.lander.state = "tank"
 						ship.lander.host = contact.b
+						Turret.reset(ship)
 					else
 						ship.dead = true
 						Bodies.markDead(ctx.sim.bodies, ship.body)

@@ -43,7 +43,8 @@ Dependencies point down only. A module never requires a module from a layer abov
   fuel     = { amount = 1, capacity = 1, burnRate = 0.2 },
   thruster = { accel = 180 },
   lander   = { state = "flying", host = nil },
-  weapon   = { kind = "cannon", cooldown = 0 } }
+  turret   = { angle = 0 },
+  weapon   = { kind = "shell", charging = false, charge = 0, prevFire = false } }
 ```
 
 ## Systems and frame order

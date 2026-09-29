@@ -56,7 +56,7 @@ function EffectsRender.draw(ctx)
 	end
 
 	for _, ship in ipairs(ctx.pools.ships) do
-		if ship.lander and ship.lander.state == "landed" then
+		if ship.lander and ship.lander.state == "tank" then
 			local body = Bodies.get(ctx.sim.bodies, ship.body)
 			if body then
 				drawRefuelIndicator(body)

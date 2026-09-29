@@ -4,7 +4,7 @@ local Bodies = require("src.sim.bodies")
 
 local CONFIG = {
 	landing = {
-		maxSpeed = 150,
+		maxSpeed = 400,
 		refuelRate = 5,
 	},
 }
@@ -34,24 +34,24 @@ test("Lander.check crashes at 1.1x max speed", function()
 	assertEqual("crash", Lander.check(body, contact, CONFIG))
 end)
 
-test("Lander.check lands a 140 px/s touch with the nose 90 degrees off the normal", function()
+test("Lander.check lands a 360 px/s touch with the nose 90 degrees off the normal", function()
 	local body = { angle = math.pi / 2 }
-	local contact = contactWithSpeed(140)
+	local contact = contactWithSpeed(360)
 
 	assertEqual("land", Lander.check(body, contact, CONFIG))
 end)
 
-test("Lander.check crashes a 160 px/s touch", function()
+test("Lander.check crashes a 440 px/s touch", function()
 	local body = { angle = 0 }
-	local contact = contactWithSpeed(160)
+	local contact = contactWithSpeed(440)
 
 	assertEqual("crash", Lander.check(body, contact, CONFIG))
 end)
 
-test("Lander.tick refuels a landed ship via Fuel.add", function()
+test("Lander.tick refuels a tank ship via Fuel.add", function()
 	local ship = {
 		fuel = { amount = 0, capacity = 10, burnRate = 1 },
-		lander = { state = "landed", host = nil },
+		lander = { state = "tank", host = nil },
 	}
 	local ctx = { dt = 1, config = CONFIG }
 
@@ -77,7 +77,7 @@ test("Lander.liftOff sets state back to flying and un-pins the body", function()
 	local bodyId = Bodies.add(bodies, { x = 0, y = 0, pinned = true })
 	local ship = {
 		body = bodyId,
-		lander = { state = "landed", host = { vertices = {} } },
+		lander = { state = "tank", host = { vertices = {} } },
 	}
 	local ctx = { sim = { bodies = bodies } }
 

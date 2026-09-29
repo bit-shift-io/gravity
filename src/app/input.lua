@@ -14,8 +14,8 @@ local Input = {}
 -- for now"), so `fire` is read and handed to ctx.intents now so the
 -- mapping already exists when a later slice gives it something to act on.
 local KEY_MAP = {
-	[1] = { left = "a", right = "d", thrust = "w", fire = "space" },
-	[2] = { left = "left", right = "right", thrust = "up", fire = "rctrl" },
+	[1] = { left = "a", right = "d", thrust = "w", fire = "q" },
+	[2] = { left = "left", right = "right", thrust = "up", fire = "rshift" },
 }
 
 local function readIntent(keys)

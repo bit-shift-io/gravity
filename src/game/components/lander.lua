@@ -1,5 +1,5 @@
 -- Lander component (docs/ARCHITECTURE.md "Component"): plain-data sub-table
--- `{ state = "flying" | "landed", host = nil }` plus these pure functions,
+-- `{ state = "flying" | "tank", host = nil }` plus these pure functions,
 -- called explicitly by src/game/systems/ship_system.lua. This is the only
 -- place land-vs-crash is decided (this slice's Gotcha: "The sim only
 -- reports contacts. Land vs crash is decided in Lander.check, never in
@@ -22,9 +22,9 @@ function Lander.check(_shipBody, contact, config)
 	return "land"
 end
 
--- True while `ship` is landed on a world (docs/CONTEXT.md "Landed").
+-- True while `ship` is in tank mode on a world (docs/CONTEXT.md "Landed").
 function Lander.isGrounded(ship)
-	return ship.lander ~= nil and ship.lander.state == "landed"
+	return ship.lander ~= nil and ship.lander.state == "tank"
 end
 
 -- Refuels a landed ship by `config.landing.refuelRate` over `ctx.dt`. Does

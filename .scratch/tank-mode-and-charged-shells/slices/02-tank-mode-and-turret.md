@@ -1,4 +1,4 @@
-Status: in-progress
+Status: done
 Complexity: high
 
 # Tank mode and turret aim

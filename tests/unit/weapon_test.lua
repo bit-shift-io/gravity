@@ -9,7 +9,7 @@ local function newCtx(overrides)
 		dt = 1 / 60,
 		sim = { bodies = bodies },
 		pools = { ships = {}, projectiles = {}, asteroids = {} },
-		config = Config,
+		config = overrides.config or Config,
 		intents = {},
 	}
 	return ctx, bodies
@@ -23,84 +23,136 @@ local function newShip(bodies, ctx, overrides)
 		id = bodyId,
 		body = bodyId,
 		player = 1,
-		weapon = overrides.weapon or { kind = "cannon", cooldown = 0 },
+		weapon = overrides.weapon or { kind = "shell", charging = false, charge = 0, prevFire = false },
 	}
 	table.insert(ctx.pools.ships, ship)
 	return ship
 end
 
-test("Weapon.tryFire spawns a projectile when fire intent is held and off cooldown", function()
+test("a one-frame tap fires very close to minSpeed", function()
 	local ctx, bodies = newCtx()
 	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
 	ctx.intents[1] = { fire = true }
-
-	Weapon.tryFire(ship, ctx)
-
-	assertEqual(1, #ctx.pools.projectiles, "expected one projectile to be spawned")
-end)
-
-test("Weapon.tryFire does nothing without a fire intent", function()
-	local ctx, bodies = newCtx()
-	local ship = newShip(bodies, ctx)
+	Weapon.update(ship, ctx, origin, direction)
 	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
 
-	Weapon.tryFire(ship, ctx)
-
-	assertEqual(0, #ctx.pools.projectiles)
+	assertEqual(1, #ctx.pools.projectiles, "expected the release to spawn a projectile")
+	local projectile = ctx.pools.projectiles[1]
+	local body = Bodies.get(bodies, projectile.body)
+	local minSpeed = ctx.config.weapon.minSpeed
+	local speed = math.abs(body.vy) -- direction.y is -1, so vy is negative
+	-- One frame of charge accumulates slightly above minSpeed; tolerance accounts for this
+	assertNear(minSpeed, speed, 5, "expected the shot to fire very close to minSpeed")
 end)
 
-test("cooldown blocks a second shot on the very next frame", function()
+test("a 1.5s hold fires at the midpoint speed", function()
 	local ctx, bodies = newCtx()
 	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
 	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
 
-	Weapon.tryFire(ship, ctx)
-	assertEqual(1, #ctx.pools.projectiles)
-	assertTrue(ship.weapon.cooldown > 0, "expected firing to set the cooldown")
-
-	-- Same frame's worth of dt elapsed, cooldown not yet ticked down --
-	-- still on cooldown, so a second tryFire this "frame" must not fire.
-	Weapon.tryFire(ship, ctx)
-	assertEqual(1, #ctx.pools.projectiles, "expected the cooldown to block a second shot")
-end)
-
-test("Weapon.tick counts the cooldown down over time, and a shot fires again once it reaches zero", function()
-	local ctx, bodies = newCtx()
-	local ship = newShip(bodies, ctx)
-	ctx.intents[1] = { fire = true }
-
-	Weapon.tryFire(ship, ctx)
-	assertEqual(1, #ctx.pools.projectiles)
-
-	local cooldown = ctx.config.projectile.cooldown
-	local frames = math.ceil(cooldown / ctx.dt) + 1
-	for _ = 1, frames do
-		Weapon.tick(ship, ctx)
+	-- Hold for 1.5 seconds (half of chargeTime). Start with 1 frame already added,
+	-- so loop for chargeTime/2 / dt - 1 frames to reach exactly 1.5 seconds
+	local chargeTime = ctx.config.weapon.chargeTime
+	local framesForHalfCharge = math.floor(chargeTime / 2 / ctx.dt) - 1
+	for _ = 1, framesForHalfCharge do
+		Weapon.update(ship, ctx, origin, direction)
 	end
-	assertNear(0, ship.weapon.cooldown)
 
-	Weapon.tryFire(ship, ctx)
-	assertEqual(2, #ctx.pools.projectiles, "expected a second shot once the cooldown reached zero")
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertEqual(1, #ctx.pools.projectiles, "expected the release to spawn a projectile")
+	local projectile = ctx.pools.projectiles[1]
+	local body = Bodies.get(bodies, projectile.body)
+	local minSpeed = ctx.config.weapon.minSpeed
+	local maxSpeed = ctx.config.weapon.maxSpeed
+	local midSpeed = minSpeed + (maxSpeed - minSpeed) * 0.5
+	-- Tolerance accounts for frame rounding and floating point precision
+	assertNear(midSpeed, body.vy * -1, 5, "expected the shot to fire at approximately midpoint speed")
 end)
 
-test("Weapon.tryFire errors clearly on an unknown weapon kind", function()
+test("a 5s hold fires at maxSpeed", function()
 	local ctx, bodies = newCtx()
-	local ship = newShip(bodies, ctx, { weapon = { kind = "laser", cooldown = 0 } })
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
 	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
 
-	local ok, err = pcall(Weapon.tryFire, ship, ctx)
+	-- Hold for 5 seconds (well over chargeTime of 3)
+	local frames = math.floor(5 / ctx.dt)
+	for _ = 1, frames do
+		Weapon.update(ship, ctx, origin, direction)
+	end
 
-	assertFalse(ok, "expected an unknown weapon kind to error")
-	assertTrue(string.find(tostring(err), "laser") ~= nil, "expected the error to name the unknown kind")
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertEqual(1, #ctx.pools.projectiles, "expected the release to spawn a projectile")
+	local projectile = ctx.pools.projectiles[1]
+	local body = Bodies.get(bodies, projectile.body)
+	local maxSpeed = ctx.config.weapon.maxSpeed
+	local expectedVy = 0 + direction.y * maxSpeed
+	assertNear(expectedVy, body.vy, 0.1, "expected the shot to fire at maxSpeed")
 end)
 
-test("Weapon.tryFire does nothing without a weapon component", function()
+test("no projectile spawns while fire is held", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+	Weapon.update(ship, ctx, origin, direction)
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertEqual(0, #ctx.pools.projectiles, "expected no projectile to spawn while fire is held")
+end)
+
+test("a dead ship mid-charge does not fire when prevFire is released", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	-- Hold for 1 second
+	local frames = math.floor(1 / ctx.dt)
+	for _ = 1, frames do
+		Weapon.update(ship, ctx, origin, direction)
+	end
+
+	-- Ship dies mid-charge
+	ship.dead = true
+
+	-- Release fire on next frame
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertEqual(0, #ctx.pools.projectiles, "expected no projectile to spawn when ship dies mid-charge and fire is released")
+end)
+
+test("Weapon.update does nothing without a weapon component", function()
 	local ctx, bodies = newCtx()
 	local ship = newShip(bodies, ctx)
 	ship.weapon = nil
-	ctx.intents[1] = { fire = true }
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
 
-	Weapon.tryFire(ship, ctx)
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
 
 	assertEqual(0, #ctx.pools.projectiles)
 end)

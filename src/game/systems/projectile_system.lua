@@ -1,6 +1,6 @@
 -- Projectile pool system (docs/ARCHITECTURE.md "Systems and frame order"):
 -- the only place projectile records are spawned or driven each frame.
--- Spawning is called from src/game/components/weapon.lua's cannon handler,
+-- Spawning is called from src/game/components/weapon.lua's Weapon.update,
 -- not from Match.step's step-3 spawner slot -- that slot is asteroids
 -- (slice 09); a fired shot is a direct result of step 2's ship controls,
 -- not a spawner.
@@ -10,31 +10,28 @@ local Vec2 = require("src.core.vec2")
 
 local ProjectileSystem = {}
 
--- Nose vertex distance in Collide.SHIP_SHAPE (src/sim/collide.lua): the
--- ship's local-space nose is at (0, -10), so a projectile spawns exactly at
--- that vertex -- direction * MUZZLE_OFFSET from the ship's body position --
--- rather than at the body's own center, so a shot visibly leaves the nose
--- rather than the ship's middle.
-local MUZZLE_OFFSET = 10
-
--- Spawns a projectile fired by `ship` (its body already resolved to
--- `shipBody` by the caller) along unit vector `direction` (world space,
--- already rotated by the ship's angle -- src/game/components/weapon.lua's
--- job, not this function's). Velocity is the ship's own velocity plus
--- muzzleSpeed along `direction` (docs "Fire spawns a projectile from the
--- nose with ship velocity + muzzle speed"). The body starts unarmed
--- (`armed = false`) -- src/game/systems/ship_system.lua's ProjectileSystem.update
--- flips it true once config.projectile.armDelay has elapsed (this slice's
--- Gotcha: armed/unarmed is computed once, here, and read as plain data by
--- both handleContacts functions, never recomputed).
-function ProjectileSystem.spawn(ctx, ship, shipBody, direction)
+-- Spawns a projectile fired by `ship` from `origin` (world-space position,
+-- already computed by the caller as nose for flying or turret muzzle for
+-- tank) along unit vector `direction` (world space, already rotated by the
+-- appropriate angle). Velocity is the ship's own velocity plus `speed` along
+-- `direction` (docs "Fire spawns a projectile from the nose with ship
+-- velocity + charge speed"). The body starts unarmed (`armed = false`) --
+-- src/game/systems/ship_system.lua's ProjectileSystem.update flips it true
+-- once config.projectile.armDelay has elapsed (this slice's Gotcha:
+-- armed/unarmed is computed once, here, and read as plain data by both
+-- handleContacts functions, never recomputed).
+function ProjectileSystem.spawn(ctx, ship, origin, direction, speed)
 	local config = ctx.config.projectile
+	local shipBody = Bodies.get(ctx.sim.bodies, ship.body)
+	if not shipBody then
+		return
+	end
 
 	local body = {
-		x = shipBody.x + direction.x * MUZZLE_OFFSET,
-		y = shipBody.y + direction.y * MUZZLE_OFFSET,
-		vx = shipBody.vx + direction.x * config.muzzleSpeed,
-		vy = shipBody.vy + direction.y * config.muzzleSpeed,
+		x = origin.x,
+		y = origin.y,
+		vx = shipBody.vx + direction.x * speed,
+		vy = shipBody.vy + direction.y * speed,
 		angle = 0,
 		mass = config.mass,
 		kind = "projectile",

@@ -46,12 +46,26 @@ local Config = {
 	-- refuelRate is in the same fuel "tank" units as ship.fuel, per second
 	-- while landed.
 	landing = {
-		maxSpeed = 150,
+		maxSpeed = 400,
 		refuelRate = 5,
 	},
-	-- Projectile tuning (src/game/components/weapon.lua, src/game/systems/
-	-- projectile_system.lua). muzzleSpeed (px/s) is added to the firing
-	-- ship's own velocity; cooldown (s) is the minimum gap between shots;
+	-- Tank mode tuning (src/game/components/turret.lua, src/game/systems/
+	-- ship_system.lua). turretLimit is in radians from the surface normal;
+	-- turretSpeed is radians/sec; barrelLength is in px from the ship's center.
+	tank = {
+		turretLimit = math.rad(80),
+		turretSpeed = 1,
+		barrelLength = 12,
+	},
+	-- Weapon tuning (src/game/components/weapon.lua, src/game/systems/
+	-- ship_system.lua). Fires charge linearly from minSpeed (px/s) at tap to
+	-- maxSpeed over chargeTime seconds.
+	weapon = {
+		minSpeed = 150,
+		maxSpeed = 700,
+		chargeTime = 3,
+	},
+	-- Projectile tuning (src/game/systems/projectile_system.lua).
 	-- lifetime (s) is how long an unspent shot survives before auto-expiry
 	-- (src/game/components/lifetime.lua); armDelay (s) is how long a shot
 	-- stays "unarmed" (bounces off any ship it touches, this slice's own
@@ -63,8 +77,6 @@ local Config = {
 	-- Collide.circleContact the same way ship.collisionRadius/restitution
 	-- do for ship-vs-ship.
 	projectile = {
-		muzzleSpeed = 500,
-		cooldown = 0.3,
 		lifetime = 3,
 		armDelay = 0.15,
 		mass = 0.001,
