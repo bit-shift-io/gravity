@@ -17,7 +17,7 @@ local DebugOverlay = {}
 -- An arrow's length approaches this as magnitude grows, so cells right next
 -- to a world (huge magnitude) don't draw arrows that swamp their neighbours;
 -- it comfortably fits inside one 16px field cell.
-local ARROW_MAX_LENGTH = 7
+local ARROW_MAX_LENGTH = 5
 
 -- Half-saturation point for both the length and colour ramps: a cell whose
 -- magnitude equals this value draws at half the maximum length/brightness.
@@ -26,7 +26,7 @@ local ARROW_MAX_LENGTH = 7
 -- softening term), so a fixed linear scale would make everywhere but the
 -- immediate edge of a world look black; this makes the falloff visible
 -- across that whole range instead.
-local MAGNITUDE_HALF_SATURATION = 200
+local MAGNITUDE_HALF_SATURATION = 150
 
 local GRID_COLOR = { 1, 1, 1, 0.08 }
 local WORLD_OUTLINE_COLOR = { 1, 0.8, 0.2, 1 }

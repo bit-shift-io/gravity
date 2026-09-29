@@ -76,14 +76,14 @@ function EffectsRender.draw(ctx)
 		end
 	end
 
-	for _, ship in ipairs(ctx.pools.ships) do
-		if ship.lander and ship.lander.state == "tank" then
-			local body = Bodies.get(ctx.sim.bodies, ship.body)
-			if body then
-				drawRefuelIndicator(body)
-			end
-		end
-	end
+	-- for _, ship in ipairs(ctx.pools.ships) do
+	-- 	if ship.lander and ship.lander.state == "tank" then
+	-- 		local body = Bodies.get(ctx.sim.bodies, ship.body)
+	-- 		if body then
+	-- 			drawRefuelIndicator(body)
+	-- 		end
+	-- 	end
+	-- end
 
 	love.graphics.setColor(1, 1, 1, 1)
 end
