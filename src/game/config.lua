@@ -12,7 +12,7 @@ local Config = {
 	-- thrust.
 	ship = {
 		rotationSpeed = 3.5,
-		thrustAccel = 220,
+		thrustAccel = 280,
 		-- Pairwise dynamic gravity's mass source for ships (src/sim/gravity.lua
 		-- Gravity.pairwise, docs/adr/0002-hybrid-gravity-field.md "Dynamic
 		-- gravity"). Mass never affects thrust or integration directly --
