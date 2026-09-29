@@ -215,35 +215,20 @@ local function resolveAsteroidBounce(ctx, bodyA, bodyB, normal)
 	end
 end
 
--- Kills the projectile in an armed-or-not "projectileAsteroid" contact
--- (docs "absorb projectiles without being pushed") -- the asteroid's own
--- velocity/angularVelocity is never touched here or anywhere in this
--- function; this is what makes "Projectiles never change asteroid
--- momentum" hold regardless of the projectile's armed state.
-local function killProjectile(ctx, projectileBody)
-	for _, projectile in ipairs(ctx.pools.projectiles) do
-		local body = Bodies.get(ctx.sim.bodies, projectile.body)
-		if body and body == projectileBody and not projectile.dead then
-			projectile.dead = true
-			Bodies.markDead(ctx.sim.bodies, projectile.body)
-		end
-	end
-end
 
 -- Systems handle contacts (docs/ARCHITECTURE.md "Systems and frame order",
--- step 5): "asteroidWorld" always destroys the asteroid ,
--- "asteroidAsteroid" bounces (mass-weighted, effective mass), and
--- "projectileAsteroid" always kills the projectile without ever touching
--- the asteroid's momentum. The sim only reports contacts; outcomes are
--- decided here, never in src/sim/.
+-- step 5): "asteroidWorld" always destroys the asteroid and
+-- "asteroidAsteroid" bounces (mass-weighted, effective mass). Projectile-
+-- asteroid contacts are now handled by src/game/systems/projectile_system.lua's
+-- ProjectileSystem.handleContacts, which calls src/game/blast.lua's
+-- Blast.detonate. The sim only reports contacts; outcomes are decided here,
+-- never in src/sim/.
 function AsteroidSystem.handleContacts(ctx, contacts)
 	for _, contact in ipairs(contacts) do
 		if contact.kind == "asteroidWorld" then
 			killAsteroid(ctx, contact.a)
 		elseif contact.kind == "asteroidAsteroid" then
 			resolveAsteroidBounce(ctx, contact.a, contact.b, contact.normal)
-		elseif contact.kind == "projectileAsteroid" then
-			killProjectile(ctx, contact.a)
 		end
 	end
 end

@@ -106,10 +106,10 @@ test("a shot curved back by gravity kills its shooter", function()
 	-- No target ship nearby (player 2's spawn is ~1,000,000px away, per
 	-- the memory gotcha above the pull test files already follow) -- this
 	-- test is purely about the shooter's own gravity well curving its shot
-	-- back onto itself, not about hitting anything else. At the canonical
-	-- minSpeed (150px/s, below the shooter's own escape speed for
-	-- config.ship.mass/config.gravity.G), a shot fired straight out decelerates,
-	-- turns around, and falls back onto its own shooter once armed.
+	-- back onto itself, not about hitting anything else. At minSpeed 150px/s
+	-- (below the shooter's own escape speed for config.ship.mass/config.gravity.G),
+	-- a shot fired straight out decelerates, turns around, and falls back
+	-- onto its own shooter once armed.
 	local level = {
 		worlds = {},
 		spawnPoints = {
@@ -117,17 +117,18 @@ test("a shot curved back by gravity kills its shooter", function()
 			{ x = 640, y = 400 - 1000000 },
 		},
 	}
-	local game = GameHarness.startMatch(level)
+	local config = withMinSpeed(150)
+	local game = GameHarness.startMatch(level, { config = config })
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 
-	-- Tap to fire at minSpeed
+	-- Tap to fire at minSpeed (150)
 	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
 	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
 	FrameStepper.step(game, 1)
 	ctx.intents[1].fire = false
 
-	FrameStepper.step(game, 120) -- 2s: comfortably more than the ~0.5s round trip
+	FrameStepper.step(game, 180) -- 3s: comfortably more than the round trip time
 
 	assertTrue(shooter.dead, "expected the shooter's own shot to curve back and kill it once armed")
 end)
@@ -236,4 +237,58 @@ test("charge carries over landing and lift-off", function()
 	local minSpeed = ctx.config.weapon.minSpeed
 	local chargeSpeed = math.abs(projBody.vy) -- direction.y = -1, so vy is negative
 	assertTrue(chargeSpeed > minSpeed, "expected the charged shot to exceed minSpeed")
+end)
+
+test("an armed blast kills multiple ships in its radius", function()
+	-- Three ships: shooter fires at target, and a bystander nearby target.
+	-- All three are close together so the blast catches the bystander too.
+	local level = {
+		worlds = {},
+		spawnPoints = {
+			{ x = 640, y = 400 },
+			{ x = 640, y = 200 },
+			{ x = 680, y = 200 },
+		},
+	}
+	local config = withMinSpeed(800) -- High speed to ensure blast on first ship
+	local game = GameHarness.startMatch(level, { config = config })
+	local ctx = game.ctx
+	local shooter = ctx.pools.ships[1]
+	local target = ctx.pools.ships[2]
+	local bystander = ctx.pools.ships[3]
+
+	-- Tap to fire
+	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
+	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
+	ctx.intents[3] = { rotate = 0, thrust = false, fire = false }
+	FrameStepper.step(game, 1)
+	ctx.intents[1].fire = false
+
+	-- Let projectile travel and become armed
+	FrameStepper.step(game, 60) -- 1s: well past armDelay
+
+	assertTrue(target.dead, "expected the direct target to be dead from the blast")
+	assertTrue(bystander.dead, "expected the bystander within blast radius to be dead")
+	assertFalse(shooter.dead, "expected the shooter to survive (not in blast radius)")
+end)
+
+test("an unarmed projectile still bounces off its shooter", function()
+	-- A very close target so the projectile hits before arming.
+	-- The shooter should not be killed.
+	local level = facingLevel(15)
+	local config = withMinSpeed(400)
+	local game = GameHarness.startMatch(level, { config = config })
+	local ctx = game.ctx
+	local shooter = ctx.pools.ships[1]
+
+	-- Tap to fire
+	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
+	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
+	FrameStepper.step(game, 1)
+	ctx.intents[1].fire = false
+
+	-- Let it hit just before arming
+	FrameStepper.step(game, 3)
+
+	assertFalse(shooter.dead, "expected the shooter to survive an unarmed bounce")
 end)

@@ -7,6 +7,7 @@
 local Bodies = require("src.sim.bodies")
 local Lifetime = require("src.game.components.lifetime")
 local Vec2 = require("src.core.vec2")
+local Blast = require("src.game.blast")
 
 local ProjectileSystem = {}
 
@@ -121,21 +122,19 @@ local function bounceOffShip(projectileBody, shipBody, normal, config)
 end
 
 -- Systems handle contacts (docs/ARCHITECTURE.md "Systems and frame order",
--- step 5): projectile-vs-world always dies (terrain), projectile-vs-ship
--- bounces when unarmed or dies when armed -- `contact.armed` is read, never
--- recomputed (see ProjectileSystem.update's Gotcha above).
--- src/game/systems/ship_system.lua's own handleContacts reads the same
--- `projectileShip` contacts to decide whether the *ship* dies, so the two
--- systems never disagree about armed-vs-unarmed.
+-- step 5): projectile-vs-world always detonates (terrain), projectile-vs-ship
+-- bounces when unarmed or detonates when armed -- `contact.armed` is read,
+-- never recomputed (see ProjectileSystem.update's Gotcha above), and
+-- projectile-vs-asteroid always detonates. src/game/blast.lua's Blast.detonate
+-- handles both the projectile's death and the blast effects (ship kills, events).
 function ProjectileSystem.handleContacts(ctx, contacts)
 	for _, contact in ipairs(contacts) do
-		if contact.kind == "projectileWorld" or contact.kind == "projectileShip" then
+		if contact.kind == "projectileWorld" or contact.kind == "projectileShip" or contact.kind == "projectileAsteroid" then
 			for _, projectile in ipairs(ctx.pools.projectiles) do
 				local body = Bodies.get(ctx.sim.bodies, projectile.body)
 				if body and body == contact.a and not projectile.dead then
-					if contact.kind == "projectileWorld" or contact.armed then
-						projectile.dead = true
-						Bodies.markDead(ctx.sim.bodies, projectile.body)
+					if contact.kind == "projectileWorld" or contact.kind == "projectileAsteroid" or contact.armed then
+						Blast.detonate(ctx, projectile, body)
 					else
 						bounceOffShip(body, contact.b, contact.normal, ctx.config)
 					end

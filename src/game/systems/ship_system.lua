@@ -219,40 +219,17 @@ local function resolveShipBounce(bodyA, bodyB, normal, config)
 	end
 end
 
--- Kills the ship whose body matches `contact.b` (the ship side of a
--- "projectileShip" contact -- see src/sim/step.lua's contact shape) with
--- the same crash bookkeeping a world-crash gets (dead flag, body sweep,
--- crash event for src/app/render/effects.lua's debris burst). Only called
--- for an armed hit (docs "destroys any ship it hit, shooter included") --
--- `contact.armed` is read here, never recomputed
--- (src/game/systems/projectile_system.lua's ProjectileSystem.update is the
--- only place that flag is set, this slice's Gotcha).
-local function killShipFromProjectile(ctx, contact)
-	for _, ship in ipairs(ctx.pools.ships) do
-		local body = Bodies.get(ctx.sim.bodies, ship.body)
-		if body and body == contact.b and not ship.dead then
-			ship.dead = true
-			Bodies.markDead(ctx.sim.bodies, ship.body)
-			table.insert(ctx.events, {
-				kind = "crash",
-				x = body.x,
-				y = body.y,
-				angle = body.angle,
-				time = ctx.time,
-			})
-		end
-	end
-end
 
--- Systems handle contacts: land, bounce, destroy (docs/ARCHITECTURE.md
+-- Systems handle contacts: land, bounce (docs/ARCHITECTURE.md
 -- "Systems and frame order", step 5). Contacts are typed by `contact.kind`
 -- (src/sim/step.lua) so this only acts on the kinds that are its job:
 -- "shipWorld" (land/crash, unchanged since slice 05), "shipShip" (bounce,
--- new this slice), and an armed "projectileShip" (death, new this slice --
--- the bounce half of an unarmed "projectileShip" contact is
--- src/game/systems/projectile_system.lua's ProjectileSystem.handleContacts'
--- job, not this function's). The sim only reports contacts; land vs crash
--- is decided here via Lander.check, never in src/sim/ (this slice's
+-- new this slice), and "shipAsteroid" (crash, this slice). Armed
+-- "projectileShip" contacts and their resulting ship deaths are now handled by
+-- src/game/blast.lua's Blast.detonate instead; the bounce half of an unarmed
+-- "projectileShip" contact is src/game/systems/projectile_system.lua's
+-- ProjectileSystem.handleContacts' job. The sim only reports contacts; land vs
+-- crash is decided here via Lander.check, never in src/sim/ (this slice's
 -- Gotcha, carried over from 05).
 function ShipSystem.handleContacts(ctx, contacts)
 	pruneEvents(ctx)
@@ -316,8 +293,6 @@ function ShipSystem.handleContacts(ctx, contacts)
 			end
 		elseif contact.kind == "shipShip" then
 			resolveShipBounce(contact.a, contact.b, contact.normal, ctx.config)
-		elseif contact.kind == "projectileShip" and contact.armed then
-			killShipFromProjectile(ctx, contact)
 		end
 	end
 end
