@@ -57,7 +57,7 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 			burnRate = shipConfig.fuel.burnRate,
 		},
 		thruster = { accel = shipConfig.thrustAccel },
-		lander = { state = "flying", host = nil },
+		lander = { state = "flying", host = nil, liftOffTime = -1 },
 		turret = { angle = 0 },
 		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false, shell = nil, consumed = false },
 	}
@@ -239,7 +239,8 @@ function ShipSystem.handleContacts(ctx, contacts)
 			for _, ship in ipairs(ctx.pools.ships) do
 				local body = Bodies.get(ctx.sim.bodies, ship.body)
 				if body and body == contact.a and not ship.dead then
-					local outcome = Lander.check(body, contact, ctx.config)
+					contact.shipLiftOffTime = ship.lander and ship.lander.liftOffTime or -1
+					local outcome = Lander.check(body, contact, ctx.config, ctx)
 					if outcome == "land" then
 						-- Snap upright along the surface normal, then lift
 						-- the body along the normal by however deep the
@@ -262,7 +263,7 @@ function ShipSystem.handleContacts(ctx, contacts)
 						ship.lander.state = "tank"
 						ship.lander.host = contact.b
 						Turret.reset(ship)
-					else
+					elseif outcome == "crash" then
 						ship.dead = true
 						Bodies.markDead(ctx.sim.bodies, ship.body)
 						table.insert(ctx.events, {
