@@ -26,7 +26,7 @@ local Config = {
 		-- faint at arena-scale separation but becomes clearly visible
 		-- ("ships visibly tug on each other when close") within a couple of
 		-- ship-lengths. A starting tuning value; revisit by playtest feel.
-		mass = 40000,
+		mass = 1000,
 		fuel = {
 			capacity = 10,
 			burnRate = 1,
@@ -61,8 +61,8 @@ local Config = {
 	-- ship_system.lua). Fires charge linearly from minSpeed (px/s) at tap to
 	-- maxSpeed over chargeTime seconds.
 	weapon = {
-		minSpeed = 150,
-		maxSpeed = 700,
+		minSpeed = 200,
+		maxSpeed = 400,
 		chargeTime = 3,
 	},
 	-- Projectile tuning (src/game/systems/projectile_system.lua).
