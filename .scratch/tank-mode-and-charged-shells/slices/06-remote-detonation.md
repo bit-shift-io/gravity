@@ -1,4 +1,4 @@
-Status: pending
+Status: done
 Complexity: medium
 
 # One projectile per player and remote detonation

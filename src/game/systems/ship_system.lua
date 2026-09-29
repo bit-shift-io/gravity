@@ -59,7 +59,7 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 		thruster = { accel = shipConfig.thrustAccel },
 		lander = { state = "flying", host = nil },
 		turret = { angle = 0 },
-		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false },
+		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false, shell = nil, consumed = false },
 	}
 
 	table.insert(ctx.pools.ships, ship)

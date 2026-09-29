@@ -5,7 +5,6 @@
 -- (slice 09); a fired shot is a direct result of step 2's ship controls,
 -- not a spawner.
 local Bodies = require("src.sim.bodies")
-local Lifetime = require("src.game.components.lifetime")
 local Vec2 = require("src.core.vec2")
 local Blast = require("src.game.blast")
 
@@ -47,14 +46,19 @@ function ProjectileSystem.spawn(ctx, ship, origin, direction, speed)
 		shooter = ship.id,
 		dead = false,
 		age = 0,
-		lifetime = { remaining = config.lifetime },
 	}
 
 	table.insert(ctx.pools.projectiles, projectile)
+
+	-- Store the projectile in the shooter's weapon slot (slice 06)
+	if ship.weapon then
+		ship.weapon.shell = bodyId
+	end
+
 	return projectile
 end
 
--- Ticks every live projectile's age and lifetime (docs/ARCHITECTURE.md
+-- Ticks every live projectile's age (docs/ARCHITECTURE.md
 -- "Systems and frame order", step 2/3 -- called once per frame from
 -- Match.step, right after ShipSystem.update so a projectile fired this same
 -- frame still gets its armed flag computed before Sim.step's contact
@@ -63,21 +67,32 @@ end
 -- computed (this slice's Gotcha); src/sim/step.lua's contact detection and
 -- both handleContacts functions below just read `body.armed`/`contact.armed`
 -- as plain data from here on.
+-- Projectiles no longer expire on a timer (slice 06) -- they live until
+-- contact or boundary check marks them dead.
 function ProjectileSystem.update(ctx)
 	local armDelay = ctx.config.projectile.armDelay
 
 	for _, projectile in ipairs(ctx.pools.projectiles) do
 		if not projectile.dead then
 			projectile.age = projectile.age + ctx.dt
-			Lifetime.tick(projectile, ctx)
 
 			local body = Bodies.get(ctx.sim.bodies, projectile.body)
 			if body then
 				body.armed = projectile.age >= armDelay
+			else
+				-- Body is stale (despawned or reused): mark projectile dead
+				projectile.dead = true
 			end
 
 			if projectile.dead then
 				Bodies.markDead(ctx.sim.bodies, projectile.body)
+				-- Clear the shooter's weapon slot when the projectile dies
+				for _, ship in ipairs(ctx.pools.ships) do
+					if ship.weapon and ship.weapon.shell == projectile.body then
+						ship.weapon.shell = nil
+						break
+					end
+				end
 			end
 		end
 	end

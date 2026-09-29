@@ -26,7 +26,7 @@ local ARROW_MAX_LENGTH = 7
 -- softening term), so a fixed linear scale would make everywhere but the
 -- immediate edge of a world look black; this makes the falloff visible
 -- across that whole range instead.
-local MAGNITUDE_HALF_SATURATION = 400
+local MAGNITUDE_HALF_SATURATION = 200
 
 local GRID_COLOR = { 1, 1, 1, 0.08 }
 local WORLD_OUTLINE_COLOR = { 1, 0.8, 0.2, 1 }

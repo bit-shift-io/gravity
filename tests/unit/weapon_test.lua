@@ -11,6 +11,7 @@ local function newCtx(overrides)
 		pools = { ships = {}, projectiles = {}, asteroids = {} },
 		config = overrides.config or Config,
 		intents = {},
+		events = {},
 	}
 	return ctx, bodies
 end
@@ -155,4 +156,112 @@ test("Weapon.update does nothing without a weapon component", function()
 	Weapon.update(ship, ctx, origin, direction)
 
 	assertEqual(0, #ctx.pools.projectiles)
+end)
+
+test("a press with an armed live shell detonates it", function()
+	local ctx, bodies = newCtx()
+	local Blast = require("src.game.blast")
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	-- Fire a shot
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertEqual(1, #ctx.pools.projectiles, "expected the release to spawn a projectile")
+	local projectile = ctx.pools.projectiles[1]
+
+	-- Simulate arming delay passing
+	projectile.age = ctx.config.projectile.armDelay + 0.1
+	local projBody = Bodies.get(bodies, projectile.body)
+	projBody.armed = true
+
+	-- Now fire again (press) - should detonate the armed shell
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertTrue(projectile.dead, "expected the armed shell to be detonated")
+end)
+
+test("holding fire after detonating armed shell never charges", function()
+	local ctx, bodies = newCtx()
+	local Blast = require("src.game.blast")
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	-- Fire and detonate
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	local projectile = ctx.pools.projectiles[1]
+	projectile.age = ctx.config.projectile.armDelay + 0.1
+	local projBody = Bodies.get(bodies, projectile.body)
+	projBody.armed = true
+
+	-- Detonate
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	-- Hold fire for several frames
+	for _ = 1, 10 do
+		Weapon.update(ship, ctx, origin, direction)
+	end
+
+	assertFalse(ship.weapon.charging, "expected no charging after detonation press")
+	assertEqual(0, ship.weapon.charge, "expected charge to remain zero")
+end)
+
+test("a press with an unarmed live shell does nothing", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	-- Fire a shot
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertEqual(1, #ctx.pools.projectiles, "expected the release to spawn a projectile")
+	local projectile = ctx.pools.projectiles[1]
+
+	-- Shell is still unarmed (age < armDelay)
+	assertFalse(projectile.dead, "expected the unarmed shell to be alive")
+
+	-- Now fire again (press) - should do nothing since shell is unarmed
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertFalse(projectile.dead, "expected the unarmed shell to NOT be detonated")
+	assertFalse(ship.weapon.charging, "expected no charging with unarmed shell held")
+end)
+
+test("a press after the shell despawns starts a charge", function()
+	local ctx, bodies = newCtx()
+	local ship = newShip(bodies, ctx)
+	local origin = { x = 0, y = 0 }
+	local direction = { x = 0, y = -1 }
+
+	-- Fire a shot
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+	ctx.intents[1] = { fire = false }
+	Weapon.update(ship, ctx, origin, direction)
+
+	-- Clear the weapon slot (simulating despawn)
+	ship.weapon.shell = nil
+
+	-- Now fire again - should start a charge
+	ctx.intents[1] = { fire = true }
+	Weapon.update(ship, ctx, origin, direction)
+
+	assertTrue(ship.weapon.charging, "expected a new charge to start when slot is free")
+	assertTrue(ship.weapon.charge > 0, "expected charge to accumulate")
 end)

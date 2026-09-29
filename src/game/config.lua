@@ -26,7 +26,7 @@ local Config = {
 		-- faint at arena-scale separation but becomes clearly visible
 		-- ("ships visibly tug on each other when close") within a couple of
 		-- ship-lengths. A starting tuning value; revisit by playtest feel.
-		mass = 1000,
+		mass = 2000,
 		fuel = {
 			capacity = 10,
 			burnRate = 1,
@@ -66,21 +66,19 @@ local Config = {
 		chargeTime = 3,
 	},
 	-- Projectile tuning (src/game/systems/projectile_system.lua, src/game/blast.lua).
-	-- lifetime (s) is how long an unspent shot survives before auto-expiry
-	-- (src/game/components/lifetime.lua); armDelay (s) is how long a shot
-	-- stays "unarmed" (bounces off any ship it touches, this slice's own
-	-- shooter included) before becoming "armed" (destroys any ship it
-	-- touches). blastRadius (px) is how far the blast kills and visible ring
-	-- extends when the projectile detonates. mass is deliberately tiny
-	-- (this slice's Gotcha) so a projectile's own pull on ships stays
-	-- negligible even in a dense volley -- do not raise it to "fix" flight
-	-- distortion; that's what a small mass is already for. radius/restitution
-	-- feed Collide.circleContact the same way ship.collisionRadius/restitution
-	-- do for ship-vs-ship.
+	-- armDelay (s) is how long a shot stays "unarmed" (bounces off any ship it
+	-- touches, this slice's own shooter included) before becoming "armed"
+	-- (destroys any ship it touches). Projectiles no longer expire on a timer
+	-- (slice 06) -- they live until contact or boundary check marks them dead.
+	-- blastRadius (px) is how far the blast kills and visible ring extends
+	-- when the projectile detonates. mass is deliberately tiny (this slice's
+	-- Gotcha) so a projectile's own pull on ships stays negligible even in a
+	-- dense volley -- do not raise it to "fix" flight distortion; that's what
+	-- a small mass is already for. radius/restitution feed Collide.circleContact
+	-- the same way ship.collisionRadius/restitution do for ship-vs-ship.
 	projectile = {
-		lifetime = 3,
 		armDelay = 0.15,
-		blastRadius = 100,
+		blastRadius = 30,
 		mass = 0.001,
 		radius = 3,
 		restitution = 1,

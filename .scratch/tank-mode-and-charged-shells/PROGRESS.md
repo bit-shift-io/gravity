@@ -26,3 +26,22 @@
 - New exports/interfaces: `Weapon.update(ship, ctx, origin, direction)` handles charge accumulation and release-triggered spawn. `ProjectileSystem.spawn(ctx, ship, origin, direction, speed)` updated to accept caller-computed origin and speed.
 - Conventions confirmed: Config numbers all in `src/game/config.lua`. Edge detection via component state (`prevFire`), not framework input. Charge carries over landing/lift-off because weapon component stays on ship record.
 - Surprises: None. Charge successfully carries over landing/lift-off because weapon component remains on ship record across state transitions.
+
+## Slice 05 — blast-on-contact
+- Built: Blast detonation system with radius-based ship kills, crash events, and ring rendering. Projectiles explode on world/asteroid contact or armed ship contact. Unarmed projectiles still bounce.
+- Files touched:
+  - Source: `src/game/blast.lua` (new), `src/game/config.lua` (added projectile.blastRadius), `src/game/systems/projectile_system.lua` (handles world/asteroid/armed-ship contacts via Blast.detonate), `src/game/systems/ship_system.lua` (removed killShipFromProjectile), `src/game/systems/asteroid_system.lua` (removed projectileAsteroid handling), `src/app/render/effects.lua` (added drawBlast)
+  - Tests: `tests/unit/blast_test.lua` (new, 6 tests), `tests/unit/run.lua` (registration), `tests/integration/shooting_test.lua` (updated with `withMinSpeed` call for gravity-curve test, added multi-ship blast and unarmed-bounce tests)
+- New exports/interfaces: `Blast.detonate(ctx, projectile, body)` marks projectile dead, kills all ships in radius, creates blast and crash events.
+- Conventions confirmed: Multiple contacts per projectile per step handled via `projectile.dead` check. Contact handler order: ship → projectile → asteroid. Event duration must outlast ring visual. Blast events have `{ kind = "blast", x, y, radius, time }`.
+- Surprises: Config minSpeed change (150→200) affected gravity-curve test timing; updated test to explicitly use minSpeed(150) and increased frame count to 180 to account for longer round-trip with new ship mass (1000).
+
+## Slice 06 — remote-detonation
+- Built: One projectile per player, remote detonation. Each player tracked via `weapon.shell` body id. Fire press detonates armed shells, ignored for unarmed, never starts charge while shell lives. Projectiles no longer expire on timer.
+- Files touched:
+  - Source: `src/game/components/weapon.lua` (added shell and consumed fields), `src/game/systems/projectile_system.lua` (removed Lifetime.tick, added shell clearing on death), `src/game/systems/ship_system.lua` (init weapon.shell/consumed), `src/game/config.lua` (removed projectile.lifetime)
+  - Tests: `tests/unit/weapon_test.lua` (4 new tests), `tests/integration/remote_detonation_test.lua` (new, 3 tests), `tests/unit/run.lua` (removed lifetime_test), `tests/integration/run.lua` (added remote_detonation)
+  - Deleted: `src/game/components/lifetime.lua`, `tests/unit/lifetime_test.lua`
+- New exports/interfaces: `Weapon.update` routes press to detonate (armed shell exists), ignore (unarmed), or charge (no shell). `ProjectileSystem.spawn` sets `weapon.shell = bodyId`. ProjectileSystem clears shell on any projectile death (contact/stale/boundary).
+- Conventions confirmed: Bodies.get returns nil for stale ids (slot detection). Frame order: ShipSystem → ProjectileSystem → Sim → contacts → sweep. Weapon.consumed flag prevents charge start on same press.
+- Surprises: None. Lifetime component cleanly removed; no other code depended on it.
