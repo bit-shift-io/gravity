@@ -74,12 +74,12 @@ end)
 
 test("Lander.liftOff sets state back to flying and un-pins the body", function()
 	local bodies = Bodies.new()
-	local bodyId = Bodies.add(bodies, { x = 0, y = 0, pinned = true })
+	local bodyId = Bodies.add(bodies, { x = 0, y = 0, vx = 0, vy = 0, pinned = true })
 	local ship = {
 		body = bodyId,
 		lander = { state = "tank", host = { vertices = {} } },
 	}
-	local ctx = { sim = { bodies = bodies } }
+	local ctx = { sim = { bodies = bodies }, config = { ship = { thrustAccel = 100 } }, dt = 1 / 60, time = 0 }
 
 	Lander.liftOff(ship, ctx)
 

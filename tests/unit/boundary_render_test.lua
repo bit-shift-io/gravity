@@ -17,3 +17,10 @@ test("boundary field has correct parameters for rendering", function()
 	local expectedRadius = bf.hardBoundary
 	assertEqual(1280, expectedRadius)
 end)
+
+test("the drawn boundary circle sits at the radius where ships die", function()
+	local BoundaryRender = require("src.app.render.boundary")
+	local ctx = Match.new({ worlds = {} }, Config)
+
+	assertEqual(ctx.sim.boundaryField.hardBoundary, BoundaryRender.radius(ctx.sim.boundaryField))
+end)

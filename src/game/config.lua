@@ -134,6 +134,9 @@ local Config = {
 	-- margin around each player that the camera ensures stays visible (px).
 	-- zoomSpeed is the interpolation speed for smooth zoom transitions (units/s).
 	camera = {
+		-- Seconds the camera keeps framing a dead ship's death spot. Matches
+		-- the crash debris animation (src/app/render/effects.lua).
+		deathAnimationDuration = 0.6,
 		bufferRadius = 100,
 		zoomSpeed = 2.0,
 	},

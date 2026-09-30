@@ -13,6 +13,7 @@ local EffectsRender = {}
 -- Seconds a crash's debris burst stays visible. src/game/systems/
 -- ship_system.lua prunes ctx.events well after this so a crash event never
 -- disappears mid-fade.
+-- Camera framing of a dead ship lasts this long too (config.camera.deathAnimationDuration).
 local DEBRIS_DURATION = 0.6
 
 -- Seconds a blast's ring stays visible. src/game/systems/ship_system.lua prunes

@@ -115,35 +115,30 @@ function Match.step(ctx)
 
 	-- 6. Round rules. Empty stub -- slice 10.
 
-	-- Update camera zoom to fit all ships with buffer margin.
-	-- Keep dead ships in zoom calculation during death animation (until despawn sweep below).
-	local ships = ctx.pools.ships
-	if #ships >= 2 then
-		local body1 = Bodies.get(ctx.sim.bodies, ships[1].body)
-		local body2 = Bodies.get(ctx.sim.bodies, ships[2].body)
-		if body1 and body2 then
-			local targetZoom = Camera.calculateTargetZoom(
-				{ x = body1.x, y = body1.y },
-				{ x = body2.x, y = body2.y },
-				ctx.config.camera.bufferRadius,
-				1280,
-				720
-			)
-			Camera.updateZoom(ctx.camera, targetZoom, ctx.config.camera.zoomSpeed, ctx.dt)
+	-- Update camera zoom to fit every player with buffer margin. A dead ship
+	-- stays in frame at its death spot until its crash animation finishes.
+	local focus = {}
+	for _, ship in ipairs(ctx.pools.ships) do
+		local body = Bodies.get(ctx.sim.bodies, ship.body)
+		if body then
+			table.insert(focus, { x = body.x, y = body.y })
 		end
-	elseif #ships == 1 then
-		-- Only one ship left: zoom to fit just that ship (with buffer)
-		local body1 = Bodies.get(ctx.sim.bodies, ships[1].body)
-		if body1 then
-			local targetZoom = Camera.calculateTargetZoom(
-				{ x = body1.x, y = body1.y },
-				{ x = body1.x, y = body1.y },  -- Same position for both = zoom on one ship
-				ctx.config.camera.bufferRadius,
-				1280,
-				720
-			)
-			Camera.updateZoom(ctx.camera, targetZoom, ctx.config.camera.zoomSpeed, ctx.dt)
+	end
+	local deathDuration = ctx.config.camera.deathAnimationDuration
+	for _, event in ipairs(ctx.events) do
+		if event.kind == "crash" and ctx.time - (event.time or ctx.time) < deathDuration then
+			table.insert(focus, { x = event.x, y = event.y })
 		end
+	end
+	if #focus >= 1 then
+		local targetZoom = Camera.calculateTargetZoom(
+			focus[1],
+			focus[2] or focus[1],
+			ctx.config.camera.bufferRadius,
+			1280,
+			720
+		)
+		Camera.updateZoom(ctx.camera, targetZoom, ctx.config.camera.zoomSpeed, ctx.dt)
 	end
 
 	-- 7. Despawn sweep -- the only place records and bodies are removed.

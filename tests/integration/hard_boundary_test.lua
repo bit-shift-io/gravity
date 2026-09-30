@@ -28,3 +28,30 @@ test("a ship crossing the hard boundary dies instantly", function()
 	-- After crossing the boundary, the ship should be dead
 	assertTrue(ship.dead, "expected the ship to be dead after crossing hard boundary")
 end)
+
+test("the camera keeps framing a ship that died at the hard boundary until its death animation ends", function()
+	local level = FixtureLevel.new()
+	local game = GameHarness.startMatch(level)
+	local ctx = game.ctx
+	local survivor = ctx.pools.ships[1]
+	local victim = ctx.pools.ships[2]
+	local survivorBody = Bodies.get(ctx.sim.bodies, survivor.body)
+	local victimBody = Bodies.get(ctx.sim.bodies, victim.body)
+
+	survivorBody.x, survivorBody.y, survivorBody.vx, survivorBody.vy = 0, 0, 0, 0
+	victimBody.x, victimBody.y, victimBody.vx, victimBody.vy = 1275, 0, 0, 0
+	local zoomedOut = 720 / (2 * 1280)
+	ctx.camera.zoom = zoomedOut
+
+	FrameStepper.step(game, 1)
+	assertTrue(victim.dead, "expected the victim to die at the hard boundary")
+	assertTrue(not survivor.dead, "expected the survivor to stay alive")
+
+	-- 0.15s into a 0.6s death animation: still framing the victim's death spot
+	FrameStepper.step(game, 9)
+	assertTrue(ctx.camera.zoom < zoomedOut + 0.02, "camera zoomed in on the survivor mid death animation")
+
+	-- Well past the animation: camera frames the survivor alone
+	FrameStepper.step(game, 90)
+	assertTrue(ctx.camera.zoom > zoomedOut + 0.1, "camera never zoomed in on the survivor after the death animation")
+end)

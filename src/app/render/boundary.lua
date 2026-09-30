@@ -9,6 +9,12 @@ local BoundaryRender = {}
 local COLOR = { 1, 0.2, 0.2, 1 }  -- Bright red for visibility
 local LINE_WIDTH = 3
 
+-- The circle is drawn exactly where the sim kills ships: hardBoundary is the
+-- total radius from the origin (src/sim/step.lua, src/sim/collide.lua).
+function BoundaryRender.radius(boundaryField)
+	return boundaryField.hardBoundary
+end
+
 function BoundaryRender.draw(ctx)
 	if not ctx.sim.boundaryField then
 		return
@@ -17,9 +23,7 @@ function BoundaryRender.draw(ctx)
 	local bf = ctx.sim.boundaryField
 
 	-- Boundary is a circle centered at world origin (0, 0).
-	-- Radius = play area width / 2 + hard boundary distance.
-	local playAreaWidth = bf.playAreaMaxX - bf.playAreaMinX
-	local radius = playAreaWidth / 2 + bf.hardBoundary
+	local radius = BoundaryRender.radius(bf)
 
 	love.graphics.setColor(COLOR)
 	love.graphics.setLineWidth(LINE_WIDTH)

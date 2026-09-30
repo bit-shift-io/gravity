@@ -157,8 +157,9 @@ test("Field.bake grid extends to cover anti-gravity zone at hard boundary", func
 	local level = singleSquareLevel()
 	local worldField = Field.bake(level, Config)
 
-	-- Play area is 1280x720, anti-gravity zone is 50% play area width = 640px beyond edge
-	local hardBoundary = 640
+	-- Grid is centred on the origin and reaches the hard boundary radius (1280)
+	-- on every side of the 1280x720 play area.
+	local hardBoundary = 1280
 	local cellSize = Config.field.cellSize
 
 	-- Grid should extend from -hardBoundary to 1280+hardBoundary in X

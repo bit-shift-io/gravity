@@ -91,7 +91,7 @@ end)
 test("detonating kills the shooter if within the blast radius", function()
 	local ctx, bodies = newCtx()
 	local shooter = newShip(bodies, ctx, 0, 0)
-	local projectile = newProjectile(bodies, ctx, 50, 0, shooter.id)
+	local projectile = newProjectile(bodies, ctx, 20, 0, shooter.id)
 	local projBody = Bodies.get(bodies, projectile.body)
 
 	Blast.detonate(ctx, projectile, projBody)

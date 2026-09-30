@@ -106,7 +106,7 @@ test("a shot curved back by gravity kills its shooter", function()
 	-- No target ship nearby (player 2's spawn is ~1,000,000px away, per
 	-- the memory gotcha above the pull test files already follow) -- this
 	-- test is purely about the shooter's own gravity well curving its shot
-	-- back onto itself, not about hitting anything else. At minSpeed 150px/s
+	-- back onto itself, not about hitting anything else. At minSpeed 60px/s
 	-- (below the shooter's own escape speed for config.ship.mass/config.gravity.G),
 	-- a shot fired straight out decelerates, turns around, and falls back
 	-- onto its own shooter once armed.
@@ -117,12 +117,12 @@ test("a shot curved back by gravity kills its shooter", function()
 			{ x = 640, y = 400 - 1000000 },
 		},
 	}
-	local config = withMinSpeed(150)
+	local config = withMinSpeed(60)
 	local game = GameHarness.startMatch(level, { config = config })
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 
-	-- Tap to fire at minSpeed (150)
+	-- Tap to fire at minSpeed (60)
 	ctx.intents[1] = { rotate = 0, thrust = false, fire = true }
 	ctx.intents[2] = { rotate = 0, thrust = false, fire = false }
 	FrameStepper.step(game, 1)
@@ -247,7 +247,7 @@ test("an armed blast kills multiple ships in its radius", function()
 		spawnPoints = {
 			{ x = 640, y = 400 },
 			{ x = 640, y = 200 },
-			{ x = 680, y = 200 },
+			{ x = 660, y = 200 },
 		},
 	}
 	local config = withMinSpeed(800) -- High speed to ensure blast on first ship

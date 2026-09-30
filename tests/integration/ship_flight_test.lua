@@ -61,14 +61,23 @@ test("an empty tank disables thrust but the ship keeps rotating", function()
 	local secondsToEmpty = capacity / burnRate
 
 	game.ctx.intents[1] = { rotate = 0, thrust = true, fire = false }
-	FrameStepper.step(game, FrameStepper.secondsToFrames(secondsToEmpty) + 10)
+	-- Thrusting this long would carry the ship into the hard boundary and kill
+	-- it, so pull it back to its start each frame (velocity is untouched).
+	local startBody = Bodies.get(game.ctx.sim.bodies, ship.body)
+	for _ = 1, FrameStepper.secondsToFrames(secondsToEmpty) + 10 do
+		startBody.x, startBody.y = 640, 360
+		FrameStepper.step(game, 1)
+	end
 
 	assertNear(0, ship.fuel.amount, 0.0001)
 
 	local body = Bodies.get(game.ctx.sim.bodies, ship.body)
 	local vxBeforeExtraThrust, vyBeforeExtraThrust = body.vx, body.vy
 
-	FrameStepper.step(game, 60)
+	for _ = 1, 60 do
+		startBody.x, startBody.y = 640, 360
+		FrameStepper.step(game, 1)
+	end
 
 	-- Thrust no longer accelerates the ship once the tank is empty --
 	-- residual gravity may still change velocity slightly, but not by a
