@@ -45,14 +45,14 @@ local function findE2ETestFile(args)
 end
 
 function love.load(args)
-	if findArg(args, "debug") then
-		local ok, debugger = pcall(require, "lldebugger")
-		if ok then
-			debugger.start()
-		else
-			print("✗ lldebugger not found; continuing without debugger")
-		end
-	end
+	-- if findArg(args, "debug") then
+	-- 	local ok, debugger = pcall(require, "lldebugger")
+	-- 	if ok then
+	-- 		debugger.start()
+	-- 	else
+	-- 		print("✗ lldebugger not found; continuing without debugger")
+	-- 	end
+	-- end
 
 	local e2eTestFile = findE2ETestFile(args)
 	if e2eTestFile then
