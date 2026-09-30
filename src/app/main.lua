@@ -17,12 +17,10 @@ local App = {}
 App.ctx = nil
 App.accumulator = 0
 
--- e2e=<path/to/scenario_test.lua>, mirroring fido-and-kitch's launch-argument
--- style. Detected here so love.load can hand control to the e2e runner
--- instead of constructing the normal App (see tests/e2e/run.lua).
-local function findE2ETestFile(args)
+
+local function findArg(args, arg)
 	for _, a in ipairs(args or {}) do
-		local path = a:match("^e2e=(.+)$")
+		local path = a:match(arg)
 		if path then
 			return path
 		end
@@ -30,7 +28,32 @@ local function findE2ETestFile(args)
 	return nil
 end
 
+-- e2e=<path/to/scenario_test.lua>, mirroring fido-and-kitch's launch-argument
+-- style. Detected here so love.load can hand control to the e2e runner
+-- instead of constructing the normal App (see tests/e2e/run.lua).
+local function findE2ETestFile(args)
+	local path = findArg(args, "^e2e=(.+)$")
+	return path
+
+	-- for _, a in ipairs(args or {}) do
+	-- 	local path = a:match("^e2e=(.+)$")
+	-- 	if path then
+	-- 		return path
+	-- 	end
+	-- end
+	-- return nil
+end
+
 function love.load(args)
+	if findArg(args, "debug") then
+		local ok, debugger = pcall(require, "lldebugger")
+		if ok then
+			debugger.start()
+		else
+			print("✗ lldebugger not found; continuing without debugger")
+		end
+	end
+
 	local e2eTestFile = findE2ETestFile(args)
 	if e2eTestFile then
 		-- requiring tests.e2e.run defines its own love.update/love.draw/
