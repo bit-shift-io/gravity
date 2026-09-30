@@ -139,16 +139,17 @@ end
 -- Systems handle contacts (docs/ARCHITECTURE.md "Systems and frame order",
 -- step 5): projectile-vs-world always detonates (terrain), projectile-vs-ship
 -- bounces when unarmed or detonates when armed -- `contact.armed` is read,
--- never recomputed (see ProjectileSystem.update's Gotcha above), and
--- projectile-vs-asteroid always detonates. src/game/blast.lua's Blast.detonate
--- handles both the projectile's death and the blast effects (ship kills, events).
+-- never recomputed (see ProjectileSystem.update's Gotcha above), projectile-vs-asteroid
+-- always detonates, and projectile-vs-hard-boundary always detonates.
+-- src/game/blast.lua's Blast.detonate handles both the projectile's death
+-- and the blast effects (ship kills, events).
 function ProjectileSystem.handleContacts(ctx, contacts)
 	for _, contact in ipairs(contacts) do
-		if contact.kind == "projectileWorld" or contact.kind == "projectileShip" or contact.kind == "projectileAsteroid" then
+		if contact.kind == "projectileWorld" or contact.kind == "projectileShip" or contact.kind == "projectileAsteroid" or contact.kind == "projectileHardBoundary" then
 			for _, projectile in ipairs(ctx.pools.projectiles) do
 				local body = Bodies.get(ctx.sim.bodies, projectile.body)
 				if body and body == contact.a and not projectile.dead then
-					if contact.kind == "projectileWorld" or contact.kind == "projectileAsteroid" or contact.armed then
+					if contact.kind == "projectileWorld" or contact.kind == "projectileAsteroid" or contact.kind == "projectileHardBoundary" or contact.armed then
 						Blast.detonate(ctx, projectile, body)
 					else
 						bounceOffShip(body, contact.b, contact.normal, ctx.config)

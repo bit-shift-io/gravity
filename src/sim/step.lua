@@ -28,7 +28,8 @@ local Sim = {}
 -- Gravity + integrate only. Snapshots every live body's pre-integration
 -- position (body.prevX/prevY) for the swept projectile-vs-world test in
 -- Sim.collide -- a fast projectile can otherwise tunnel through a thin edge
--- between one frame's sample and the next.
+-- between one frame's sample and the next. Samples the static field (world
+-- field only for asteroids, world + boundary for ships/projectiles).
 function Sim.integrate(sim, dt, config)
 	local G = config.gravity.G
 	local eps = config.gravity.softening
@@ -44,6 +45,12 @@ function Sim.integrate(sim, dt, config)
 	for slot, body in pairs(sim.bodies.slots) do
 		if not body.dead and not body.pinned then
 			local staticAccel = Field.sample(sim.field, body.x, body.y)
+			-- Asteroids use only the world field; ships and projectiles also include the boundary field
+			if body.kind ~= "asteroid" and sim.boundaryField then
+				local boundaryAccel = Field.sample(sim.boundaryField, body.x, body.y)
+				staticAccel.x = staticAccel.x + boundaryAccel.x
+				staticAccel.y = staticAccel.y + boundaryAccel.y
+			end
 			local dynamicAccel = pairwiseAccel[slot]
 			local ax = staticAccel.x + dynamicAccel.x
 			local ay = staticAccel.y + dynamicAccel.y
@@ -58,6 +65,7 @@ end
 -- touched what (the sim only reports contacts, it never decides outcomes):
 --   "shipWorld"         -- a.body is a ship, b is the world it touched (land/crash).
 --   "shipAsteroid"      -- a.body is a ship, b is the asteroid body it touched (land/crash/ride).
+--   "shipHardBoundary"  -- a.body is a ship that touched the hard boundary (always dies).
 --   "projectileWorld"   -- a.body is a projectile, b is the world it touched (always dies).
 --   "projectileShip"    -- a.body is a projectile, b.body is the ship it touched;
 --                          `armed` is the projectile's own armed flag, snapshotted
@@ -66,6 +74,7 @@ end
 --   "projectileAsteroid"-- a.body is a projectile, b is the asteroid body it
 --                          touched (always dies; the asteroid's momentum is
 --                          never touched by this file or its caller).
+--   "projectileHardBoundary" -- a.body is a projectile that touched the hard boundary (always dies).
 --   "shipShip"          -- a.body and b.body are both ships (always bounces),
 --                          reported once per pair, never once from each side.
 --   "asteroidWorld"      -- a is an asteroid body, b is the world it touched
@@ -209,6 +218,41 @@ function Sim.collide(sim, worlds)
 					point = hit.point,
 					normal = hit.normal,
 					relVel = { x = a.vx - b.vx, y = a.vy - b.vy },
+				})
+			end
+		end
+	end
+
+	-- Hard boundary contacts (only ships and projectiles; asteroids despawn
+	-- via BoundarySystem). The boundary field carries the hard boundary
+	-- radius (1280px from origin).
+	if sim.boundaryField then
+		local boundaryRadius = sim.boundaryField.hardBoundary
+
+		-- Ships vs hard boundary
+		for _, body in ipairs(unpinnedShips) do
+			local hit = Collide.checkHardBoundary(body.x, body.y, body.radius or 0, boundaryRadius)
+			if hit then
+				table.insert(contacts, {
+					kind = "shipHardBoundary",
+					a = body,
+					point = hit.point,
+					normal = hit.normal,
+					relVel = { x = body.vx, y = body.vy },
+				})
+			end
+		end
+
+		-- Projectiles vs hard boundary
+		for _, body in ipairs(projectiles) do
+			local hit = Collide.checkHardBoundary(body.x, body.y, body.radius or 0, boundaryRadius)
+			if hit then
+				table.insert(contacts, {
+					kind = "projectileHardBoundary",
+					a = body,
+					point = hit.point,
+					normal = hit.normal,
+					relVel = { x = body.vx, y = body.vy },
 				})
 			end
 		end

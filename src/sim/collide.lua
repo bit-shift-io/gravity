@@ -277,4 +277,34 @@ function Collide.checkProjectileAsteroid(projectileBody, asteroidBody)
 	return Collide.polygonContact({ point }, { vertices = asteroidPoints })
 end
 
+-- Hard boundary contact (docs "hard boundary collision detection"): checks if a
+-- circular body (ship or projectile) has crossed the hard boundary circle at
+-- world origin (0,0) with the given radius. A body is in contact if its
+-- distance from origin + its radius exceeds the boundary radius. Returns a
+-- contact {point, normal} where point is on the body's circle closest to
+-- origin and normal points outward from the boundary (from origin toward
+-- the body). Returns nil if the body is still inside the boundary.
+function Collide.checkHardBoundary(x, y, radius, boundaryRadius)
+	local dist = math.sqrt(x * x + y * y)
+	local bodyRadius = radius or 0
+	local contactThreshold = boundaryRadius - bodyRadius
+
+	if dist <= contactThreshold then
+		return nil
+	end
+
+	-- Body is outside the boundary: compute contact point and normal
+	local normal
+	if dist > 0 then
+		normal = { x = x / dist, y = y / dist }
+	else
+		normal = { x = 0, y = 1 }
+	end
+
+	-- Contact point is on the body's circle closest to origin
+	local point = { x = x - normal.x * bodyRadius, y = y - normal.y * bodyRadius }
+
+	return { point = point, normal = normal }
+end
+
 return Collide

@@ -16,20 +16,24 @@ local function cellCenter(minX, minY, cellSize, col, row)
 end
 
 -- Rasterises `level.worlds` into mass cells on a grid covering the virtual
--- resolution (1280x720, docs/ARCHITECTURE.md "Rules") plus
--- `config.boundary.margin` on every side, then bakes the field vector at
+-- resolution (1280x720, docs/ARCHITECTURE.md "Rules") plus an expanded
+-- boundary zone (50% play area width = 640px), then bakes the field vector at
 -- every grid cell by summing softened point-mass gravity (src/sim/gravity.lua)
--- from every mass cell.
+-- from every mass cell. Also returns a separate boundary anti-gravity field
+-- that repels ships and projectiles outside the play area.
 function Field.bake(level, config)
 	local cellSize = config.field.cellSize
-	local margin = config.boundary.margin
 	local G = config.gravity.G
 	local eps = config.gravity.softening
 
-	local minX = -margin
-	local minY = -margin
-	local width = 1280 + 2 * margin
-	local height = 720 + 2 * margin
+	-- Hard boundary: play area edge (at distance 640 from origin) + boundary distance (640)
+	-- Total hard boundary radius = 640 + 640 = 1280
+	local hardBoundary = 1280
+
+	local minX = -hardBoundary
+	local minY = -hardBoundary
+	local width = 1280 + 2 * hardBoundary
+	local height = 720 + 2 * hardBoundary
 	local cols = math.ceil(width / cellSize)
 	local rows = math.ceil(height / cellSize)
 
@@ -95,7 +99,26 @@ function Field.bake(level, config)
 		cell.ay = ay
 	end
 
-	return field
+	-- Bake boundary anti-gravity field: repels ships and projectiles only,
+	-- zero inside play area, repulsive outside the hard boundary.
+	-- Store boundary field params for formula-based evaluation (no cells table).
+	-- Play area is centered at world origin: ±640 in X, ±360 in Y
+	local boundaryField = {
+		cellSize = cellSize,
+		cols = cols,
+		rows = rows,
+		minX = minX,
+		minY = minY,
+		cells = nil,  -- No cells table; computed on-demand
+		-- Boundary field parameters for formula evaluation
+		playAreaMinX = -640,
+		playAreaMaxX = 640,
+		playAreaMinY = -360,
+		playAreaMaxY = 360,
+		hardBoundary = hardBoundary,
+	}
+
+	return field, boundaryField
 end
 
 local function cellAt(field, col, row)
@@ -107,7 +130,53 @@ end
 -- grid coordinate is clamped before interpolating, so the blend weight
 -- against the next cell is exactly zero right at the edge) rather than
 -- extrapolating past it.
+-- For boundary fields with no cells table, uses formula-based evaluation instead.
 function Field.sample(field, x, y)
+	-- Handle formula-based fields (no cells table)
+	if field.cells == nil then
+		-- Boundary field: compute repulsion on-demand
+		local ax, ay = 0, 0
+
+		-- Compute distance from play area boundary
+		local dx = 0
+		local dy = 0
+		if x < field.playAreaMinX then
+			dx = field.playAreaMinX - x
+		elseif x > field.playAreaMaxX then
+			dx = x - field.playAreaMaxX
+		end
+		if y < field.playAreaMinY then
+			dy = field.playAreaMinY - y
+		elseif y > field.playAreaMaxY then
+			dy = y - field.playAreaMaxY
+		end
+
+		-- If outside play area, apply repulsion toward center
+		if dx > 0 or dy > 0 then
+			-- Calculate how far into the anti-gravity zone we are (0 at edge, 1 at hard boundary)
+			local distFromPlayArea = math.sqrt(dx * dx + dy * dy)
+			if distFromPlayArea < field.hardBoundary then
+				-- Repulsion increases toward the hard boundary
+				local repulsionFactor = distFromPlayArea / field.hardBoundary
+				local repulsionStrength = 30 * repulsionFactor
+				-- Repel toward the center
+				if x < field.playAreaMinX then
+					ax = repulsionStrength  -- Repel rightward
+				elseif x > field.playAreaMaxX then
+					ax = -repulsionStrength  -- Repel leftward
+				end
+				if y < field.playAreaMinY then
+					ay = repulsionStrength  -- Repel downward
+				elseif y > field.playAreaMaxY then
+					ay = -repulsionStrength  -- Repel upward
+				end
+			end
+		end
+
+		return { x = ax, y = ay }
+	end
+
+	-- Grid-based field sampling (world field and any other gridded field)
 	local gx = (x - field.minX) / field.cellSize - 0.5
 	local gy = (y - field.minY) / field.cellSize - 0.5
 

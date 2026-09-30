@@ -3,7 +3,7 @@
 -- verify that:
 -- 1. Projectiles no longer expire on a timer (survive 10s in open space)
 -- 2. Remote detonation (fire press on armed shell) kills nearby ships
--- 3. Projectiles leaving soft boundary free the weapon slot without a blast
+-- 3. Projectiles leaving hard boundary free the weapon slot without a blast
 local GameHarness = require("tests.support.game_harness")
 local FrameStepper = require("tests.support.frame_stepper")
 local Bodies = require("src.sim.bodies")
@@ -108,10 +108,10 @@ test("remote detonation (fire press on armed shell) kills nearby enemy", functio
 	end
 end)
 
-test("a projectile leaving soft boundary frees weapon slot without blasting", function()
+test("a projectile leaving hard boundary frees weapon slot without blasting", function()
 	-- A projectile fired upward will eventually leave the play area. When it crosses
-	-- the boundary, BoundarySystem marks it dead, ProjectileSystem clears the weapon slot,
-	-- but no blast event fires (no Blast.detonate call for boundary expiry).
+	-- the hard boundary, Collide.checkHardBoundary marks it dead, ProjectileSystem clears
+	-- the weapon slot, but no blast event fires (no Blast.detonate call for boundary crossing).
 	local level = {
 		worlds = {},
 		spawnPoints = {
@@ -134,7 +134,7 @@ test("a projectile leaving soft boundary frees weapon slot without blasting", fu
 	local firstProjectile = ctx.pools.projectiles[1]
 	assertTrue(shooter.weapon.shell ~= nil, "expected weapon.shell to point to the projectile")
 
-	-- Let projectile escape the boundary (the field margin is config.boundary.margin = 128)
+	-- Let projectile escape the hard boundary (640px from screen center).
 	-- At 800 px/s upward with gravity, it should leave the play area within a few seconds.
 	FrameStepper.step(game, 240) -- 4 seconds: enough time to escape
 

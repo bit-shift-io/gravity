@@ -11,24 +11,6 @@ local FrameStepper = require("tests.support.frame_stepper")
 local Bodies = require("src.sim.bodies")
 local Config = require("src.game.config")
 
--- A shallow copy of the real config with config.boundary.margin raised well
--- past the ~11,000px worst-case drift these two tests' sustained thrust can
--- produce (slice 08's soft boundary would otherwise mark the ship
--- lost-to-space mid-test, stopping fuel consumption early for a reason
--- unrelated to the fuel-burn-rate math being checked). Kept far short of an
--- arbitrarily large number: src/sim/field.lua's Field.bake grid covers the
--- screen plus this same margin, so an oversized value (1e9 was tried first)
--- makes the bake allocate an unbounded grid and hang. Only `boundary` is
--- overridden; every other tuning number, notably config.ship.mass and
--- config.gravity.G/softening (slice 06's own tuning), is left untouched.
-local function withHugeBoundary()
-	local overridden = {}
-	for k, v in pairs(Config) do
-		overridden[k] = v
-	end
-	overridden.boundary = { margin = 20000 }
-	return overridden
-end
 
 test("a ship released above a world accelerates toward it with no input", function()
 	local level = FixtureLevel.new()
@@ -49,14 +31,11 @@ test("a ship released above a world accelerates toward it with no input", functi
 end)
 
 test("holding thrust for N seconds drains fuel by N x burnRate", function()
-	-- No worlds and a screen-centre spawn, so 2s of straight thrust (~440px
-	-- of drift) can't carry the ship past the soft-boundary margin (slice
-	-- 08) and get it marked lost-to-space mid-test, which would stop fuel
-	-- consumption early and make this fuel-math check fail for an unrelated
-	-- reason. Ship 2 is spawned far away so its pairwise pull (slice 06) is
-	-- also negligible.
+	-- No worlds and a screen-centre spawn, so this test can verify fuel burn
+	-- rate independently from gravity effects. Ship 2 is spawned far away so
+	-- its pairwise pull (slice 06) is also negligible.
 	local level = { worlds = {}, spawnPoints = { { x = 640, y = 360 }, { x = 640, y = -1000000 } } }
-	local game = GameHarness.startMatch(level, { config = withHugeBoundary() })
+	local game = GameHarness.startMatch(level)
 	local ship = game.ctx.pools.ships[1]
 	local burnRate = ship.fuel.burnRate
 	local startAmount = ship.fuel.amount
@@ -75,7 +54,7 @@ test("an empty tank disables thrust but the ship keeps rotating", function()
 	-- away so its pairwise pull on ship 1 (slice 06) is also negligible --
 	-- this test only cares about ship 1's own thrust/fuel behaviour.
 	local level = { worlds = {}, spawnPoints = { { x = 640, y = 360 }, { x = 640, y = -1000000 } } }
-	local game = GameHarness.startMatch(level, { config = withHugeBoundary() })
+	local game = GameHarness.startMatch(level)
 	local ship = game.ctx.pools.ships[1]
 	local capacity = ship.fuel.capacity
 	local burnRate = ship.fuel.burnRate

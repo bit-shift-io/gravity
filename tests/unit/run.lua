@@ -4,6 +4,7 @@
 local defaultTestFiles = {
 	"tests/unit/runner_smoke_test.lua",
 	"tests/unit/screen_fit_test.lua",
+	"tests/unit/camera_test.lua",
 	"tests/unit/match_test.lua",
 	"tests/unit/vec2_test.lua",
 	"tests/unit/rng_test.lua",
@@ -21,7 +22,7 @@ local defaultTestFiles = {
 	"tests/unit/turret_test.lua",
 	"tests/unit/swept_collide_test.lua",
 	"tests/unit/weapon_test.lua",
-	"tests/unit/boundary_test.lua",
+	"tests/unit/boundary_render_test.lua",
 	"tests/unit/asteroid_shape_test.lua",
 	"tests/unit/asteroid_spawn_test.lua",
 	"tests/unit/blast_test.lua",

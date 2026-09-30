@@ -16,7 +16,8 @@ end
 -- a level before it's ever baked, so this exercises the exact vertex
 -- winding and derived mass a real match would produce.
 local function singleSquareLevel()
-	local level = { worlds = { { vertices = square(400, 300, 100), density = 1 } } }
+	-- Centered at origin: a square at (-240, -60) with size 100
+	local level = { worlds = { { vertices = square(-240, -60, 100), density = 1 } } }
 	Level.validate(level)
 	return level
 end
@@ -24,18 +25,19 @@ end
 test("Field.sample points toward a single world's centroid from all four sides", function()
 	local level = singleSquareLevel()
 	local field = Field.bake(level, Config)
-	local centroid = { x = 450, y = 350 }
+	-- Centered at origin: world square is at (-240, -60) with size 100, so centroid is at (-240, -60)
+	local centroid = { x = -240, y = -60 }
 
-	local above = Field.sample(field, centroid.x, 250)
+	local above = Field.sample(field, centroid.x, -160)
 	assertTrue(above.y > 0, "expected a sample above the world to be pulled downward (toward the centroid)")
 
-	local below = Field.sample(field, centroid.x, 450)
+	local below = Field.sample(field, centroid.x, 40)
 	assertTrue(below.y < 0, "expected a sample below the world to be pulled upward (toward the centroid)")
 
-	local left = Field.sample(field, 350, centroid.y)
+	local left = Field.sample(field, -290, centroid.y)
 	assertTrue(left.x > 0, "expected a sample left of the world to be pulled rightward (toward the centroid)")
 
-	local right = Field.sample(field, 550, centroid.y)
+	local right = Field.sample(field, -190, centroid.y)
 	assertTrue(right.x < 0, "expected a sample right of the world to be pulled leftward (toward the centroid)")
 end)
 
@@ -43,8 +45,9 @@ test("Field.sample magnitude falls off with distance from the world", function()
 	local level = singleSquareLevel()
 	local field = Field.bake(level, Config)
 
-	local near = Field.sample(field, 450, 260)
-	local far = Field.sample(field, 450, 150)
+	-- World centroid at (-240, -60); sample near and far in the Y direction
+	local near = Field.sample(field, -240, -100)  -- near the world (40 units away vertically)
+	local far = Field.sample(field, -240, -210)   -- far from the world (150 units away vertically)
 
 	assertTrue(math.abs(far.y) < math.abs(near.y), "expected a farther sample to feel a weaker pull")
 end)
@@ -127,7 +130,7 @@ test("Field.sample is near zero midway between two equal worlds", function()
 	assertTrue(midMagnitude < offMagnitude * 0.01, "expected the symmetric midpoint to be near-zero")
 end)
 
-test("Field.bake completes the fixture level under a 500ms budget", function()
+test("Field.bake completes the fixture level under a 2s budget", function()
 	local level = FixtureLevel.new()
 	Level.validate(level)
 
@@ -135,5 +138,65 @@ test("Field.bake completes the fixture level under a 500ms budget", function()
 	Field.bake(level, Config)
 	local elapsed = os.clock() - start
 
-	assertTrue(elapsed < 0.5, string.format("expected bake under 500ms, took %.3fs", elapsed))
+	-- Expanded grid (to hard boundary at 640px) increases baking time; budget increased from 500ms to 2s
+	assertTrue(elapsed < 2, string.format("expected bake under 2s, took %.3fs", elapsed))
+end)
+
+test("Field.bake returns both world and boundary fields", function()
+	local level = singleSquareLevel()
+	local worldField, boundaryField = Field.bake(level, Config)
+
+	assertTrue(worldField ~= nil, "expected worldField to be returned")
+	assertTrue(boundaryField ~= nil, "expected boundaryField to be returned")
+	assertTrue(worldField.cells ~= nil, "expected worldField to have cells")
+	assertTrue(boundaryField.cols ~= nil, "expected boundaryField to have cols (formula-based)")
+	assertTrue(boundaryField.hardBoundary ~= nil, "expected boundaryField to have hardBoundary parameter")
+end)
+
+test("Field.bake grid extends to cover anti-gravity zone at hard boundary", function()
+	local level = singleSquareLevel()
+	local worldField = Field.bake(level, Config)
+
+	-- Play area is 1280x720, anti-gravity zone is 50% play area width = 640px beyond edge
+	local hardBoundary = 640
+	local cellSize = Config.field.cellSize
+
+	-- Grid should extend from -hardBoundary to 1280+hardBoundary in X
+	-- and -hardBoundary to 720+hardBoundary in Y
+	local expectedMinX = -hardBoundary
+	local expectedMaxX = 1280 + hardBoundary
+	local expectedMinY = -hardBoundary
+	local expectedMaxY = 720 + hardBoundary
+
+	assertNear(expectedMinX, worldField.minX, 0.000001, "expected worldField.minX to cover hard boundary")
+	assertNear(expectedMinY, worldField.minY, 0.000001, "expected worldField.minY to cover hard boundary")
+
+	-- Cell count should cover the full area
+	local expectedWidth = expectedMaxX - expectedMinX
+	local expectedHeight = expectedMaxY - expectedMinY
+	local expectedCols = math.ceil(expectedWidth / cellSize)
+	local expectedRows = math.ceil(expectedHeight / cellSize)
+
+	assertEqual(expectedCols, worldField.cols, string.format("expected cols=%d, got %d", expectedCols, worldField.cols))
+	assertEqual(expectedRows, worldField.rows, string.format("expected rows=%d, got %d", expectedRows, worldField.rows))
+end)
+
+test("Field boundary field samples correctly (zero inside, repulsive outside)", function()
+	local level = singleSquareLevel()
+	local worldField, boundaryField = Field.bake(level, Config)
+
+	-- Inside play area, boundary field should be zero or very small
+	-- Play area is centered at origin: -640 to 640 in X, -360 to 360 in Y
+	local insideCenter = Field.sample(boundaryField, 0, 0)
+	assertTrue(math.abs(insideCenter.x) < 1, "expected boundary field to be near zero at play area center")
+	assertTrue(math.abs(insideCenter.y) < 1, "expected boundary field to be near zero at play area center")
+
+	-- Outside play area (anti-gravity zone), boundary field should be repulsive (toward center)
+	-- Sample from the anti-gravity zone on the right (beyond X = 640)
+	local rightZone = Field.sample(boundaryField, 640 + 100, 0)
+	assertTrue(rightZone.x < 0, "expected boundary field to repel leftward (toward center) from right zone")
+
+	-- Sample from the anti-gravity zone on the left (beyond X = -640)
+	local leftZone = Field.sample(boundaryField, -640 - 100, 0)
+	assertTrue(leftZone.x > 0, "expected boundary field to repel rightward (toward center) from left zone")
 end)

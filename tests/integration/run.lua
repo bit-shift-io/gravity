@@ -8,10 +8,10 @@ local defaultTestFiles = {
 	"tests/integration/tank_mode_test.lua",
 	"tests/integration/shooting_test.lua",
 	"tests/integration/ship_bounce_test.lua",
-	"tests/integration/lost_to_space_test.lua",
 	"tests/integration/asteroid_crash_test.lua",
 	"tests/integration/asteroid_collisions_test.lua",
 	"tests/integration/remote_detonation_test.lua",
+	"tests/integration/hard_boundary_test.lua",
 }
 
 local tests = {}

@@ -196,3 +196,36 @@ test("Collide.checkProjectileAsteroid returns nil when the projectile's centre i
 
 	assertTrue(Collide.checkProjectileAsteroid(projectile, asteroid) == nil)
 end)
+
+test("Collide.checkHardBoundary returns nil when a body is inside the hard boundary", function()
+	local boundaryRadius = 1280
+	-- Body at distance 1000 with radius 10, inside boundary (1000 + 10 = 1010 < 1280)
+	local hit = Collide.checkHardBoundary(1000, 0, 10, boundaryRadius)
+	assertTrue(hit == nil, "expected a body inside the boundary to return nil")
+end)
+
+test("Collide.checkHardBoundary returns a contact when a body crosses the hard boundary", function()
+	local boundaryRadius = 1280
+	-- Body at distance 1290 with radius 10, just outside boundary (1290 - 10 = 1280, so it's at the threshold)
+	-- Let's use distance 1300 to be clearly outside: 1300 > 1280 - 10 = 1270
+	local hit = Collide.checkHardBoundary(1300, 0, 10, boundaryRadius)
+	assertTrue(hit ~= nil, "expected a body outside the boundary to return a contact")
+	assertNear(0, hit.normal.y, 0.0001, "expected normal to point outward (along positive x)")
+	assertNear(1, hit.normal.x, 0.0001, "expected normal to point rightward")
+end)
+
+test("Collide.checkHardBoundary returns the correct normal for a body outside the boundary at an angle", function()
+	local boundaryRadius = 1280
+	-- Body at 45 degrees, distance 1500 from origin with radius 10
+	-- Distance 1500 > 1280, so it's outside; plus radius 10 makes it definitely outside
+	local dist = 1500
+	local x = dist / math.sqrt(2)
+	local y = dist / math.sqrt(2)
+	local hit = Collide.checkHardBoundary(x, y, 10, boundaryRadius)
+	assertTrue(hit ~= nil, "expected a body outside the boundary to return a contact")
+	-- Normal should point along the direction from origin to body: (x/dist, y/dist)
+	local expectedNx = x / dist
+	local expectedNy = y / dist
+	assertNear(expectedNx, hit.normal.x, 0.0001, "expected normal x component")
+	assertNear(expectedNy, hit.normal.y, 0.0001, "expected normal y component")
+end)

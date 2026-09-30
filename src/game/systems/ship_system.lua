@@ -224,13 +224,14 @@ end
 -- "Systems and frame order", step 5). Contacts are typed by `contact.kind`
 -- (src/sim/step.lua) so this only acts on the kinds that are its job:
 -- "shipWorld" (land/crash, unchanged since slice 05), "shipShip" (bounce,
--- new this slice), and "shipAsteroid" (crash, this slice). Armed
--- "projectileShip" contacts and their resulting ship deaths are now handled by
--- src/game/blast.lua's Blast.detonate instead; the bounce half of an unarmed
--- "projectileShip" contact is src/game/systems/projectile_system.lua's
--- ProjectileSystem.handleContacts' job. The sim only reports contacts; land vs
--- crash is decided here via Lander.check, never in src/sim/ (this slice's
--- Gotcha, carried over from 05).
+-- new this slice), "shipAsteroid" (crash, this slice), and "shipHardBoundary"
+-- (hard boundary kill, new this slice). Armed "projectileShip" contacts and
+-- their resulting ship deaths are now handled by src/game/blast.lua's
+-- Blast.detonate instead; the bounce half of an unarmed "projectileShip"
+-- contact is src/game/systems/projectile_system.lua's ProjectileSystem.
+-- handleContacts' job. The sim only reports contacts; land vs crash is
+-- decided here via Lander.check, never in src/sim/ (this slice's Gotcha,
+-- carried over from 05).
 function ShipSystem.handleContacts(ctx, contacts)
 	pruneEvents(ctx)
 
@@ -294,6 +295,22 @@ function ShipSystem.handleContacts(ctx, contacts)
 			end
 		elseif contact.kind == "shipShip" then
 			resolveShipBounce(contact.a, contact.b, contact.normal, ctx.config)
+		elseif contact.kind == "shipHardBoundary" then
+			-- Ship touched the hard boundary: instant death
+			for _, ship in ipairs(ctx.pools.ships) do
+				local body = Bodies.get(ctx.sim.bodies, ship.body)
+				if body and body == contact.a and not ship.dead then
+					ship.dead = true
+					Bodies.markDead(ctx.sim.bodies, ship.body)
+					table.insert(ctx.events, {
+						kind = "crash",
+						x = body.x,
+						y = body.y,
+						angle = body.angle,
+						time = ctx.time,
+					})
+				end
+			end
 		end
 	end
 end

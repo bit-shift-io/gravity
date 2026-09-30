@@ -130,6 +130,13 @@ local Config = {
 		density = 0.6,
 	},
 	match = {},
+	-- Camera zoom tuning (src/app/camera.lua). bufferRadius is the additional
+	-- margin around each player that the camera ensures stays visible (px).
+	-- zoomSpeed is the interpolation speed for smooth zoom transitions (units/s).
+	camera = {
+		bufferRadius = 100,
+		zoomSpeed = 2.0,
+	},
 	-- Softened inverse-square law shared by the baked static field
 	-- (src/sim/field.lua) and later pairwise dynamic gravity (src/sim/gravity.lua,
 	-- docs/adr/0002-hybrid-gravity-field.md).
@@ -140,11 +147,6 @@ local Config = {
 	-- The static gravity field grid (src/sim/field.lua).
 	field = {
 		cellSize = 16,
-	},
-	-- The soft-boundary margin added around the 1280x720 play area when
-	-- baking the field grid (src/sim/field.lua Field.bake).
-	boundary = {
-		margin = 128,
 	},
 }
 

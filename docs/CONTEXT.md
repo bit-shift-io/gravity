@@ -78,9 +78,21 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 ## Lost to space
 - **Definition:** A ship that drifts past the soft-boundary margin is destroyed.
 
-## Soft boundary
+## Hard boundary
+- **Definition:** A circle beyond the anti-gravity zone where ships are killed and projectiles explode.
+- **Boundary:** Asteroids pass through and despawn off-camera. Replaces soft boundary in v2+.
+
+## Anti-gravity zone
+- **Definition:** The region between the play area edge and hard boundary where negative gravity repels ships and projectiles.
+- **Boundary:** Defined by boundary distance (50% play area width). Asteroids unaffected.
+
+## Boundary anti-gravity field
+- **Definition:** A baked static field applying repulsive force in the anti-gravity zone.
+- **Boundary:** Only affects ships and projectiles, not asteroids. Computed once at level load.
+
+## Soft boundary (deprecated)
 - **Definition:** A margin beyond the screen edge where bodies may travel; ships there show an edge arrow.
-- **Boundary:** Ships past it are lost to space; projectiles and asteroids past it despawn.
+- **Boundary:** Replaced by hard boundary. Ships past it are lost to space; projectiles and asteroids past it despawn. Removed in v2+.
 
 ## Round
 - **Definition:** Play from spawn until at most one ship remains. Both dying in the same step is a draw.

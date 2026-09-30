@@ -8,10 +8,10 @@ local Bodies = require("src.sim.bodies")
 local Sim = require("src.sim.step")
 local Pools = require("src.game.pools")
 local Rng = require("src.core.rng")
+local Camera = require("src.app.camera")
 local ShipSystem = require("src.game.systems.ship_system")
 local ProjectileSystem = require("src.game.systems.projectile_system")
 local AsteroidSystem = require("src.game.systems.asteroid_system")
-local BoundarySystem = require("src.game.systems.boundary_system")
 
 local Match = {}
 
@@ -33,12 +33,14 @@ local Match = {}
 -- fine even in src/game/, which must stay love-free but not
 -- side-effect-free).
 function Match.new(level, config, seed)
+	local worldField, boundaryField = Field.bake(level, config)
 	local ctx = {
 		dt = 0,
 		time = 0,
 		pools = Pools.new(),
 		sim = {
-			field = Field.bake(level, config),
+			field = worldField,
+			boundaryField = boundaryField,
 			bodies = Bodies.new(),
 		},
 		level = level,
@@ -46,6 +48,7 @@ function Match.new(level, config, seed)
 		intents = {},
 		rng = Rng.new(seed or os.time()),
 		events = {},
+		camera = Camera.new(),
 	}
 
 	-- Two ships spawn floating at the level's fixture spawn points, one per
@@ -112,10 +115,36 @@ function Match.step(ctx)
 
 	-- 6. Round rules. Empty stub -- slice 10.
 
-	-- Boundary check: mark any body outside the soft-boundary margin as dead,
-	-- so they are removed in the despawn sweep (slice 08). Called before the
-	-- sweep so the sweep removes them -- do not write a second removal path.
-	BoundarySystem.update(ctx)
+	-- Update camera zoom to fit all ships with buffer margin.
+	-- Keep dead ships in zoom calculation during death animation (until despawn sweep below).
+	local ships = ctx.pools.ships
+	if #ships >= 2 then
+		local body1 = Bodies.get(ctx.sim.bodies, ships[1].body)
+		local body2 = Bodies.get(ctx.sim.bodies, ships[2].body)
+		if body1 and body2 then
+			local targetZoom = Camera.calculateTargetZoom(
+				{ x = body1.x, y = body1.y },
+				{ x = body2.x, y = body2.y },
+				ctx.config.camera.bufferRadius,
+				1280,
+				720
+			)
+			Camera.updateZoom(ctx.camera, targetZoom, ctx.config.camera.zoomSpeed, ctx.dt)
+		end
+	elseif #ships == 1 then
+		-- Only one ship left: zoom to fit just that ship (with buffer)
+		local body1 = Bodies.get(ctx.sim.bodies, ships[1].body)
+		if body1 then
+			local targetZoom = Camera.calculateTargetZoom(
+				{ x = body1.x, y = body1.y },
+				{ x = body1.x, y = body1.y },  -- Same position for both = zoom on one ship
+				ctx.config.camera.bufferRadius,
+				1280,
+				720
+			)
+			Camera.updateZoom(ctx.camera, targetZoom, ctx.config.camera.zoomSpeed, ctx.dt)
+		end
+	end
 
 	-- 7. Despawn sweep -- the only place records and bodies are removed.
 	-- Pools sweep first so no record is left pointing at a body id that

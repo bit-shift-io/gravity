@@ -8,6 +8,7 @@
 local Level = require("src.game.level")
 local Match = require("src.game.match")
 local WorldsRender = require("src.app.render.worlds")
+local BoundaryRender = require("src.app.render.boundary")
 local ShipsRender = require("src.app.render.ships")
 local ProjectilesRender = require("src.app.render.projectiles")
 local AsteroidsRender = require("src.app.render.asteroids")
@@ -41,11 +42,24 @@ function MatchState.update(ctx, dt)
 end
 
 function MatchState.draw(ctx)
+	-- Apply camera transform (position + zoom) to all world-space rendering.
+	-- Camera is centered at (0, 0); translate by negative camera position to
+	-- move the view, then scale by zoom level.
+	love.graphics.push()
+	love.graphics.translate(640, 360)  -- Move viewport center to screen center
+	love.graphics.scale(ctx.camera.zoom)
+	love.graphics.translate(-ctx.camera.x, -ctx.camera.y)  -- Apply camera position
+
 	WorldsRender.draw(ctx.level)
+	BoundaryRender.draw(ctx)
 	AsteroidsRender.draw(ctx)
 	ShipsRender.draw(ctx)
 	ProjectilesRender.draw(ctx)
 	EffectsRender.draw(ctx)
+
+	love.graphics.pop()
+
+	-- HUD and debug overlay are drawn in screen space (not affected by camera)
 	Hud.draw(ctx)
 	DebugOverlay.draw(ctx)
 end

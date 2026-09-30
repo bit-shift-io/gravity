@@ -12,32 +12,32 @@ function FixtureLevel.new()
 			{
 				-- Convex: an octagon near the bottom-left of the arena.
 				vertices = {
-					{ x = 260, y = 500 },
-					{ x = 340, y = 440 },
-					{ x = 460, y = 440 },
-					{ x = 540, y = 500 },
-					{ x = 540, y = 600 },
-					{ x = 460, y = 660 },
-					{ x = 340, y = 660 },
-					{ x = 260, y = 600 },
+					{ x = -380, y = 140 },
+					{ x = -300, y = 80 },
+					{ x = -180, y = 80 },
+					{ x = -100, y = 140 },
+					{ x = -100, y = 240 },
+					{ x = -180, y = 300 },
+					{ x = -300, y = 300 },
+					{ x = -380, y = 240 },
 				},
 			},
 			{
 				-- Concave: an L-shape near the top-right of the arena, with
-				-- a reflex vertex at (880, 260).
+				-- a reflex vertex at (240, -100).
 				vertices = {
-					{ x = 780, y = 160 },
-					{ x = 1020, y = 160 },
-					{ x = 1020, y = 260 },
-					{ x = 880, y = 260 },
-					{ x = 880, y = 360 },
-					{ x = 780, y = 360 },
+					{ x = 140, y = -200 },
+					{ x = 380, y = -200 },
+					{ x = 380, y = -100 },
+					{ x = 240, y = -100 },
+					{ x = 240, y = 0 },
+					{ x = 140, y = 0 },
 				},
 			},
 		},
 		spawnPoints = {
-			{ x = 200, y = 200 },
-			{ x = 1080, y = 520 },
+			{ x = -440, y = -160 },
+			{ x = 440, y = 160 },
 		},
 		asteroids = {
 			maxAlive = 2,

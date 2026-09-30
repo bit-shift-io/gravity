@@ -23,6 +23,15 @@ test("Match.new bakes the static gravity field into ctx.sim.field", function()
 	assertTrue(ctx.sim.field.rows > 0)
 end)
 
+test("Match.new bakes the boundary anti-gravity field into ctx.sim.boundaryField", function()
+	local level = { worlds = {} }
+	local ctx = Match.new(level, Config)
+
+	assertTrue(ctx.sim.boundaryField ~= nil)
+	assertTrue(ctx.sim.boundaryField.cols > 0)
+	assertTrue(ctx.sim.boundaryField.rows > 0)
+end)
+
 test("Match.step exists and does not error on an empty ctx", function()
 	local ctx = Match.new({ worlds = {} }, Config)
 	ctx.dt = 1 / 60
