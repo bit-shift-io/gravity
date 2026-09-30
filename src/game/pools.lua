@@ -12,6 +12,7 @@ function Pools.new()
 		ships = {},
 		projectiles = {},
 		asteroids = {},
+		particles = {},
 	}
 end
 
@@ -36,6 +37,7 @@ function Pools.sweep(pools)
 	sweepArray(pools.ships)
 	sweepArray(pools.projectiles)
 	sweepArray(pools.asteroids)
+	sweepArray(pools.particles)
 end
 
 return Pools

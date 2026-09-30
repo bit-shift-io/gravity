@@ -40,6 +40,13 @@ local Config = {
 		collisionRadius = 9,
 		restitution = 1,
 	},
+	-- Thruster effect tuning (src/game/components/thruster_effect.lua, src/game/systems/particle_system.lua).
+	thrusterEffect = {
+		spawnDelay = 0.5,
+		mass = 0.001,
+		radius = 1,
+		color = { r = 1, g = 0.8, b = 0.2 },
+	},
 	-- Landing tuning (src/game/components/lander.lua, src/game/systems/
 	-- ship_system.lua). maxSpeed is in px/s, measured relative to the
 	-- surface point touched (docs/CONTEXT.md "Landing"); any angle lands.

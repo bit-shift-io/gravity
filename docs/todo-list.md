@@ -18,6 +18,7 @@ This should help the case where asteroids graze a world but currently just disap
 
 2. Player thrust exhaust effects - when the player thrusts, we want to see some particles emitted from the exhaust point. Likely not from a single point but a small line segment at the back of the ship, maybe 50% of the length of the back line of the ship triangle.
 These particles fly back and are affected by gravity. These should then fade out over a short period after maybe 2 seconds.
+INPROGRESS: AI to review my commits check the systems are named suitably and conform to the expected pattern. Correct as required. Particle system might be too generic a name?
 
 3. Morph animation - refer to .scratch/tank-mode-and-charged-shells/slices/03-morph-animation.md
 

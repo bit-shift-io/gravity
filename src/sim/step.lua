@@ -84,7 +84,7 @@ end
 function Sim.collide(sim, worlds)
 	local contacts = {}
 
-	local ships, unpinnedShips, projectiles, asteroids = {}, {}, {}, {}
+	local ships, unpinnedShips, projectiles, asteroids, particles  = {}, {}, {}, {}, {}
 	for _, body in pairs(sim.bodies.slots) do
 		if not body.dead then
 			if body.kind == "ship" then
@@ -96,6 +96,8 @@ function Sim.collide(sim, worlds)
 				table.insert(projectiles, body)
 			elseif body.kind == "asteroid" then
 				table.insert(asteroids, body)
+			elseif body.kind == "particle" then
+				table.insert(particles, body)
 			end
 		end
 	end

@@ -13,6 +13,7 @@
 -- circle for ship-vs-ship and projectile-vs-ship contacts.
 local Bodies = require("src.sim.bodies")
 local Thruster = require("src.game.components.thruster")
+local ThrusterEffect = require("src.game.components.thruster_effect")
 local Lander = require("src.game.components.lander")
 local Turret = require("src.game.components.turret")
 local Weapon = require("src.game.components.weapon")
@@ -57,6 +58,7 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 			burnRate = shipConfig.fuel.burnRate,
 		},
 		thruster = { accel = shipConfig.thrustAccel },
+		thrusterEffect = { particleSpawnTimer = 0 },
 		lander = { state = "flying", host = nil, liftOffTime = -1 },
 		turret = { angle = 0 },
 		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false, shell = nil, consumed = false, prevChargeThisRound = 0 },
@@ -117,6 +119,10 @@ function ShipSystem.update(ctx)
 						y = body.y + direction.y * 10,
 					}
 					Weapon.update(ship, ctx, origin, direction)
+				end
+
+				if Thruster.isThrusting(ship, ctx) then
+					ThrusterEffect.update(ship, ctx)
 				end
 			end
 		end

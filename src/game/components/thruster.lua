@@ -19,16 +19,35 @@ local NOSE = { x = 0, y = -1 }
 -- build up enough velocity to escape gravity near the surface.
 local LIFTOFF_BOOST_DURATION = 0.3
 
-function Thruster.apply(ship, ctx)
+
+function Thruster.isThrusting(ship, ctx)
 	local intent = ctx.intents[ship.player]
-	if not intent or not intent.thrust then
-		return
+	if not intent then
+		return false
 	end
 
 	local fuel = ship.fuel
 	if Fuel.isEmpty(fuel) then
+		return false
+	end
+
+	return intent.thrust or false
+end
+
+function Thruster.apply(ship, ctx)
+	if not Thruster.isThrusting(ship, ctx) then
 		return
 	end
+
+	-- local intent = ctx.intents[ship.player]
+	-- if not intent or not intent.thrust then
+	-- 	return
+	-- end
+
+	local fuel = ship.fuel
+	-- if Fuel.isEmpty(fuel) then
+	-- 	return
+	-- end
 
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
 	if not body then

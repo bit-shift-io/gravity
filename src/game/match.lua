@@ -12,6 +12,7 @@ local Camera = require("src.app.camera")
 local ShipSystem = require("src.game.systems.ship_system")
 local ProjectileSystem = require("src.game.systems.projectile_system")
 local AsteroidSystem = require("src.game.systems.asteroid_system")
+local ParticleSystem = require("src.game.systems.particle_system")
 
 local Match = {}
 
@@ -95,6 +96,9 @@ function Match.step(ctx)
 	-- ctx.level.asteroids.maxAlive.
 	AsteroidSystem.update(ctx)
 
+	-- Particle system.
+	ParticleSystem.update(ctx)
+
 	-- 4. Sim.integrate: gravity + integrate only (slice 09 split Sim.step
 	-- into Sim.integrate/Sim.collide -- see src/sim/step.lua's header).
 	Sim.integrate(ctx.sim, ctx.dt, ctx.config)
@@ -112,6 +116,7 @@ function Match.step(ctx)
 	ShipSystem.handleContacts(ctx, contacts)
 	ProjectileSystem.handleContacts(ctx, contacts)
 	AsteroidSystem.handleContacts(ctx, contacts)
+	ParticleSystem.handleContacts(ctx, contacts)
 
 	-- 6. Round rules. Empty stub -- slice 10.
 
