@@ -12,4 +12,20 @@ function Compat.isLove12()
 	return major >= 12
 end
 
+-- Plain RGBA canvas of the given pixel size, nearest-filtered so drawing it
+-- 1:1 stays sharp. newCanvas(w, h) is valid on both 11.5 and 12.
+function Compat.newCanvas(width, height, filter)
+	local canvas = love.graphics.newCanvas(width, height)
+	filter = filter or "nearest"
+	canvas:setFilter(filter, filter)
+	canvas:setWrap("clamp", "clamp")
+	return canvas
+end
+
+-- Shader from GLSL source. Same signature on 11.5 and 12; kept here so
+-- later effect slices have one place to adapt.
+function Compat.newShader(source)
+	return love.graphics.newShader(source)
+end
+
 return Compat

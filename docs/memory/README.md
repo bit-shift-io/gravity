@@ -8,3 +8,4 @@ Situational facts: true only when touching a particular area. One fact per file.
 - [asteroid-contact-handling-order.md](asteroid-contact-handling-order.md) — blast push must run before asteroid split; one split per asteroid per step
 - [fragments-cling-under-gravity.md](fragments-cling-under-gravity.md) — sibling immunity lasts while fragments touch; force separation by hand in tests
 - [particles-skip-pairwise-gravity.md](particles-skip-pairwise-gravity.md) — exhaust particles are passive bodies; pairwise gravity must skip them both ways
+- [post-pipeline-canvas-rules.md](post-pipeline-canvas-rules.md) — post-effects canvas size, order, resize, and what bypasses the pipeline

@@ -15,7 +15,3 @@
 2. tank turret with body makes a single shape - a single outline
 
 3. Morph animation - refer to .scratch/tank-mode-and-charged-shells/slices/03-morph-animation.md
-
-6. CRT monitor shader post effect. bubble/rounded corners to capture the curved screen, scan line effect, grainyness.
-
-7. glow shader effect

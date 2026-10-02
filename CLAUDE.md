@@ -11,3 +11,6 @@ Two-player local vector-style space duel with polygon worlds and gravity. LÖVE 
 - Unit tests: `sh test-unit.sh`. Run them freely.
 - Integration and e2e tiers take a few minutes. Run them only when the change needs the real harness, and once at the end of a piece of work, not per step.
 - Put new tests in the unit tier unless the behaviour needs the real harness. `src/game` runs under plain LuaJIT, so `Match.new` and `Match.step` work there.
+
+## Planning
+- This project has no ClickUp card. Never ask about one and never offer to archive plans there.

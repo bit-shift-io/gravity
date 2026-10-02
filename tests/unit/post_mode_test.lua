@@ -1,0 +1,33 @@
+local PostMode = require("src.app.post.post_mode")
+local Pipeline = require("src.app.post.pipeline")
+local Screen = require("src.app.screen")
+
+test("PostMode.next cycles off, glow, glow + CRT and wraps", function()
+	assertEqual("glow", PostMode.next("off"))
+	assertEqual("glowCrt", PostMode.next("glow"))
+	assertEqual("off", PostMode.next("glowCrt"))
+end)
+
+test("PostMode.has reports glow and CRT per mode", function()
+	assertEqual(false, PostMode.has("off", "glow"))
+	assertEqual(false, PostMode.has("off", "crt"))
+	assertEqual(true, PostMode.has("glow", "glow"))
+	assertEqual(false, PostMode.has("glow", "crt"))
+	assertEqual(true, PostMode.has("glowCrt", "glow"))
+	assertEqual(true, PostMode.has("glowCrt", "crt"))
+end)
+
+test("Pipeline.canvasSize rounds the fitted game rectangle", function()
+	local w, h = Pipeline.canvasSize(Screen.fit(1000, 700))
+	assertEqual(1000, w)
+	assertEqual(563, h) -- 720 * (1000/1280) = 562.5
+end)
+
+test("Pipeline.canvasSize is at least 1x1 for a minimised window", function()
+	local w, h = Pipeline.canvasSize(Screen.fit(1, 1))
+	assertEqual(1, w)
+	assertEqual(1, h)
+	w, h = Pipeline.canvasSize(Screen.fit(0, 0))
+	assertEqual(1, w)
+	assertEqual(1, h)
+end)

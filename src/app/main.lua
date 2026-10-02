@@ -6,6 +6,8 @@ local Screen = require("src.app.screen")
 local Config = require("src.game.config")
 local MatchState = require("src.app.states.match_state")
 local LevelGen = require("src.game.level_gen")
+local PostMode = require("src.app.post.post_mode")
+local Pipeline = require("src.app.post.pipeline")
 
 -- Fixed timestep of 1/60 s (docs/ARCHITECTURE.md "Rules"): the simulation
 -- must be deterministic for a given seed and input sequence, which a
@@ -17,6 +19,7 @@ local App = {}
 App.ctx = nil
 App.accumulator = 0
 App.seed = nil
+App.postMode = Config.post.defaultMode
 
 -- Dev helper: rebuild the match from a fresh level with the original seed, so
 -- a reset reproduces the initial state exactly.
@@ -87,6 +90,8 @@ end
 function love.keypressed(key)
 	if key == "r" and App.ctx then
 		App.reset()
+	elseif key == "p" then
+		App.postMode = PostMode.next(App.postMode)
 	end
 end
 
@@ -103,13 +108,12 @@ function love.draw()
 	local windowWidth, windowHeight = love.graphics.getDimensions()
 	local fit = Screen.fit(windowWidth, windowHeight)
 
-	love.graphics.push()
-	love.graphics.translate(fit.offsetX, fit.offsetY)
-	love.graphics.scale(fit.scale, fit.scale)
-
-	MatchState.draw(App.ctx)
-
-	love.graphics.pop()
+	-- Bars stay plain black: clear the window, then the pipeline draws the
+	-- game rectangle only.
+	love.graphics.clear(0, 0, 0, 1)
+	Pipeline.draw(fit, App.postMode, function()
+		MatchState.draw(App.ctx)
+	end)
 end
 
 return App

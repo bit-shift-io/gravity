@@ -147,3 +147,11 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 ## Passive body
 - **Definition:** A body that feels the static and boundary fields but neither exerts nor receives pairwise gravity.
 - **Boundary:** Only exhaust particles in v2.
+
+## Post mode
+- **Definition:** Which post effects are active: off, glow, or glow + CRT. `P` cycles them.
+- **Boundary:** Session-only. Not saved. Affects rendering only, never the sim.
+
+## Game rectangle
+- **Definition:** The letterboxed virtual-resolution area of the window that the match draws into.
+- **Boundary:** Post effects act on it alone. Letterbox bars outside it stay black.

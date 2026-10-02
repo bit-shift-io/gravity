@@ -215,7 +215,7 @@ local Config = {
 		-- Seconds the camera keeps framing a dead ship's death spot. Matches
 		-- the crash debris animation (src/app/render/effects.lua).
 		deathAnimationDuration = 0.6,
-		bufferRadius = 100,
+		bufferRadius = 30,
 		zoomSpeed = 2.0,
 	},
 	-- Softened inverse-square law shared by the baked static field
@@ -228,6 +228,37 @@ local Config = {
 	-- The static gravity field grid (src/sim/field.lua).
 	field = {
 		cellSize = 16,
+	},
+	-- Post-processing (src/app/post). defaultMode is the launch mode: "off",
+	-- "glow" or "glowCrt". `P` cycles it for the session.
+	post = {
+		defaultMode = "glowCrt",
+		-- Glow: pixels with a channel above threshold (0..1) are blurred at
+		-- half resolution and added back scaled by strength. radius is the
+		-- blur reach in virtual px (scales with the game rectangle); passes
+		-- is how many horizontal+vertical blur rounds run.
+		glow = {
+			strength = 0.8,
+			threshold = 0.35,
+			radius = 14,
+			passes = 2,
+		},
+		-- CRT (glowCrt mode): curvature is the barrel strength (0 = flat,
+		-- keep it small so edge cues stay readable); cornerRadius is in
+		-- fractions of half the screen height; vignette is edge darkening
+		-- (0..1).
+		crt = {
+			curvature = 0.1,
+			cornerRadius = 0.12,
+			vignette = 0.4,
+			-- Scanlines: intensity is darkening at line troughs (0..1); pitch
+			-- is screen pixels per period (constant across window sizes).
+			scanlineIntensity = 0.18,
+			scanlinePitch = 3,
+			-- Film grain: animated noise per screen pixel, visible inside the
+			-- mask. grain is the amplitude (0..1, subtle at 0.06).
+			grain = 0.06,
+		},
 	},
 }
 
