@@ -60,3 +60,27 @@ test("Collide.checkProjectileWorlds returns nil when the segment never crosses a
 
 	assertTrue(contact == nil)
 end)
+
+test("Sim.collide emits particleWorld for a fast particle that tunnels through a thin edge", function()
+	local Sim = require("src.sim.step")
+	local Bodies = require("src.sim.bodies")
+	local sim = { bodies = Bodies.new() }
+	-- Starts above the world, ends deep inside it after one step: the endpoint
+	-- alone is inside, but prevY/prevX make the swept test cross the top edge.
+	Bodies.add(sim.bodies, {
+		kind = "particle", passive = true, radius = 1,
+		x = 55, y = 500, prevX = 55, prevY = -500, vx = 0, vy = 0, mass = 0,
+	})
+	-- A thin sliver world the endpoint test would miss entirely.
+	local thin = {
+		vertices = Poly.normalize({
+			{ x = 0, y = 0 }, { x = 100, y = 0 }, { x = 100, y = 2 }, { x = 0, y = 2 },
+		}),
+	}
+
+	local contacts = Sim.collide(sim, { thin })
+
+	assertEqual(1, #contacts)
+	assertEqual("particleWorld", contacts[1].kind)
+	assertEqual("particle", contacts[1].a.kind)
+end)

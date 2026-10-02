@@ -13,6 +13,7 @@ local defaultTestFiles = {
 	"tests/integration/asteroid_split_test.lua",
 	"tests/integration/remote_detonation_test.lua",
 	"tests/integration/hard_boundary_test.lua",
+	"tests/integration/thruster_particles_test.lua",
 }
 
 local tests = {}

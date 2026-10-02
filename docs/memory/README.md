@@ -7,3 +7,4 @@ Situational facts: true only when touching a particular area. One fact per file.
 - [v1-pending-slices-predate-tank-mode.md](v1-pending-slices-predate-tank-mode.md) — remaining v1 slices use pre-tank-mode mechanics; how to read them
 - [asteroid-contact-handling-order.md](asteroid-contact-handling-order.md) — blast push must run before asteroid split; one split per asteroid per step
 - [fragments-cling-under-gravity.md](fragments-cling-under-gravity.md) — sibling immunity lasts while fragments touch; force separation by hand in tests
+- [particles-skip-pairwise-gravity.md](particles-skip-pairwise-gravity.md) — exhaust particles are passive bodies; pairwise gravity must skip them both ways

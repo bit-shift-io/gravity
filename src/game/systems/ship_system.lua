@@ -14,6 +14,7 @@
 local Bodies = require("src.sim.bodies")
 local Thruster = require("src.game.components.thruster")
 local ThrusterEffect = require("src.game.components.thruster_effect")
+local ParticleSystem = require("src.game.systems.particle_system")
 local Lander = require("src.game.components.lander")
 local Turret = require("src.game.components.turret")
 local Weapon = require("src.game.components.weapon")
@@ -21,6 +22,15 @@ local Collide = require("src.sim.collide")
 local Vec2 = require("src.core.vec2")
 
 local ShipSystem = {}
+
+local function emitExhaust(ship, ctx)
+	for _ = 1, ctx.config.thrusterEffect.particlesPerStep do
+		local position, velocity = ThrusterEffect.emit(ship, ctx)
+		if position then
+			ParticleSystem.spawn(ctx, position, velocity)
+		end
+	end
+end
 
 -- The ship's un-rotated nose vector, matching src/game/components/
 -- thruster.lua's NOSE and src/game/components/lander.lua's NOSE -- straight
@@ -58,7 +68,7 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 			burnRate = shipConfig.fuel.burnRate,
 		},
 		thruster = { accel = shipConfig.thrustAccel },
-		thrusterEffect = { particleSpawnTimer = 0 },
+		thrusterEffect = {},
 		lander = { state = "flying", host = nil, liftOffTime = -1 },
 		turret = { angle = 0 },
 		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false, shell = nil, consumed = false, prevChargeThisRound = 0 },
@@ -120,10 +130,11 @@ function ShipSystem.update(ctx)
 					}
 					Weapon.update(ship, ctx, origin, direction)
 				end
+			end
 
-				if Thruster.isThrusting(ship, ctx) then
-					ThrusterEffect.update(ship, ctx)
-				end
+			-- One emit per step, after lift-off has flipped a tank to flying.
+			if Thruster.isThrusting(ship, ctx) then
+				emitExhaust(ship, ctx)
 			end
 		end
 	end

@@ -49,3 +49,26 @@ test("Gravity.pairwise: a negative-mass body repels", function()
 
 	assertTrue(accel.b.x > 0, "expected body b to be pushed away from the negative-mass body")
 end)
+
+test("Gravity.pairwise: a passive body adds zero pull to others", function()
+	local bodies = {
+		a = { x = 0, y = 0, mass = 1000, passive = true },
+		b = { x = 10, y = 0, mass = 1 },
+	}
+
+	local accel = Gravity.pairwise(bodies, 1, 1)
+
+	assertNear(0, accel.b.x, 0.000001, "expected no pull from a passive body")
+	assertNear(0, accel.b.y, 0.000001, "expected no pull from a passive body")
+end)
+
+test("Gravity.pairwise: a passive body receives zero pairwise acceleration", function()
+	local bodies = {
+		a = { x = 0, y = 0, mass = 1000 },
+		b = { x = 10, y = 0, mass = 1, passive = true },
+	}
+
+	local accel = Gravity.pairwise(bodies, 1, 1)
+
+	assertEqual(nil, accel.b, "expected no pairwise entry (zero acceleration) for a passive body")
+end)

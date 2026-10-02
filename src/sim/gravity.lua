@@ -37,27 +37,35 @@ end
 -- mirrors that same flag on the receiving side only). A body never
 -- contributes to its own entry (self-exclusion is by identity, not
 -- position, so it holds even for two bodies that happen to coincide).
+-- A passive body (`body.passive`, docs/CONTEXT.md "Passive body") neither
+-- exerts nor receives, and has no entry in the result.
 -- A negative `mass` repels rather than attracts -- `Gravity.pointMass`
 -- already flips the sign, so no separate branch is needed here.
 function Gravity.pairwise(bodies, G, eps)
 	local accel = {}
+	-- Passive bodies (cosmetic, e.g. exhaust particles) are filtered out here,
+	-- once, so the O(n^2) loops below only ever see active bodies.
+	local sources = {}
+	local receivers = {}
 	for key, body in pairs(bodies) do
-		if not body.dead then
+		if not body.dead and not body.passive then
 			accel[key] = { x = 0, y = 0 }
+			sources[key] = body
+			if not body.pinned then
+				receivers[key] = body
+			end
 		end
 	end
 
-	for keyA, bodyA in pairs(accel) do
-		local receiver = bodies[keyA]
-		if not receiver.pinned then
-			for keyB, bodyB in pairs(bodies) do
-				if keyB ~= keyA and not bodyB.dead then
-					local dx = receiver.x - bodyB.x
-					local dy = receiver.y - bodyB.y
-					local ax, ay = Gravity.pointMass(dx, dy, bodyB.mass, G, eps)
-					bodyA.x = bodyA.x + ax
-					bodyA.y = bodyA.y + ay
-				end
+	for keyA, receiver in pairs(receivers) do
+		local entry = accel[keyA]
+		for keyB, bodyB in pairs(sources) do
+			if keyB ~= keyA then
+				local dx = receiver.x - bodyB.x
+				local dy = receiver.y - bodyB.y
+				local ax, ay = Gravity.pointMass(dx, dy, bodyB.mass, G, eps)
+				entry.x = entry.x + ax
+				entry.y = entry.y + ay
 			end
 		end
 	end

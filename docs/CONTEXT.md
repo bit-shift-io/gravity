@@ -127,3 +127,11 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 ## Pool transfer (reserved)
 - **Definition:** Moving a record between pools while keeping its body, e.g. ship → wreck.
 - **Boundary:** Not built in v1.
+
+## Exhaust particle
+- **Definition:** A short-lived visual body emitted from a thrusting ship's rear edge. Holds full alpha for 2 s, fades over 0.5 s.
+- **Boundary:** Passive. Destroyed by world, asteroid, or hard boundary contact. Ignores ships and projectiles. Never affects play.
+
+## Passive body
+- **Definition:** A body that feels the static and boundary fields but neither exerts nor receives pairwise gravity.
+- **Boundary:** Only exhaust particles in v2.

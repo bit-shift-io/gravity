@@ -42,10 +42,19 @@ local Config = {
 	},
 	-- Thruster effect tuning (src/game/components/thruster_effect.lua, src/game/systems/particle_system.lua).
 	thrusterEffect = {
-		spawnDelay = 0.5,
-		mass = 0.001,
+		particlesPerStep = 1,
+		-- Share of the rear edge (centred) particles are born on.
+		edgeFraction = 0.5,
+		-- px/s along the rear normal, relative to the ship.
+		exhaustSpeed = 120,
+		-- Max px/s of random sideways velocity, either direction.
+		spreadSpeed = 20,
 		radius = 1,
 		color = { r = 1, g = 0.8, b = 0.2 },
+		-- Particle lifetime tuning: hold full alpha for holdTime, then fade
+		-- linearly over fadeTime before removal.
+		holdTime = 2,
+		fadeTime = 0.5,
 	},
 	-- Landing tuning (src/game/components/lander.lua, src/game/systems/
 	-- ship_system.lua). maxSpeed is in px/s, measured relative to the

@@ -1,9 +1,14 @@
 -- Particle pool system.
 local Bodies = require("src.sim.bodies")
-local Vec2 = require("src.core.vec2")
-local Blast = require("src.game.blast")
 
 local ParticleSystem = {}
+
+-- Marks the particle and its body dead.
+-- Pools.sweep / Bodies.sweep do the actual removal.
+local function kill(ctx, particle)
+	particle.dead = true
+	Bodies.markDead(ctx.sim.bodies, particle.body)
+end
 
 -- Spawns a particle.
 function ParticleSystem.spawn(ctx, origin, velocity)
@@ -15,7 +20,9 @@ function ParticleSystem.spawn(ctx, origin, velocity)
 		vx = velocity.x,
 		vy = velocity.y,
 		angle = 0,
-		mass = config.mass,
+		-- Passive: exerts and receives no pairwise gravity, so mass is unused.
+		mass = 0,
+		passive = true,
 		kind = "particle",
 		radius = config.radius,
 		armed = false,
@@ -26,11 +33,15 @@ function ParticleSystem.spawn(ctx, origin, velocity)
 		id = bodyId,
 		body = bodyId,
 		dead = false,
-        life = 1, -- seconds
+		life = config.holdTime + config.fadeTime,
 		age = 0,
 	}
 
 	table.insert(ctx.pools.particles, particle)
+	-- Body-table -> particle record, so handleContacts needn't scan the pool.
+	-- Weak keys: entries vanish once Bodies.sweep frees the body.
+	ctx.pools.particleByBody = ctx.pools.particleByBody or setmetatable({}, { __mode = "k" })
+	ctx.pools.particleByBody[body] = particle
 
 	return particle
 end
@@ -59,21 +70,24 @@ function ParticleSystem.update(ctx)
 end
 
 -- Systems handle contacts (docs/ARCHITECTURE.md "Systems and frame order",
--- step 5)
+-- step 5). Only marks `dead`; Pools.sweep removes the record. Particles
+-- ignore ships and projectiles, so only world, asteroid and hard-boundary
+-- contacts are read. Looks each contact's body up in the body index, so the
+-- cost is O(contacts), not contacts x pool size. An asteroid appears in many
+-- contacts per step but is never `a` of a particle contact, so no other
+-- system's contact is consumed here.
 function ParticleSystem.handleContacts(ctx, contacts)
-	for _, contact in ipairs(contacts) do
-		if contact.kind == "particleWorld" or contact.kind == "particleShip" or contact.kind == "particleAsteroid" or contact.kind == "particleHardBoundary" then
-			for _, particle in ipairs(ctx.pools.particles) do
-				local body = Bodies.get(ctx.sim.bodies, particle.body)
-				if body and body == contact.a and not particle.dead then
-                    particle.dead = true
+	local byBody = ctx.pools.particleByBody
+	if not byBody then
+		return
+	end
 
-					-- if contact.kind == "particleWorld" or contact.kind == "particleAsteroid" or contact.kind == "particleHardBoundary" or contact.armed then
-					-- 	Blast.detonate(ctx, particle, body)
-					-- else
-					-- 	bounceOffShip(body, contact.b, contact.normal, ctx.config)
-					-- end
-				end
+	for _, contact in ipairs(contacts) do
+		local kind = contact.kind
+		if kind == "particleWorld" or kind == "particleAsteroid" or kind == "particleHardBoundary" then
+			local particle = byBody[contact.a]
+			if particle then
+				kill(ctx, particle)
 			end
 		end
 	end

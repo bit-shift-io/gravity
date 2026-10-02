@@ -39,15 +39,7 @@ function Thruster.apply(ship, ctx)
 		return
 	end
 
-	-- local intent = ctx.intents[ship.player]
-	-- if not intent or not intent.thrust then
-	-- 	return
-	-- end
-
 	local fuel = ship.fuel
-	-- if Fuel.isEmpty(fuel) then
-	-- 	return
-	-- end
 
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
 	if not body then

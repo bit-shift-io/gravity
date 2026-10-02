@@ -17,6 +17,8 @@ local defaultTestFiles = {
 	"tests/unit/integrate_test.lua",
 	"tests/unit/fuel_test.lua",
 	"tests/unit/thruster_test.lua",
+	"tests/unit/thruster_effect_test.lua",
+	"tests/unit/particle_alpha_test.lua",
 	"tests/unit/collide_test.lua",
 	"tests/unit/lander_test.lua",
 	"tests/unit/turret_test.lua",
