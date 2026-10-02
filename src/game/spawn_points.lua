@@ -54,15 +54,36 @@ function SpawnPoints.hasClearance(worlds, point, config)
 	return true
 end
 
--- Returns two spawn points `{ x, y, normal = { x, y }, world }`, the farthest-apart
--- pair of candidates that have clearance above them.
-function SpawnPoints.choose(worlds, config)
+-- Every candidate point that has clearance above it. Stored on the level
+-- (level.spawnCandidates) for later rounds' random respawns.
+function SpawnPoints.cleared(worlds, config)
 	local points = {}
 	for _, candidate in ipairs(candidates(worlds, config)) do
 		if SpawnPoints.hasClearance(worlds, candidate, config) then
 			points[#points + 1] = candidate
 		end
 	end
+	return points
+end
+
+-- Two distinct entries of `points` drawn with `rng` (src/core/rng.lua);
+-- no minimum distance. Returns fewer when `points` has fewer than two.
+function SpawnPoints.randomPair(points, rng)
+	local pool = {}
+	for i, point in ipairs(points) do
+		pool[i] = point
+	end
+	local pair = {}
+	for _ = 1, math.min(2, #pool) do
+		pair[#pair + 1] = table.remove(pool, rng:int(1, #pool))
+	end
+	return pair
+end
+
+-- Returns two spawn points `{ x, y, normal = { x, y }, world }`, the farthest-apart
+-- pair of candidates that have clearance above them.
+function SpawnPoints.choose(worlds, config, points)
+	points = points or SpawnPoints.cleared(worlds, config)
 	local best, bestDistance = nil, -1
 	for i = 1, #points - 1 do
 		for j = i + 1, #points do

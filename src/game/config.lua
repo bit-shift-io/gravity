@@ -219,6 +219,15 @@ local Config = {
 		snakeRetries = 10,
 	},
 	match = {},
+	-- Round cycle (src/game/systems/round_system.lua). endDelay is the seconds
+	-- between the round result locking and the next round's respawn;
+	-- winsToWin is the round wins that take the match (used by a later slice).
+	round = {
+		endDelay = 3,
+		-- Seconds the score card shows after the end delay; respawn follows.
+		cardDuration = 2,
+		winsToWin = 3,
+	},
 	-- Camera zoom tuning (src/app/camera.lua). bufferRadius is the additional
 	-- margin around each player that the camera ensures stays visible (px).
 	-- zoomSpeed is the interpolation speed for smooth zoom transitions (units/s).

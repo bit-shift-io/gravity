@@ -172,7 +172,8 @@ function LevelGen.generate(seed, config)
 		asteroids = { maxAlive = rng:int(cfg.maxAlive.min, cfg.maxAlive.max) },
 	}
 	assert(Level.validate(level))
-	level.spawnPoints = SpawnPoints.choose(level.worlds, config)
+	level.spawnCandidates = SpawnPoints.cleared(level.worlds, config)
+	level.spawnPoints = SpawnPoints.choose(level.worlds, config, level.spawnCandidates)
 	return level
 end
 

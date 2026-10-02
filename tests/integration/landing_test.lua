@@ -8,6 +8,11 @@
 local GameHarness = require("tests.support.game_harness")
 local FrameStepper = require("tests.support.frame_stepper")
 local Bodies = require("src.sim.bodies")
+local Config = require("src.game.config")
+
+-- These tests park the second ship out of bounds, so it dies at once; keep
+-- the round-end respawn from resetting the ship under test mid-scenario.
+local noRespawnConfig = setmetatable({ round = { endDelay = math.huge, winsToWin = 3 } }, { __index = Config })
 
 -- A wide flat platform with its top surface at y=310 (outward normal
 -- (0,-1), matching a ship's angle-0 nose exactly) -- wide enough that a
@@ -34,7 +39,7 @@ test("a ship dropped slowly nose-up onto a world lands, refuels to full, then li
 	-- Ship 2 is spawned far away so its pairwise pull on ship 1 (slice 06)
 	-- doesn't perturb the controlled vertical descent this test relies on.
 	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
@@ -78,7 +83,7 @@ end)
 
 test("a ship dropped fast crashes and its record is swept", function()
 	local level = flatWorldLevel({ { x = 640, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local bodyId = ship.body
@@ -96,7 +101,7 @@ end)
 
 test("a ship dropped sideways onto a world at moderate speed lands upright without embedding", function()
 	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, ship.body)

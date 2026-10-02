@@ -6,6 +6,7 @@ local Screen = require("src.app.screen")
 local Config = require("src.game.config")
 local MatchState = require("src.app.states.match_state")
 local LevelGen = require("src.game.level_gen")
+local RoundSystem = require("src.game.systems.round_system")
 local PostMode = require("src.app.post.post_mode")
 local Pipeline = require("src.app.post.pipeline")
 
@@ -21,7 +22,7 @@ App.accumulator = 0
 App.seed = nil
 App.postMode = Config.post.defaultMode
 
--- Dev helper: rebuild the match from a fresh level with the original seed, so
+-- Rematch (and dev reset on R): rebuild the match from a fresh level with the original seed, so
 -- a reset reproduces the initial state exactly.
 function App.reset()
 	-- Both ships start as tanks on the farthest-apart pair of surface points.
@@ -89,6 +90,8 @@ end
 
 function love.keypressed(key)
 	if key == "r" and App.ctx then
+		App.reset()
+	elseif (key == "return" or key == "kpenter" or key == "space") and App.ctx and RoundSystem.matchOver(App.ctx.round) then
 		App.reset()
 	elseif key == "p" then
 		App.postMode = PostMode.next(App.postMode)

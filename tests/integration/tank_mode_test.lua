@@ -2,6 +2,11 @@
 local GameHarness = require("tests.support.game_harness")
 local FrameStepper = require("tests.support.frame_stepper")
 local Bodies = require("src.sim.bodies")
+local Config = require("src.game.config")
+
+-- These tests park the second ship out of bounds, so it dies at once; keep
+-- the round-end respawn from resetting the ship under test mid-scenario.
+local noRespawnConfig = setmetatable({ round = { endDelay = math.huge, winsToWin = 3 } }, { __index = Config })
 
 -- A wide flat platform with its top surface at y=310 (outward normal
 -- (0,-1), matching a ship's angle-0 nose exactly).
@@ -24,7 +29,7 @@ end
 
 test("a tank ship's turret starts straight up and stays within the limit when spinning", function()
 	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
@@ -57,7 +62,7 @@ end)
 
 test("tank turret can spin left to -limit", function()
 	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
@@ -89,7 +94,7 @@ end)
 
 test("tank lift-off applies thrust along the surface normal, ignoring turret angle", function()
 	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
@@ -128,7 +133,7 @@ end)
 
 test("tank ship refuels while stationary on surface", function()
 	local level = flatWorldLevel({ { x = 640, y = 250 }, { x = -1000000, y = 250 } })
-	local game = GameHarness.startMatch(level)
+	local game = GameHarness.startMatch(level, { config = noRespawnConfig })
 	local ctx = game.ctx
 	local ship = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, ship.body)

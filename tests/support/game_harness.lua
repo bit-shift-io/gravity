@@ -14,6 +14,8 @@ local ProjectilesRender = require("src.app.render.projectiles")
 local AsteroidsRender = require("src.app.render.asteroids")
 local EffectsRender = require("src.app.render.effects")
 local Hud = require("src.app.render.hud")
+local ScoreCard = require("src.app.render.score_card")
+local MatchOver = require("src.app.render.match_over")
 local DebugOverlay = require("src.app.render.debug_overlay")
 local Input = require("src.app.input")
 
@@ -65,6 +67,8 @@ function GameHarness.startMatch(level, opts)
 		ProjectilesRender.draw(ctx)
 		EffectsRender.draw(ctx)
 		Hud.draw(ctx)
+		ScoreCard.draw(ctx)
+		MatchOver.draw(ctx)
 		DebugOverlay.draw(ctx)
 	end
 

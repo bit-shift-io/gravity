@@ -12,6 +12,9 @@ local MARGIN = 16
 local CHARGE_BAR_WIDTH = 200
 local CHARGE_BAR_HEIGHT = 6
 
+local PIP_RADIUS = 6
+local PIP_SPACING = 18
+
 local SCREEN_WIDTH = 1280
 local SCREEN_HEIGHT = 720
 
@@ -88,7 +91,29 @@ local function drawChargeBar(ship, ctx)
 	end
 end
 
+-- One pip per round win needed: filled for each win, outlined for the rest.
+-- Sits under the charge bar, growing inward from the player's screen edge.
+local function drawScorePips(ctx, player)
+	local total = ctx.config.round.winsToWin
+	local wins = ctx.round.score[player]
+	local y = MARGIN + BAR_HEIGHT + 8 + CHARGE_BAR_HEIGHT + 12
+	local color = PLAYER_COLOR[player]
+	for i = 1, total do
+		local x
+		if player == 1 then
+			x = MARGIN + PIP_RADIUS + (i - 1) * PIP_SPACING
+		else
+			x = 1280 - MARGIN - PIP_RADIUS - (i - 1) * PIP_SPACING
+		end
+		love.graphics.setColor(color)
+		love.graphics.circle(i <= wins and "fill" or "line", x, y, PIP_RADIUS)
+	end
+end
+
 function Hud.draw(ctx)
+	for player = 1, 2 do
+		drawScorePips(ctx, player)
+	end
 	for _, ship in ipairs(ctx.pools.ships) do
 		drawFuelBar(ship.player, ship.fuel)
 		drawChargeBar(ship, ctx)

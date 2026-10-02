@@ -15,6 +15,8 @@ local ParticlesRender = require("src.app.render.particles")
 local AsteroidsRender = require("src.app.render.asteroids")
 local EffectsRender = require("src.app.render.effects")
 local Hud = require("src.app.render.hud")
+local ScoreCard = require("src.app.render.score_card")
+local MatchOver = require("src.app.render.match_over")
 local DebugOverlay = require("src.app.render.debug_overlay")
 local Input = require("src.app.input")
 
@@ -66,6 +68,8 @@ function MatchState.draw(ctx)
 
 	-- HUD is drawn in screen space (not affected by camera)
 	Hud.draw(ctx)
+	ScoreCard.draw(ctx)
+	MatchOver.draw(ctx)
 end
 
 return MatchState

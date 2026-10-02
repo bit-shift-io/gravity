@@ -13,6 +13,7 @@ local ShipSystem = require("src.game.systems.ship_system")
 local ProjectileSystem = require("src.game.systems.projectile_system")
 local AsteroidSystem = require("src.game.systems.asteroid_system")
 local ParticleSystem = require("src.game.systems.particle_system")
+local RoundSystem = require("src.game.systems.round_system")
 
 local Match = {}
 
@@ -50,6 +51,7 @@ function Match.new(level, config, seed)
 		rng = Rng.new(seed or os.time()),
 		events = {},
 		camera = Camera.new(),
+		round = RoundSystem.new(),
 	}
 
 	-- Two ships spawn floating at the level's fixture spawn points, one per
@@ -118,7 +120,8 @@ function Match.step(ctx)
 	AsteroidSystem.handleContacts(ctx, contacts)
 	ParticleSystem.handleContacts(ctx, contacts)
 
-	-- 6. Round rules. Empty stub -- slice 10.
+	-- 6. Round rules: lock the result, score, and respawn after the end delay.
+	RoundSystem.update(ctx)
 
 	-- Update camera zoom to fit every player with buffer margin. A dead ship
 	-- stays in frame at its death spot until its crash animation finishes.

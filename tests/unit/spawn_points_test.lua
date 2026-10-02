@@ -119,3 +119,21 @@ test("SpawnPoints.hasClearance rejects a point on the wall of a narrow U gap", f
 	local onTop = { x = -40, y = -100, normal = { x = 0, y = -1 } }
 	assertTrue(SpawnPoints.hasClearance(worlds, onTop, Config))
 end)
+
+test("SpawnPoints.randomPair returns two distinct candidates", function()
+	local Rng = require("src.core.rng")
+	local points = SpawnPoints.cleared(twoBlocks(), Config)
+	for seed = 1, 30 do
+		local pair = SpawnPoints.randomPair(points, Rng.new(seed))
+		assertEqual(2, #pair)
+		assertTrue(pair[1] ~= pair[2], "seed " .. seed .. " drew the same candidate twice")
+	end
+end)
+
+test("SpawnPoints.randomPair is deterministic per seed", function()
+	local Rng = require("src.core.rng")
+	local points = SpawnPoints.cleared(twoBlocks(), Config)
+	local a = SpawnPoints.randomPair(points, Rng.new(7))
+	local b = SpawnPoints.randomPair(points, Rng.new(7))
+	assertTrue(a[1] == b[1] and a[2] == b[2])
+end)

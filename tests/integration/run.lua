@@ -14,6 +14,8 @@ local defaultTestFiles = {
 	"tests/integration/remote_detonation_test.lua",
 	"tests/integration/hard_boundary_test.lua",
 	"tests/integration/thruster_particles_test.lua",
+	"tests/integration/round_cycle_test.lua",
+	"tests/integration/match_flow_test.lua",
 }
 
 local tests = {}

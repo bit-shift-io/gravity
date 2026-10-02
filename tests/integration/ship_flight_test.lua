@@ -54,7 +54,10 @@ test("an empty tank disables thrust but the ship keeps rotating", function()
 	-- away so its pairwise pull on ship 1 (slice 06) is also negligible --
 	-- this test only cares about ship 1's own thrust/fuel behaviour.
 	local level = { worlds = {}, spawnPoints = { { x = 640, y = 360 }, { x = 640, y = -1000000 } } }
-	local game = GameHarness.startMatch(level)
+	-- Ship 2 starts out of bounds and dies at once; keep the round-end respawn
+	-- from refuelling ship 1 mid-scenario.
+	local noRespawn = setmetatable({ round = { endDelay = math.huge, winsToWin = 3 } }, { __index = Config })
+	local game = GameHarness.startMatch(level, { config = noRespawn })
 	local ship = game.ctx.pools.ships[1]
 	local capacity = ship.fuel.capacity
 	local burnRate = ship.fuel.burnRate
