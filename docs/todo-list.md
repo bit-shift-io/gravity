@@ -2,9 +2,13 @@
 
 # Medium Priority
 
+1. the gravity field debug modes are rendered in screen space, needs to be world space. i.e. zoom not rendering them right
+
 2. Rounds-and-matches - refer to .scratch/grav-ty-v1/10-rounds-and-match.md
 
-3. Procedural levels - refer to .scratch/grav-ty-v1/11-procedural-levels.md
+4. Support for more than 2 players, if there are gamepads attached we can have number of gamepads + up to 2 players on keyboard.
+
+5. Menus - .scratch/grav-ty-v1/12-menus-settings-gamepads.md
 
 # Low Priority
 
@@ -13,10 +17,6 @@
 2. tank turret with body makes a single shape - a single outline
 
 3. Morph animation - refer to .scratch/tank-mode-and-charged-shells/slices/03-morph-animation.md
-
-4. Support for more than 2 players, if there are gamepads attached we can have number of gamepads + up to 2 players on keyboard.
-
-5. Menus - .scratch/grav-ty-v1/12-menus-settings-gamepads.md
 
 6. CRT monitor shader post effect. bubble/rounded corners to capture the curved screen, scan line effect, grainyness.
 

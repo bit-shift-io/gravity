@@ -151,6 +151,62 @@ local Config = {
 		-- density or an explicit mass (src/game/level.lua Level.validate).
 		density = 0.6,
 	},
+	-- Spawn point selection (src/game/spawn_points.lua). edgeSamples is how
+	-- many evenly spaced candidate points sit on each world edge. A candidate
+	-- needs open space above it: clearSteps rows of probes up to clearHeight
+	-- px along the normal, each spread clearHalfWidth px either side.
+	spawn = {
+		edgeSamples = 3,
+		clearHeight = 40,
+		clearHalfWidth = 15,
+		clearSteps = 4,
+	},
+	-- Procedural blob level generation (src/game/level_gen.lua). Play area is
+	-- the 1280x720 virtual screen centred on the origin; edgeMargin (px) keeps
+	-- every world vertex that far inside it. Each world is a radial-noise blob:
+	-- vertexCount points evenly spaced in angle, each at baseRadius x (1 +/-
+	-- noiseAmplitude), so a blob's extent is at most
+	-- radius.max x (1 + noiseAmplitude). minGap (px) is the least
+	-- polygon-to-polygon distance between worlds. placementRetries bounds the
+	-- attempts to place one world before the world count is reduced.
+	-- maxAlive is the asteroid cap drawn per level, density the per-world
+	-- mass-per-area draw. A blob is notched with chance notchChance: notchVertices
+	-- adjacent vertices are each pulled the fraction notchDepth of the way to the
+	-- centre (1 = onto it), retried up to notchRetries times when the result
+	-- isn't a simple polygon, else the blob stays un-notched.
+	levelGen = {
+		playWidth = 1280,
+		playHeight = 720,
+		edgeMargin = 60,
+		worldCount = { min = 1, max = 3 },
+		radius = { min = 70, max = 130 },
+		vertexCount = { min = 12, max = 20 },
+		noiseAmplitude = 0.3,
+		minGap = 80,
+		placementRetries = 30,
+		density = { min = 0.4, max = 1.2 },
+		maxAlive = { min = 1, max = 2 },
+		notchChance = 0.5,
+		notchVertices = { min = 2, max = 4 },
+		notchDepth = { min = 0.35, max = 0.7 },
+		notchRetries = 5,
+		-- Snake worlds: with chance snakeChance a world is a polyline of
+		-- snakeSegments segments (each segmentLength px long) widened to armWidth
+		-- px. Each turn is +/-90 degrees with chance turn90Chance, else +/- a
+		-- turnAngle draw (radians). Outer corners are mitred, the miter capped at
+		-- miterLimit x half the arm width; vertices are then jittered by up to
+		-- vertexJitter px per axis. A non-simple snake is redrawn up to
+		-- snakeRetries times.
+		snakeChance = 0.4,
+		snakeSegments = { min = 2, max = 4 },
+		segmentLength = { min = 120, max = 220 },
+		armWidth = { min = 40, max = 70 },
+		turn90Chance = 0.7,
+		turnAngle = { min = math.rad(30), max = math.rad(150) },
+		miterLimit = 2,
+		vertexJitter = 4,
+		snakeRetries = 10,
+	},
 	match = {},
 	-- Camera zoom tuning (src/app/camera.lua). bufferRadius is the additional
 	-- margin around each player that the camera ensures stays visible (px).

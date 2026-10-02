@@ -37,10 +37,45 @@ end
 -- up the screen at angle 0.
 local NOSE = { x = 0, y = -1 }
 
+-- The ship's un-rotated nose vector, matching src/game/components/
+-- thruster.lua's NOSE -- used to snap a landing ship's angle exactly flush
+-- with the contact's outward normal (nose pointing away from the surface,
+-- like standing upright) rather than leaving it at whatever angle passed
+-- the alignment check.
+-- math.atan2 exists on LuaJIT/Lua 5.1 but was folded into a two-argument
+-- math.atan(y, x) from Lua 5.3 on -- support either so this still works
+-- under the plain `lua` fallback test-unit.sh/test-integration.sh use when
+-- luajit isn't installed.
+local atan2 = math.atan2 or function(y, x)
+	return math.atan(y, x)
+end
+
+local function angleFacing(direction)
+	return atan2(direction.x, -direction.y)
+end
+
+-- How far the deepest of `points` sits below the surface plane through
+-- `target` with outward `normal` (positive = penetrating). Used to lift a
+-- freshly upright-snapped ship exactly flush: at a sideways approach the
+-- vertex that touched first is a base corner, and the deepest vertex after
+-- re-angling is what would otherwise stay embedded.
+local function penetrationDepth(points, target, normal)
+	local depth = 0
+	for _, p in ipairs(points) do
+		local d = -Vec2.dot(Vec2.sub(p, target), normal)
+		if d > depth then
+			depth = d
+		end
+	end
+	return depth
+end
+
 -- Spawns a ship for `player` at `spawnPoint` (from the level's
 -- level.spawnPoints, src/game/levels/fixture_two_worlds.lua), floating with
--- zero velocity until gravity and player input move it. Returns the new
--- ship record.
+-- zero velocity until gravity and player input move it. A spawn point with a
+-- `normal` instead starts the ship in tank mode on `spawnPoint.world`: upright
+-- on the normal, pinned, turret up, like a landing (handleContacts below).
+-- Returns the new ship record.
 function ShipSystem.spawn(ctx, player, spawnPoint)
 	local shipConfig = ctx.config.ship
 
@@ -73,6 +108,20 @@ function ShipSystem.spawn(ctx, player, spawnPoint)
 		turret = { angle = 0 },
 		weapon = { kind = "shell", charging = false, charge = 0, prevFire = false, shell = nil, consumed = false, prevChargeThisRound = 0 },
 	}
+
+	if spawnPoint.normal then
+		body.angle = angleFacing(spawnPoint.normal)
+		-- Lift the hull flush with the surface so it isn't born embedded.
+		local shipPoints = Collide.transform(Collide.SHIP_SHAPE, body.x, body.y, body.angle)
+		local depth = penetrationDepth(shipPoints, spawnPoint, spawnPoint.normal)
+		body.x = body.x + spawnPoint.normal.x * depth
+		body.y = body.y + spawnPoint.normal.y * depth
+		body.pinned = true
+
+		ship.lander.state = "tank"
+		ship.lander.host = spawnPoint.world
+		Turret.reset(ship)
+	end
 
 	table.insert(ctx.pools.ships, ship)
 	return ship
@@ -138,39 +187,6 @@ function ShipSystem.update(ctx)
 			end
 		end
 	end
-end
-
--- The ship's un-rotated nose vector, matching src/game/components/
--- thruster.lua's NOSE -- used to snap a landing ship's angle exactly flush
--- with the contact's outward normal (nose pointing away from the surface,
--- like standing upright) rather than leaving it at whatever angle passed
--- the alignment check.
--- math.atan2 exists on LuaJIT/Lua 5.1 but was folded into a two-argument
--- math.atan(y, x) from Lua 5.3 on -- support either so this still works
--- under the plain `lua` fallback test-unit.sh/test-integration.sh use when
--- luajit isn't installed.
-local atan2 = math.atan2 or function(y, x)
-	return math.atan(y, x)
-end
-
-local function angleFacing(direction)
-	return atan2(direction.x, -direction.y)
-end
-
--- How far the deepest of `points` sits below the surface plane through
--- `target` with outward `normal` (positive = penetrating). Used to lift a
--- freshly upright-snapped ship exactly flush: at a sideways approach the
--- vertex that touched first is a base corner, and the deepest vertex after
--- re-angling is what would otherwise stay embedded.
-local function penetrationDepth(points, target, normal)
-	local depth = 0
-	for _, p in ipairs(points) do
-		local d = -Vec2.dot(Vec2.sub(p, target), normal)
-		if d > depth then
-			depth = d
-		end
-	end
-	return depth
 end
 
 -- Seconds a crash event is kept on ctx.events before being pruned --

@@ -5,4 +5,4 @@ tests/screenshots/
 *.*~
 /*.png
 tmp/
-# .scratch/
+.scratch/

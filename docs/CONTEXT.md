@@ -111,7 +111,19 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Seed
 - **Definition:** The number that determines a match's generated level and asteroid spawns.
-- **Boundary:** Shown on the score card. Can be fixed to replay a layout.
+- **Boundary:** Logged to the console at match start. Can be fixed with `seed=N` to replay a layout.
+
+## Blob world
+- **Definition:** A generated world shaped from radial noise around a centre, sometimes with a concave notch.
+- **Boundary:** Always a simple polygon. One of two generated world kinds.
+
+## Snake world
+- **Definition:** A generated world built from a random turning polyline widened into a polygon, giving L, U, and S shapes.
+- **Boundary:** Always a simple polygon. Vertices are lightly jittered.
+
+## Spawn point
+- **Definition:** A surface point with an outward normal where a ship starts in tank mode, chosen as the farthest-apart pair.
+- **Boundary:** Needs clear space above it. A point with no normal means a floating start.
 
 ## Hardcore
 - **Definition:** A match setting where rotating burns fuel.

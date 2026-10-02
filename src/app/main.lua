@@ -5,7 +5,7 @@
 local Screen = require("src.app.screen")
 local Config = require("src.game.config")
 local MatchState = require("src.app.states.match_state")
-local FixtureLevel = require("src.game.levels.fixture_two_worlds")
+local LevelGen = require("src.game.level_gen")
 
 -- Fixed timestep of 1/60 s (docs/ARCHITECTURE.md "Rules"): the simulation
 -- must be deterministic for a given seed and input sequence, which a
@@ -21,7 +21,9 @@ App.seed = nil
 -- Dev helper: rebuild the match from a fresh level with the original seed, so
 -- a reset reproduces the initial state exactly.
 function App.reset()
-	App.ctx = MatchState.enter(FixtureLevel.new(), Config, App.seed)
+	-- Both ships start as tanks on the farthest-apart pair of surface points.
+	local level = LevelGen.generate(App.seed, Config)
+	App.ctx = MatchState.enter(level, Config, App.seed)
 	App.accumulator = 0
 end
 
@@ -73,10 +75,12 @@ function love.load(args)
 
 	love.graphics.setBackgroundColor(0, 0, 0)
 
-	-- Fixture level until level generation lands (slice 11). No menu yet
-	-- (slice 12) -- match_state is the only state, so it's entered directly
-	-- rather than showing a title screen first.
-	App.seed = os.time()
+	-- No menu yet (slice 12) -- match_state is the only state, so it's
+	-- entered directly rather than showing a title screen first. seed=N
+	-- fixes the generated level; otherwise the clock picks one, logged so a
+	-- good layout can be replayed.
+	App.seed = tonumber(findArg(args, "^seed=(.+)$")) or os.time()
+	print("seed=" .. App.seed)
 	App.reset()
 end
 
