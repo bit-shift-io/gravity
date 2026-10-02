@@ -58,12 +58,14 @@ function MatchState.draw(ctx)
 	ProjectilesRender.draw(ctx)
 	ParticlesRender.draw(ctx)
 	EffectsRender.draw(ctx)
+	-- The overlay is in world coordinates (field cells, world outlines), so it
+	-- shares the camera transform.
+	DebugOverlay.draw(ctx)
 
 	love.graphics.pop()
 
-	-- HUD and debug overlay are drawn in screen space (not affected by camera)
+	-- HUD is drawn in screen space (not affected by camera)
 	Hud.draw(ctx)
-	DebugOverlay.draw(ctx)
 end
 
 return MatchState
