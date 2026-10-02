@@ -10,8 +10,6 @@
 
 # Low Priority
 
-1. Asteroid death effect - asteroids that are small and are killed by an impact need an animation similar to the player killed animation - fade out + expanding line.
-
 2. tank turret with body makes a single shape - a single outline
 
 3. Morph animation - refer to .scratch/tank-mode-and-charged-shells/slices/03-morph-animation.md

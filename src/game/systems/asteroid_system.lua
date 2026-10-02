@@ -210,6 +210,15 @@ local function killAsteroid(ctx, asteroidBody)
 	if asteroid then
 		asteroid.dead = true
 		Bodies.markDead(ctx.sim.bodies, asteroid.body)
+		-- Renderer animates the outline breaking apart (src/app/render/effects.lua).
+		table.insert(ctx.events, {
+			kind = "asteroidDeath",
+			x = asteroidBody.x,
+			y = asteroidBody.y,
+			angle = asteroidBody.angle,
+			vertices = asteroidBody.vertices,
+			time = ctx.time,
+		})
 	end
 end
 

@@ -1,4 +1,4 @@
--- Transient visual effects: a crash's burst of line debris (docs/CONTEXT.md
+-- Transient visual effects: a small asteroid's breaking-up outline, a crash's burst of line debris (docs/CONTEXT.md
 -- "Crash"), a blast's expanding ring (docs/CONTEXT.md "Blast"), and a small
 -- indicator ring on a currently-landed, refuelling ship (src/app/render/hud.lua
 -- already shows the actual fuel level -- this is just a glance-able cue at the
@@ -48,6 +48,30 @@ local function drawCrash(event, ctx)
 	end
 end
 
+-- A destroyed small asteroid's hull edges drift apart and fade, in the same
+-- colour as a ship's crash. It grows less than a crash does (4x).
+local ASTEROID_DEATH_GROWTH = 0.8
+
+local function drawAsteroidDeath(event, ctx)
+	local age = ctx.time - (event.time or ctx.time)
+	local t = age / DEBRIS_DURATION
+	if t < 0 or t >= 1 then
+		return
+	end
+
+	local spread = 1 + t * ASTEROID_DEATH_GROWTH
+	local angle = event.angle or 0
+	local vertices = event.vertices
+	local n = #vertices
+
+	love.graphics.setColor(1, 0.4, 0.3, 1 - t)
+	for i = 1, n do
+		local a = Vec2.rotate(Vec2.scale(vertices[i], spread), angle)
+		local b = Vec2.rotate(Vec2.scale(vertices[i % n + 1], spread), angle)
+		love.graphics.line(event.x + a.x, event.y + a.y, event.x + b.x, event.y + b.y)
+	end
+end
+
 local function drawBlast(event, ctx)
 	local age = ctx.time - (event.time or ctx.time)
 	local t = age / BLAST_DURATION
@@ -72,6 +96,8 @@ function EffectsRender.draw(ctx)
 	for _, event in ipairs(ctx.events) do
 		if event.kind == "crash" then
 			drawCrash(event, ctx)
+		elseif event.kind == "asteroidDeath" then
+			drawAsteroidDeath(event, ctx)
 		elseif event.kind == "blast" then
 			drawBlast(event, ctx)
 		end
