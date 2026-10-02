@@ -129,7 +129,7 @@ local Config = {
 		minRadius = 20,
 		maxRadius = 55,
 		pointCount = 10,
-		density = 0.6,
+		density = 0.8,
 		spinRange = { min = -0.3, max = 0.3 },
 		speedRange = { min = 10, max = 90 },
 		aimSpread = 0.4,
@@ -149,7 +149,7 @@ local Config = {
 	world = {
 		-- Default mass-per-area for a world that doesn't set its own
 		-- density or an explicit mass (src/game/level.lua Level.validate).
-		density = 0.6,
+		density = 0.8,
 	},
 	-- Spawn point selection (src/game/spawn_points.lua). edgeSamples is how
 	-- many evenly spaced candidate points sit on each world edge. A candidate
