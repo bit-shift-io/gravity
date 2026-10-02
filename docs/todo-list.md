@@ -2,8 +2,6 @@
 
 # Medium Priority
 
-1. A keyboard button such as "r" to reset the game to its initial state - this just helps development.
-
 2. Rounds-and-matches - refer to .scratch/grav-ty-v1/10-rounds-and-match.md
 
 3. Procedural levels - refer to .scratch/grav-ty-v1/11-procedural-levels.md

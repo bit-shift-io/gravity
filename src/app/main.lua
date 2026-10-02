@@ -16,6 +16,14 @@ local App = {}
 
 App.ctx = nil
 App.accumulator = 0
+App.seed = nil
+
+-- Dev helper: rebuild the match from a fresh level with the original seed, so
+-- a reset reproduces the initial state exactly.
+function App.reset()
+	App.ctx = MatchState.enter(FixtureLevel.new(), Config, App.seed)
+	App.accumulator = 0
+end
 
 
 local function findArg(args, arg)
@@ -68,7 +76,14 @@ function love.load(args)
 	-- Fixture level until level generation lands (slice 11). No menu yet
 	-- (slice 12) -- match_state is the only state, so it's entered directly
 	-- rather than showing a title screen first.
-	App.ctx = MatchState.enter(FixtureLevel.new(), Config)
+	App.seed = os.time()
+	App.reset()
+end
+
+function love.keypressed(key)
+	if key == "r" and App.ctx then
+		App.reset()
+	end
 end
 
 function love.update(dt)
