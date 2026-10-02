@@ -18,6 +18,7 @@ local ParticleSystem = require("src.game.systems.particle_system")
 local Lander = require("src.game.components.lander")
 local Turret = require("src.game.components.turret")
 local Weapon = require("src.game.components.weapon")
+local Crash = require("src.game.crash")
 local Collide = require("src.sim.collide")
 local Vec2 = require("src.core.vec2")
 
@@ -300,13 +301,7 @@ function ShipSystem.handleContacts(ctx, contacts)
 					elseif outcome == "crash" then
 						ship.dead = true
 						Bodies.markDead(ctx.sim.bodies, ship.body)
-						table.insert(ctx.events, {
-							kind = "crash",
-							x = body.x,
-							y = body.y,
-							angle = body.angle,
-							time = ctx.time,
-						})
+						table.insert(ctx.events, Crash.event(ctx, ship, body))
 					end
 				end
 			end
@@ -317,13 +312,7 @@ function ShipSystem.handleContacts(ctx, contacts)
 				if body and body == contact.a and not ship.dead then
 					ship.dead = true
 					Bodies.markDead(ctx.sim.bodies, ship.body)
-					table.insert(ctx.events, {
-						kind = "crash",
-						x = body.x,
-						y = body.y,
-						angle = body.angle,
-						time = ctx.time,
-					})
+					table.insert(ctx.events, Crash.event(ctx, ship, body))
 				end
 			end
 		elseif contact.kind == "shipShip" then
@@ -335,13 +324,7 @@ function ShipSystem.handleContacts(ctx, contacts)
 				if body and body == contact.a and not ship.dead then
 					ship.dead = true
 					Bodies.markDead(ctx.sim.bodies, ship.body)
-					table.insert(ctx.events, {
-						kind = "crash",
-						x = body.x,
-						y = body.y,
-						angle = body.angle,
-						time = ctx.time,
-					})
+					table.insert(ctx.events, Crash.event(ctx, ship, body))
 				end
 			end
 		end

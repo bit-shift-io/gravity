@@ -72,6 +72,17 @@ local Config = {
 		turretLimit = math.rad(80),
 		turretSpeed = 1,
 		barrelLength = 12,
+		-- Half the barrel's thickness in px; the barrel merges into the dome outline.
+		barrelHalfWidth = 1.5,
+		-- Dome local-space vertices (flush base at y=8).
+		dome = {
+			{ x = -8, y = 8 },
+			{ x = 8, y = 8 },
+			{ x = 8, y = -1 },
+			{ x = 4, y = -5 },
+			{ x = -4, y = -5 },
+			{ x = -8, y = -1 },
+		},
 	},
 	-- Weapon tuning (src/game/components/weapon.lua, src/game/systems/
 	-- ship_system.lua). Fires charge linearly from minSpeed (px/s) at tap to

@@ -41,6 +41,17 @@ local function drawCrash(event, ctx)
 	local alpha = 1 - t
 
 	love.graphics.setColor(1, 0.4, 0.3, alpha)
+	-- A tank's crash event carries its outline; a flying ship's is the triangle.
+	local vertices = event.vertices
+	if vertices then
+		local n = #vertices
+		for i = 1, n do
+			local a = Vec2.rotate(Vec2.scale(vertices[i], spread), event.angle or 0)
+			local b = Vec2.rotate(Vec2.scale(vertices[i % n + 1], spread), event.angle or 0)
+			love.graphics.line(event.x + a.x, event.y + a.y, event.x + b.x, event.y + b.y)
+		end
+		return
+	end
 	for _, line in ipairs(DEBRIS_LINES) do
 		local a = Vec2.rotate(Vec2.scale(line[1], spread), event.angle or 0)
 		local b = Vec2.rotate(Vec2.scale(line[2], spread), event.angle or 0)

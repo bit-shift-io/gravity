@@ -10,6 +10,4 @@
 
 # Low Priority
 
-2. tank turret with body makes a single shape - a single outline
-
 3. Morph animation - refer to .scratch/tank-mode-and-charged-shells/slices/03-morph-animation.md

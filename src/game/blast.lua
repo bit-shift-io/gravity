@@ -6,6 +6,7 @@
 -- deadly to the shooter too if they're in range; asteroids always survive.
 local Bodies = require("src.sim.bodies")
 local Vec2 = require("src.core.vec2")
+local Crash = require("src.game.crash")
 
 local Blast = {}
 
@@ -40,13 +41,7 @@ function Blast.detonate(ctx, projectile, body)
 				if dist <= blastRadius then
 					ship.dead = true
 					Bodies.markDead(ctx.sim.bodies, ship.body)
-					table.insert(ctx.events, {
-						kind = "crash",
-						x = shipBody.x,
-						y = shipBody.y,
-						angle = shipBody.angle,
-						time = ctx.time,
-					})
+					table.insert(ctx.events, Crash.event(ctx, ship, shipBody))
 				end
 			end
 		end

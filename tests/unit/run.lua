@@ -27,6 +27,8 @@ local defaultTestFiles = {
 	"tests/unit/collide_test.lua",
 	"tests/unit/lander_test.lua",
 	"tests/unit/turret_test.lua",
+	"tests/unit/tank_outline_test.lua",
+	"tests/unit/crash_event_test.lua",
 	"tests/unit/swept_collide_test.lua",
 	"tests/unit/weapon_test.lua",
 	"tests/unit/boundary_render_test.lua",
