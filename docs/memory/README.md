@@ -9,3 +9,4 @@ Situational facts: true only when touching a particular area. One fact per file.
 - [fragments-cling-under-gravity.md](fragments-cling-under-gravity.md) — sibling immunity lasts while fragments touch; force separation by hand in tests
 - [particles-skip-pairwise-gravity.md](particles-skip-pairwise-gravity.md) — exhaust particles are passive bodies; pairwise gravity must skip them both ways
 - [post-pipeline-canvas-rules.md](post-pipeline-canvas-rules.md) — post-effects canvas size, order, resize, and what bypasses the pipeline
+- [round-reset-through-sweep.md](round-reset-through-sweep.md) — round reset marks records dead and relies on the sweep; also clear timers and events

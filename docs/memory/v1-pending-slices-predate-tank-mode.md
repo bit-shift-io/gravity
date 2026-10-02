@@ -15,3 +15,4 @@ The unfinished v1 slices — rounds and match, procedural levels, menus/settings
 - Gamepad bindings need a turret-aim axis and a hold-to-charge fire button.
 - Vector-effects debris may restyle the blast ring, not only the crash burst.
 - Round reset must clear each player's live-projectile slot. A stale body id already reads as "free".
+- The rounds-and-match brief has been re-planned for tank mode. Rounds are done in-world on `ctx`, with no separate score-card or match-over states.

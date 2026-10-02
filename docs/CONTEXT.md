@@ -104,10 +104,20 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Replaced by hard boundary. Ships past it are lost to space; projectiles and asteroids past it despawn. Removed in v2+.
 
 ## Round
-- **Definition:** Play from spawn until at most one ship remains. Both dying in the same step is a draw.
+- **Definition:** Play from spawn until at most one ship is alive, then a timed hold and a respawn. Both dying in the same step is a draw.
+- **Boundary:** A draw scores no point and replays the round. Later rounds respawn ships at new random spawn points.
+
+## Score card
+- **Definition:** The overlay after a round showing the result (win or draw) and score pips.
+- **Boundary:** Drawn over the live scene, not a separate state. Skipped on the round that ends the match.
 
 ## Match
 - **Definition:** Best of 5 rounds — first to 3 round wins. One level layout for the whole match.
+- **Boundary:** Draws never end it. Ends on a match-over overlay offering a rematch.
+
+## Rematch
+- **Definition:** A fresh match on the same level and seed, with the score zeroed.
+- **Boundary:** No new-level option until the menus slice.
 
 ## Seed
 - **Definition:** The number that determines a match's generated level and asteroid spawns.
