@@ -225,7 +225,7 @@ local Config = {
 	round = {
 		endDelay = 3,
 		-- Seconds the score card shows after the end delay; respawn follows.
-		cardDuration = 2,
+		cardDuration = 4,
 		winsToWin = 3,
 	},
 	-- Camera zoom tuning (src/app/camera.lua). bufferRadius is the additional

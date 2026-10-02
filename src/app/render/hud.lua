@@ -4,6 +4,7 @@
 -- never mutates it (docs/ARCHITECTURE.md "Rendering"). `love.*` only --
 -- this lives in src/app/ (docs/ARCHITECTURE.md "Layers").
 local Bodies = require("src.sim.bodies")
+local Fonts = require("src.app.render.fonts")
 local Hud = {}
 
 local BAR_WIDTH = 200
@@ -11,6 +12,7 @@ local BAR_HEIGHT = 16
 local MARGIN = 16
 local CHARGE_BAR_WIDTH = 200
 local CHARGE_BAR_HEIGHT = 6
+local HUD_FONT_SIZE = 24
 
 local PIP_RADIUS = 6
 local PIP_SPACING = 18
@@ -74,19 +76,22 @@ local function drawChargeBar(ship, ctx)
 	end
 
 	-- Draw turret angle in degrees
-	local angleText = "0°"
+	local angleText = "0"
 	if ship.turret and ship.turret.angle then
 		local degrees = math.deg(ship.turret.angle)
-		angleText = string.format("%.0f°", degrees)
+		angleText = string.format("%.0f", degrees)
 	end
 
 	love.graphics.setColor(PLAYER_COLOR[ship.player] or { 1, 1, 1, 1 })
 	if ship.player == 1 then
 		-- Player 1: angle text to the right of the bar
+		love.graphics.setFont(Fonts.get(HUD_FONT_SIZE))
 		love.graphics.print(angleText, barX + CHARGE_BAR_WIDTH + 8, barY)
 	else
 		-- Player 2: angle text to the left of the bar (toward center)
-		local textWidth = love.graphics.getFont():getWidth(angleText)
+		local font = Fonts.get(HUD_FONT_SIZE)
+		love.graphics.setFont(font)
+		local textWidth = font:getWidth(angleText)
 		love.graphics.print(angleText, barX - textWidth - 8, barY)
 	end
 end
