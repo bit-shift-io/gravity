@@ -122,14 +122,13 @@ test("fragments carry density x area mass, own radius, and parent velocity plus 
 		assertNear(radius, body.radius, 1e-6)
 		assertNear(0.25, body.angularVelocity, 1e-9)
 
-		-- Velocity (after one step of gravity, which is negligible next to
-		-- the nudge) is parent velocity + nudge along centre -> fragment.
+		-- Tangential velocity is parent velocity + nudge along centre ->
+		-- fragment; the component into the floor is replaced by a shove off it.
 		local away = { x = body.x - origin.x, y = body.y - origin.y }
-		local len = math.sqrt(away.x * away.x + away.y * away.y)
-		local dvx, dvy = body.vx - parentVx, body.vy - parentVy
-		local dlen = math.sqrt(dvx * dvx + dvy * dvy)
-		assertNear(Config.asteroid.splitNudgeSpeed, dlen, 1.0, "expected nudge speed")
-		assertTrue((dvx * away.x + dvy * away.y) / (dlen * len) > 0.95, "expected nudge to point away from the parent centre")
+		if math.abs(away.x) > 1 then
+			assertTrue((body.vx - parentVx) * away.x > 0, "expected nudge along centre -> fragment")
+		end
+		assertTrue(body.vy < 0, "expected fragment moving off the floor")
 	end
 end)
 
@@ -183,18 +182,15 @@ test("a contact at the parent centre falls back to the reversed normal", functio
 	assertEqual(3, #liveAsteroids(ctx))
 end)
 
-test("repeated grazing terminates with every fragment gone", function()
+test("repeated grazing never cascades: live fragments stay bounded", function()
 	local game = GameHarness.startMatch(floorLevel())
 	local ctx = game.ctx
 	injectAsteroid(ctx, { x = 800, y = 470, vy = 60, angularVelocity = 0.3 })
 
-	local steps = 0
-	while #liveAsteroids(ctx) > 0 and steps < 3000 do
+	for _ = 1, 600 do
 		FrameStepper.step(game, 1)
-		steps = steps + 1
+		assertTrue(#liveAsteroids(ctx) <= 9, "expected splits not to cascade")
 	end
-
-	assertEqual(0, #liveAsteroids(ctx), "expected every fragment to be destroyed within the bound")
 end)
 
 test("the same seed gives identical fragments", function()
@@ -307,4 +303,46 @@ test("a projectile hitting a small asteroid pushes it but it survives", function
 	assertTrue(not asteroid.dead, "expected the small asteroid to survive")
 	assertEqual(1, #liveAsteroids(ctx))
 	assertTrue(body.vx > 0, "expected the asteroid to be pushed towards +x")
+end)
+
+test("fragments of a world split get clear of the world instead of re-touching it", function()
+	local game = GameHarness.startMatch(floorLevel())
+	local ctx = game.ctx
+	injectAsteroid(ctx, { x = 800, y = 460, vx = 0, vy = 90 })
+
+	FrameStepper.step(game, 1)
+	local fragments = {}
+	for _, asteroid in ipairs(liveAsteroids(ctx)) do
+		table.insert(fragments, asteroid)
+	end
+	assertEqual(3, #fragments)
+
+	FrameStepper.step(game, 10)
+
+	for _, fragment in ipairs(fragments) do
+		assertTrue(not fragment.dead, "expected fragment to survive separating from the world")
+	end
+end)
+
+test("fragments of a split all move away from the split centre", function()
+	local game = GameHarness.startMatch(floorLevel())
+	local ctx = game.ctx
+	injectAsteroid(ctx, { x = 800, y = 460, vx = 0, vy = 0 })
+
+	FrameStepper.step(game, 1)
+
+	local bodies = {}
+	local cx, cy = 0, 0
+	for i, asteroid in ipairs(liveAsteroids(ctx)) do
+		bodies[i] = Bodies.get(ctx.sim.bodies, asteroid.body)
+		cx, cy = cx + bodies[i].x / 3, cy + bodies[i].y / 3
+	end
+	local mvx, mvy = 0, 0
+	for _, b in ipairs(bodies) do
+		mvx, mvy = mvx + b.vx / 3, mvy + b.vy / 3
+	end
+	for _, b in ipairs(bodies) do
+		local outward = (b.x - cx) * (b.vx - mvx) + (b.y - cy) * (b.vy - mvy)
+		assertTrue(outward > 0, "expected fragment velocity to point away from the centre")
+	end
 end)

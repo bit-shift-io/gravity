@@ -134,7 +134,7 @@ local Config = {
 		-- splitNudgeSpeed (px/s) is the extra outward speed each fragment gets
 		-- along parent centre -> fragment centroid.
 		splitAreaThreshold = 3000,
-		splitNudgeSpeed = 25,
+		splitNudgeSpeed = 60,
 	},
 	gravityField = {},
 	world = {

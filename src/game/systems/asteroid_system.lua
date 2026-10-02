@@ -252,11 +252,19 @@ local function splitAsteroid(ctx, parent, parentBody, impact, normal, point)
 			position = Vec2.add(position, Vec2.scale(normal, depth + PUSH_OUT_MARGIN))
 		end
 
+		local velocity = { x = parentBody.vx + nudge.x, y = parentBody.vy + nudge.y }
+		if normal then
+			-- Stop fragments driving back into what was hit (they would be
+			-- destroyed or re-split next step) and shove them off it.
+			local inward = math.min(0, Vec2.dot(velocity, normal))
+			velocity = Vec2.add(Vec2.sub(velocity, Vec2.scale(normal, inward)), Vec2.scale(normal, config.splitNudgeSpeed))
+		end
+
 		addAsteroid(ctx, {
 			x = position.x,
 			y = position.y,
-			vx = parentBody.vx + nudge.x,
-			vy = parentBody.vy + nudge.y,
+			vx = velocity.x,
+			vy = velocity.y,
 			angle = parentBody.angle,
 			angularVelocity = parentBody.angularVelocity,
 			vertices = fragment.vertices,
