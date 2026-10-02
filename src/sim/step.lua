@@ -78,9 +78,9 @@ end
 --   "shipShip"          -- a.body and b.body are both ships (always bounces),
 --                          reported once per pair, never once from each side.
 --   "asteroidWorld"      -- a is an asteroid body, b is the world it touched
---                          (always destroys the asteroid).
---   "asteroidAsteroid"   -- a and b are both asteroid bodies (always bounces),
---                          reported once per pair.
+--                          (the game layer splits or destroys it).
+--   "asteroidAsteroid"   -- a and b are both asteroid bodies (the game layer splits or
+--                          destroys each), reported once per pair.
 function Sim.collide(sim, worlds)
 	local contacts = {}
 

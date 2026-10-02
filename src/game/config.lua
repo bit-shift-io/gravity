@@ -128,7 +128,13 @@ local Config = {
 		spawnDelay = 4,
 		safetyRadius = 150,
 		maxSpawnAttempts = 8,
-		restitution = 1,
+		-- Split tuning (src/game/systems/asteroid_system.lua): an asteroid
+		-- whose polygon area (px^2) exceeds splitAreaThreshold splits into 3
+		-- fragments on world contact; at or below it, it is destroyed.
+		-- splitNudgeSpeed (px/s) is the extra outward speed each fragment gets
+		-- along parent centre -> fragment centroid.
+		splitAreaThreshold = 3000,
+		splitNudgeSpeed = 25,
 	},
 	gravityField = {},
 	world = {

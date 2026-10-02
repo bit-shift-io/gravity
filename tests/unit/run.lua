@@ -26,6 +26,7 @@ local defaultTestFiles = {
 	"tests/unit/asteroid_shape_test.lua",
 	"tests/unit/asteroid_spawn_test.lua",
 	"tests/unit/blast_test.lua",
+	"tests/unit/asteroid_split_test.lua",
 }
 
 local tests = {}

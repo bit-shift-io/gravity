@@ -8,6 +8,7 @@ local Bodies = require("src.sim.bodies")
 local Vec2 = require("src.core.vec2")
 local Poly = require("src.core.poly")
 local AsteroidShape = require("src.game.asteroid_shape")
+local AsteroidSplit = require("src.game.asteroid_split")
 
 local AsteroidSystem = {}
 
@@ -90,30 +91,23 @@ local function tooCloseToAnyShip(candidate, ctx)
 	return false
 end
 
--- Spawns one asteroid body + pool record from `candidate` (already checked
--- safe by the caller). Mass follows density x area, the same convention
--- src/game/level.lua's Level.validate uses for worlds -- computed here
--- (spawn time) rather than through Level.validate, which only ever
--- processes static level.worlds, never asteroids.
-local function spawnAsteroid(ctx, candidate)
-	local config = ctx.config.asteroid
-	local shape = AsteroidShape.generate(ctx.rng, config)
-	local mass = config.density * math.abs(Poly.area(shape.vertices))
-	local spin = ctx.rng:range(config.spinRange.min, config.spinRange.max)
-
-	local body = {
-		x = candidate.position.x,
-		y = candidate.position.y,
-		vx = candidate.velocity.x,
-		vy = candidate.velocity.y,
-		angle = 0,
-		angularVelocity = spin,
+-- Adds one asteroid body + pool record. Mass follows density x area, the
+-- same convention src/game/level.lua's Level.validate uses for worlds. Shared
+-- by the spawner and by splitting, so both build the identical body shape.
+local function addAsteroid(ctx, fields)
+	local mass = ctx.config.asteroid.density * math.abs(Poly.area(fields.vertices))
+	local bodyId = Bodies.add(ctx.sim.bodies, {
+		x = fields.x,
+		y = fields.y,
+		vx = fields.vx,
+		vy = fields.vy,
+		angle = fields.angle,
+		angularVelocity = fields.angularVelocity,
 		mass = mass,
 		kind = "asteroid",
-		radius = shape.radius,
-		vertices = shape.vertices,
-	}
-	local bodyId = Bodies.add(ctx.sim.bodies, body)
+		radius = fields.radius,
+		vertices = fields.vertices,
+	})
 
 	local asteroid = {
 		id = bodyId,
@@ -122,8 +116,37 @@ local function spawnAsteroid(ctx, candidate)
 		kind = "asteroid",
 	}
 
+	-- Fragments of one split share a `fragmentOf` tag (the root parent's body
+	-- id). Siblings ignore each other while `siblingImmune`, which
+	-- AsteroidSystem.handleContacts clears once a fragment is no longer touching
+	-- a sibling.
+	asteroid.fragmentOf = fields.fragmentOf
+	asteroid.siblingImmune = fields.fragmentOf ~= nil
+
 	table.insert(ctx.pools.asteroids, asteroid)
 	return asteroid
+end
+
+-- Spawns one asteroid body + pool record from `candidate` (already checked
+-- safe by the caller). Mass follows density x area, the same convention
+-- src/game/level.lua's Level.validate uses for worlds -- computed here
+-- (spawn time) rather than through Level.validate, which only ever
+-- processes static level.worlds, never asteroids.
+local function spawnAsteroid(ctx, candidate)
+	local config = ctx.config.asteroid
+	local shape = AsteroidShape.generate(ctx.rng, config)
+	local spin = ctx.rng:range(config.spinRange.min, config.spinRange.max)
+
+	return addAsteroid(ctx, {
+		x = candidate.position.x,
+		y = candidate.position.y,
+		vx = candidate.velocity.x,
+		vy = candidate.velocity.y,
+		angle = 0,
+		angularVelocity = spin,
+		vertices = shape.vertices,
+		radius = shape.radius,
+	})
 end
 
 local function countLive(pool)
@@ -171,64 +194,196 @@ function AsteroidSystem.update(ctx)
 	end
 end
 
-local function killAsteroid(ctx, asteroidBody)
+-- The live pool record for `asteroidBody`, or nil when it is already dead
+-- (a body can be named by several contacts in one step).
+local function liveRecordFor(ctx, asteroidBody)
 	for _, asteroid in ipairs(ctx.pools.asteroids) do
-		local body = Bodies.get(ctx.sim.bodies, asteroid.body)
-		if body and body == asteroidBody and not asteroid.dead then
-			asteroid.dead = true
-			Bodies.markDead(ctx.sim.bodies, asteroid.body)
+		if not asteroid.dead and Bodies.get(ctx.sim.bodies, asteroid.body) == asteroidBody then
+			return asteroid
+		end
+	end
+	return nil
+end
+
+local function killAsteroid(ctx, asteroidBody)
+	local asteroid = liveRecordFor(ctx, asteroidBody)
+	if asteroid then
+		asteroid.dead = true
+		Bodies.markDead(ctx.sim.bodies, asteroid.body)
+	end
+end
+
+local PUSH_OUT_MARGIN = 0.5
+
+-- Replaces `parent` (a live record whose body is `parentBody`) with 3
+-- fragments. Fragments inherit the parent's velocity and angular velocity,
+-- gain a nudge along parent centre -> fragment centroid, and are moved out
+-- along `normal` (pointing away from whatever was hit) until clear of the
+-- plane through `point`; a nil `normal` skips the push-out (the thing that hit
+-- is gone: a crashed ship or a detonated projectile). `impact` is the world-space direction the hit came
+-- from. New fragments are not in this step's contact list, so they are not
+-- tested until next step.
+local function splitAsteroid(ctx, parent, parentBody, impact, normal, point)
+	local config = ctx.config.asteroid
+	local origin = { x = parentBody.x, y = parentBody.y }
+	local localImpact = Vec2.rotate(impact, -parentBody.angle)
+
+	local fragments = AsteroidSplit.carve(parentBody.vertices, localImpact)
+
+	parent.dead = true
+	Bodies.markDead(ctx.sim.bodies, parent.body)
+
+	for _, fragment in ipairs(fragments) do
+		local offset = Vec2.rotate(fragment.offset, parentBody.angle)
+		local position = Vec2.add(origin, offset)
+
+		local nudge = { x = 0, y = 0 }
+		if Vec2.length(offset) > 1e-9 then
+			nudge = Vec2.scale(Vec2.normalize(offset), config.splitNudgeSpeed)
+		end
+
+		if normal then
+			-- Deepest penetration of any fragment vertex past the contact edge.
+			local depth = 0
+			for _, v in ipairs(fragment.vertices) do
+				local p = Vec2.add(position, Vec2.rotate(v, parentBody.angle))
+				depth = math.max(depth, Vec2.dot(Vec2.sub(point, p), normal))
+			end
+			position = Vec2.add(position, Vec2.scale(normal, depth + PUSH_OUT_MARGIN))
+		end
+
+		addAsteroid(ctx, {
+			x = position.x,
+			y = position.y,
+			vx = parentBody.vx + nudge.x,
+			vy = parentBody.vy + nudge.y,
+			angle = parentBody.angle,
+			angularVelocity = parentBody.angularVelocity,
+			vertices = fragment.vertices,
+			radius = fragment.radius,
+			fragmentOf = parent.fragmentOf or parent.body,
+		})
+	end
+end
+
+-- "asteroidWorld": above the area threshold the asteroid splits, otherwise
+-- it is destroyed. An asteroid already dead this step is skipped.
+local function splitOrDestroy(ctx, body, impact, normal, point)
+	local record = liveRecordFor(ctx, body)
+	if not record then
+		return
+	end
+
+	local area = math.abs(Poly.area(body.vertices))
+	if area > ctx.config.asteroid.splitAreaThreshold then
+		splitAsteroid(ctx, record, body, impact, normal, point)
+	else
+		killAsteroid(ctx, body)
+	end
+end
+
+-- Direction a hit arrives from: asteroid centre -> contact point, falling
+-- back to the reversed contact normal when the point is at the centre.
+local function impactDirection(body, contact)
+	local impact = Vec2.sub(contact.point, { x = body.x, y = body.y })
+	if Vec2.length(impact) < 1e-9 then
+		impact = Vec2.scale(contact.normal, -1)
+	end
+	return impact
+end
+
+-- "shipAsteroid": the ship crash is ShipSystem's; here a large asteroid
+-- splits and a small one is destroyed. No push-out: the ship is gone.
+local function handleShipAsteroid(ctx, contact)
+	splitOrDestroy(ctx, contact.b, impactDirection(contact.b, contact), nil, contact.point)
+end
+
+-- "projectileAsteroid": runs after ProjectileSystem's Blast.detonate has
+-- pushed the asteroid, so fragments inherit the push (see
+-- docs/memory/asteroid-contact-handling-order.md). Large asteroids split;
+-- small ones are only pushed and survive. No push-out: the projectile is gone.
+local function handleProjectileAsteroid(ctx, contact)
+	local body = contact.b
+	local record = liveRecordFor(ctx, body)
+	if not record then
+		return
+	end
+	if math.abs(Poly.area(body.vertices)) > ctx.config.asteroid.splitAreaThreshold then
+		splitAsteroid(ctx, record, body, impactDirection(body, contact), nil, contact.point)
+	end
+end
+
+local function handleAsteroidWorld(ctx, contact)
+	local impact = Vec2.sub(contact.point, { x = contact.a.x, y = contact.a.y })
+	if Vec2.length(impact) < 1e-9 then
+		impact = Vec2.scale(contact.normal, -1)
+	end
+	splitOrDestroy(ctx, contact.a, impact, contact.normal, contact.point)
+end
+
+local function areImmuneSiblings(recordA, recordB)
+	return recordA.siblingImmune
+		and recordB.siblingImmune
+		and recordA.fragmentOf ~= nil
+		and recordA.fragmentOf == recordB.fragmentOf
+end
+
+-- Ends sibling immunity for every fragment not touching a sibling this step.
+-- Must run before this step's splits add fresh (still overlapping) fragments.
+local function releaseSeparatedSiblings(ctx, contacts)
+	local touching = {}
+	for _, contact in ipairs(contacts) do
+		if contact.kind == "asteroidAsteroid" then
+			local recordA, recordB = liveRecordFor(ctx, contact.a), liveRecordFor(ctx, contact.b)
+			if recordA and recordB and areImmuneSiblings(recordA, recordB) then
+				touching[recordA] = true
+				touching[recordB] = true
+			end
+		end
+	end
+	for _, asteroid in ipairs(ctx.pools.asteroids) do
+		if asteroid.siblingImmune and not touching[asteroid] then
+			asteroid.siblingImmune = false
 		end
 	end
 end
 
--- Resolves an "asteroidAsteroid" bounce (docs "bounce off each other"),
--- mirroring src/game/systems/ship_system.lua's resolveShipBounce -- a
--- mass-weighted elastic impulse along the collision normal, plus a
--- positional separation push.
-local function resolveAsteroidBounce(ctx, bodyA, bodyB, normal)
-	local relVel = { x = bodyA.vx - bodyB.vx, y = bodyA.vy - bodyB.vy }
-	local approachSpeed = Vec2.dot(relVel, normal)
-
-	if approachSpeed < 0 then
-		local restitution = ctx.config.asteroid.restitution or 1
-		local m1 = Bodies.effectiveMass(ctx.sim.bodies, bodyA)
-		local m2 = Bodies.effectiveMass(ctx.sim.bodies, bodyB)
-		local impulseMagnitude = -(1 + restitution) * approachSpeed / (1 / m1 + 1 / m2)
-		local impulse = Vec2.scale(normal, impulseMagnitude)
-
-		bodyA.vx = bodyA.vx + impulse.x / m1
-		bodyA.vy = bodyA.vy + impulse.y / m1
-		bodyB.vx = bodyB.vx - impulse.x / m2
-		bodyB.vy = bodyB.vy - impulse.y / m2
+-- "asteroidAsteroid": each asteroid is judged alone. Impact comes from the
+-- other asteroid; the contact normal points b -> a, so a is pushed out along
+-- +normal and b along -normal. Each side reads the other body's position,
+-- which stays valid even once that body has been split (bodies persist until
+-- the despawn sweep).
+local function handleAsteroidAsteroid(ctx, contact)
+	local a, b = contact.a, contact.b
+	local recordA, recordB = liveRecordFor(ctx, a), liveRecordFor(ctx, b)
+	if recordA and recordB and areImmuneSiblings(recordA, recordB) then
+		return
 	end
-
-	local dx = bodyA.x - bodyB.x
-	local dy = bodyA.y - bodyB.y
-	local dist = math.sqrt(dx * dx + dy * dy)
-	local minDist = (bodyA.radius or 0) + (bodyB.radius or 0)
-	local depth = minDist - dist
-	if depth > 0 then
-		bodyA.x = bodyA.x + normal.x * (depth / 2)
-		bodyA.y = bodyA.y + normal.y * (depth / 2)
-		bodyB.x = bodyB.x - normal.x * (depth / 2)
-		bodyB.y = bodyB.y - normal.y * (depth / 2)
+	local toB = Vec2.sub({ x = b.x, y = b.y }, { x = a.x, y = a.y })
+	if Vec2.length(toB) < 1e-9 then
+		toB = Vec2.scale(contact.normal, -1)
 	end
+	splitOrDestroy(ctx, a, toB, contact.normal, contact.point)
+	splitOrDestroy(ctx, b, Vec2.scale(toB, -1), Vec2.scale(contact.normal, -1), contact.point)
 end
 
-
 -- Systems handle contacts (docs/ARCHITECTURE.md "Systems and frame order",
--- step 5): "asteroidWorld" always destroys the asteroid and
--- "asteroidAsteroid" bounces (mass-weighted, effective mass). Projectile-
--- asteroid contacts are now handled by src/game/systems/projectile_system.lua's
--- ProjectileSystem.handleContacts, which calls src/game/blast.lua's
--- Blast.detonate. The sim only reports contacts; outcomes are decided here,
+-- step 5): "asteroidWorld" splits a large asteroid or destroys a small one, and
+-- "asteroidAsteroid" judges each asteroid alone the same way, and "shipAsteroid"
+-- / "projectileAsteroid" split a large asteroid after ShipSystem (crash) and
+-- ProjectileSystem (Blast.detonate push) have already run. The sim only reports contacts; outcomes are decided here,
 -- never in src/sim/.
 function AsteroidSystem.handleContacts(ctx, contacts)
+	releaseSeparatedSiblings(ctx, contacts)
 	for _, contact in ipairs(contacts) do
 		if contact.kind == "asteroidWorld" then
-			killAsteroid(ctx, contact.a)
+			handleAsteroidWorld(ctx, contact)
 		elseif contact.kind == "asteroidAsteroid" then
-			resolveAsteroidBounce(ctx, contact.a, contact.b, contact.normal)
+			handleAsteroidAsteroid(ctx, contact)
+		elseif contact.kind == "shipAsteroid" then
+			handleShipAsteroid(ctx, contact)
+		elseif contact.kind == "projectileAsteroid" then
+			handleProjectileAsteroid(ctx, contact)
 		end
 	end
 end

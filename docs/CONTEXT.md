@@ -42,7 +42,16 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Asteroid
 - **Definition:** A drifting convex rock that spawns off-screen, spins slowly, and exerts gravity.
-- **Boundary:** Not a world. Cannot be landed on — ship contact is a crash. Destroyed on world contact. Pushed, not destroyed, by a blast. At most 1–2 alive.
+- **Boundary:** Not a world. Cannot be landed on — ship contact is a crash. Above the size threshold it splits on any contact; below it, it is destroyed on any contact. Pushed by a blast. Spawning is capped at 1–2 alive; splits may exceed that.
+
+## Split
+- **Definition:** A large asteroid replaced by 3 fragments on contact with a world, asteroid, ship, or projectile.
+- **Boundary:** Three radial cuts from the centroid, the first toward the impact, 120° apart. Fragments are pushed out along the contact normal. No grace period.
+
+## Fragment
+- **Definition:** One of the 3 convex asteroids produced by a split.
+- **Boundary:** An ordinary asteroid. Inherits velocity plus an outward nudge from the parent centre. Destroyed on contact once below the size threshold.
+- **Sibling immunity:** Fragments of one split ignore each other while they still touch; it ends the first step they are apart, after which they collide normally. Otherwise their overlapping spawn footprints would cascade.
 
 ## Landing
 - **Definition:** Touching a world slowly enough. Any angle; the ship snaps upright along the surface normal and enters tank mode.
@@ -70,7 +79,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Blast
 - **Definition:** A projectile's circular explosion. Kills every ship in its radius, shooter included, and pushes asteroids outward.
-- **Boundary:** Does not damage worlds or destroy asteroids. One per projectile.
+- **Boundary:** Does not damage worlds. Pushes asteroids; the projectile's contact also splits a large one. One per projectile.
 
 ## Crash
 - **Definition:** Ship contact with a world that fails the landing speed check, or any ship contact with an asteroid. Destroys the ship.
