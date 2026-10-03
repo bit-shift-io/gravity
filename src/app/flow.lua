@@ -11,6 +11,7 @@ local TitleState = require("src.app.states.title_state")
 local MatchState = require("src.app.states.match_state")
 local PauseState = require("src.app.states.pause_state")
 local SetupState = require("src.app.states.setup_state")
+local Audio = require("src.app.audio")
 
 local Flow = {}
 Flow.__index = Flow
@@ -72,6 +73,7 @@ function Flow:start()
 	end
 	local seed = tonumber(settings.seedText) or freshSeed()
 	print(string.format("seed=%d", seed))
+	Audio.stopAll()
 	self.stack:replace(MatchState.new(self, seed, Roster.active(settings.roster), settings.hardcore))
 end
 
@@ -87,11 +89,13 @@ function Flow:rematch(match, newLayout)
 end
 
 function Flow:pause()
+	Audio.stopAll()
 	self.stack:push(PauseState.new(self))
 end
 
 -- Discards the match (and any pause over it).
 function Flow:toTitle()
+	Audio.stopAll()
 	self.stack:reset(TitleState.new(self))
 end
 

@@ -1,6 +1,8 @@
 -- Device-agnostic menu navigation: keys, gamepad buttons and stick motion all
 -- become the same four actions -- "up", "down", "confirm", "back". Pure (no
 -- `love.*`); the callers pass whatever LÖVE reported, from ANY gamepad.
+local Audio = require("src.app.audio")
+
 local MenuNav = {}
 
 local KEYS = {
@@ -65,10 +67,13 @@ function MenuNav.apply(menu, action)
 	if action == "up" or action == "down" then
 		menu.selected = MenuNav.move(menu.selected, #menu.items, action)
 	elseif action == "confirm" then
-		menu.items[menu.selected].action()
+		local item = menu.items[menu.selected]
+		Audio.menu(item.sound)
+		item.action()
 	elseif (action == "left" or action == "right") and menu.items[menu.selected].adjust then
 		menu.items[menu.selected].adjust(action)
 	elseif action == "back" and menu.onBack then
+		Audio.menu("back")
 		menu.onBack()
 	end
 end

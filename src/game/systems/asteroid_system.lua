@@ -241,6 +241,8 @@ local function splitAsteroid(ctx, parent, parentBody, impact, normal, point)
 
 	parent.dead = true
 	Bodies.markDead(ctx.sim.bodies, parent.body)
+	-- Heard by the app layer (src/app/audio.lua); nothing is drawn for it.
+	table.insert(ctx.events, { kind = "asteroidSplit", x = origin.x, y = origin.y, time = ctx.time })
 
 	for _, fragment in ipairs(fragments) do
 		local offset = Vec2.rotate(fragment.offset, parentBody.angle)

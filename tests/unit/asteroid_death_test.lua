@@ -38,14 +38,15 @@ test("a small asteroid destroyed by an impact emits an asteroidDeath event with 
 	assertEqual(3, #event.vertices)
 end)
 
-test("a large asteroid that splits emits no asteroidDeath event", function()
+test("a large asteroid that splits emits an asteroidSplit event, not asteroidDeath", function()
 	local ctx = Match.new({ worlds = {} }, Config)
 	local big = { { x = -40, y = -40 }, { x = 40, y = -40 }, { x = 40, y = 40 }, { x = -40, y = 40 } }
 	local _, body = addAsteroid(ctx, big, 100, 50, 0)
 
 	hitWorld(ctx, body)
 
-	assertEqual(0, #ctx.events)
+	assertEqual(1, #ctx.events)
+	assertEqual("asteroidSplit", ctx.events[1].kind)
 end)
 
 test("an asteroidDeath event survives Match.step long enough to animate, then is pruned", function()

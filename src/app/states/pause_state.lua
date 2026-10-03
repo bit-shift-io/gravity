@@ -9,8 +9,8 @@ PauseState.__index = PauseState
 function PauseState.new(flow)
 	local self = setmetatable({ name = "pause", overlay = true, selected = 1, stick = MenuNav.newStick() }, PauseState)
 	self.items = {
-		{ label = "RESUME", action = function() flow.stack:pop() end },
-		{ label = "QUIT TO MENU", action = function() flow:toTitle() end },
+		{ label = "RESUME", sound = "back", action = function() flow.stack:pop() end },
+		{ label = "QUIT TO MENU", sound = "back", action = function() flow:toTitle() end },
 	}
 	self.onBack = self.items[1].action
 	return self

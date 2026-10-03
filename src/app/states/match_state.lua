@@ -23,6 +23,7 @@ local LevelGen = require("src.game.level_gen")
 local Config = require("src.game.config")
 local RoundSystem = require("src.game.systems.round_system")
 local PostMode = require("src.app.post.post_mode")
+local Audio = require("src.app.audio")
 
 local MatchState = {}
 
@@ -46,6 +47,7 @@ function MatchState.update(ctx, dt)
 	ctx.dt = dt
 	ctx.time = ctx.time + dt
 	Match.step(ctx)
+	Audio.update(ctx)
 end
 
 -- `showResults` false hides the score card / win screen (the pause menu is

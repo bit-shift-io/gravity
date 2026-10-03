@@ -50,6 +50,9 @@ function ProjectileSystem.spawn(ctx, ship, origin, direction, speed)
 
 	table.insert(ctx.pools.projectiles, projectile)
 
+	-- The app layer plays the firing sound from this (src/app/audio.lua).
+	table.insert(ctx.events, { kind = "fire", x = origin.x, y = origin.y, time = ctx.time })
+
 	-- Store the projectile in the shooter's weapon slot (slice 06)
 	if ship.weapon then
 		ship.weapon.shell = bodyId

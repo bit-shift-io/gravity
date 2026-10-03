@@ -17,7 +17,7 @@ function TitleState.new(flow, opts)
 	local self = setmetatable({ name = "title", selected = 1, stick = MenuNav.newStick(), flow = flow }, TitleState)
 	self.clock = (opts and opts.intro) and 0 or HOLD + SLIDE
 	self.items = {
-		{ label = "PLAY", action = function() flow:play() end },
+		{ label = "PLAY", sound = "forward", action = function() flow:play() end },
 		{ label = "QUIT", action = function() flow:quit() end },
 	}
 	return self

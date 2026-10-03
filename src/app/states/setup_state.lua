@@ -81,8 +81,8 @@ function SetupState:refresh()
 	end }
 	local toggle = function() self:edit(function() settings.hardcore = not settings.hardcore end) end
 	items[#items + 1] = { id = "hardcore", label = "HARDCORE  " .. (settings.hardcore and "ON" or "OFF"), action = toggle, adjust = toggle }
-	items[#items + 1] = { id = "start", label = "START", action = function() self:start() end }
-	items[#items + 1] = { id = "back", label = "BACK", action = self.onBack }
+	items[#items + 1] = { id = "start", label = "START", sound = "forward", action = function() self:start() end }
+	items[#items + 1] = { id = "back", label = "BACK", sound = "back", action = self.onBack }
 	self.items = items
 		self.selected = math.min(self.selected or #items, #items)
 	if previous and previous.id then
