@@ -28,4 +28,23 @@ function Compat.newShader(source)
 	return love.graphics.newShader(source)
 end
 
+-- Connected joysticks by ordinal (position in LÖVE's connected list), so a
+-- roster binding's `id` survives persistence. Unplugged pads drop out.
+function Compat.getJoysticks()
+	local joysticks = {}
+	for ordinal, joystick in ipairs(love.joystick.getJoysticks()) do
+		if joystick:isConnected() then
+			joysticks[ordinal] = joystick
+		end
+	end
+	return joysticks
+end
+
+-- Loads the SDL controller mapping database if present; same call on 11.5 and 12.
+function Compat.loadGamepadMappings(path)
+	if love.filesystem.getInfo(path) then
+		love.joystick.loadGamepadMappings(path)
+	end
+end
+
 return Compat

@@ -1,10 +1,10 @@
 -- Round rules (docs/ARCHITECTURE.md "Systems and frame order", step 6).
 -- Round state lives on ctx.round:
 --   { phase = "playing" | "roundOver" | "matchOver",
---     winner = nil | 1|2,   -- the match winner, set with matchOver
---     result = nil | { winner = 1|2 } | { draw = true },   -- locked once set
+--     winner = nil | slot,   -- the match winner, set with matchOver
+--     result = nil | { winner = slot } | { draw = true },   -- locked once set
 --     timer = seconds since the result locked,
---     score = { [1] = wins, [2] = wins } }
+--     score = { [slot] = wins, ... one per roster slot } }
 -- The result locks the first step at most one ship is alive. After
 -- config.round.endDelay + cardDuration seconds (live scene, then the score
 -- card) everything is marked dead (the step-7 sweep
@@ -18,8 +18,13 @@ local SpawnPoints = require("src.game.spawn_points")
 
 local RoundSystem = {}
 
-function RoundSystem.new()
-	return { phase = "playing", result = nil, timer = 0, score = { 0, 0 } }
+-- `slots` is the roster size (defaults to 2); the score has one entry each.
+function RoundSystem.new(slots)
+	local score = {}
+	for slot = 1, slots or 2 do
+		score[slot] = 0
+	end
+	return { phase = "playing", result = nil, timer = 0, score = score }
 end
 
 local function aliveShips(ctx)
@@ -39,7 +44,7 @@ local function killAll(ctx, pool)
 	end
 end
 
--- Marks every record dead and spawns two tanks at distinct random spawn
+-- Marks every record dead and spawns one tank per roster slot at distinct random spawn
 -- candidates (fixture levels without a candidate list use spawnPoints).
 function RoundSystem.respawn(ctx)
 	killAll(ctx, ctx.pools.ships)
@@ -53,7 +58,7 @@ function RoundSystem.respawn(ctx)
 	end
 
 	local points = ctx.level.spawnCandidates or ctx.level.spawnPoints or {}
-	for player, point in ipairs(SpawnPoints.randomPair(points, ctx.rng)) do
+	for player, point in ipairs(SpawnPoints.pick(points, #ctx.round.score, ctx.rng)) do
 		ShipSystem.spawn(ctx, player, point)
 	end
 end
@@ -74,7 +79,7 @@ end
 
 -- The player whose score reached winsToWin, or nil. Pure.
 function RoundSystem.matchWinner(score, winsToWin)
-	for player = 1, 2 do
+	for player = 1, #score do
 		if score[player] >= winsToWin then
 			return player
 		end

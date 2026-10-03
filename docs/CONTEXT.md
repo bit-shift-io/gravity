@@ -22,6 +22,34 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Definition:** A typed array of records of one kind: `ships`, `projectiles`, `asteroids`.
 - **Boundary:** Owns record lifetime and update order. Does not own physics.
 
+## Player
+- **Definition:** One participant in a match, human or AI, identified by its slot index (1–6).
+- **Boundary:** `ship.player` is the slot index. At most 4 humans and 6 players per match.
+
+## Roster
+- **Definition:** The ordered list of slots for a match, each with a colour and a binding.
+- **Boundary:** 2–6 slots. Persisted between launches. Setup edits it; the match only reads it.
+
+## Slot
+- **Definition:** One seat in the roster: a colour index and a binding.
+- **Boundary:** Colours are unique across slots. Its index is the player number.
+
+## Binding
+- **Definition:** What drives a slot: a keyboard layout, a gamepad, or an AI level.
+- **Boundary:** Keyboard layouts and gamepads cannot bind two slots. AI bindings may repeat.
+
+## Keyboard layout
+- **Definition:** One of three fixed key sets: WASD+Q, arrows+Shift, IJKL+O.
+- **Boundary:** Rotate, thrust and fire only. Not remappable.
+
+## AI player
+- **Definition:** A slot bound to an AI level. It writes the same intents a human would.
+- **Boundary:** No HUD fuel bar or pips. Listed on the score card and match-over overlay.
+
+## AI level
+- **Definition:** Easy, medium or hard: a set of config numbers (aim error, reaction delay) for one AI behaviour.
+- **Boundary:** Not different logic per level.
+
 ## Record
 - **Definition:** A plain table in a pool, holding a body id and component sub-tables.
 - **Boundary:** No methods, no metatables.
@@ -32,7 +60,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Ship
 - **Definition:** A player-controlled craft with fuel, thruster, lander, turret, and weapon components. Triangular while flying, a dome in tank mode.
-- **Boundary:** One hit point. Two ships per match in v1.
+- **Boundary:** One hit point. One ship per player.
 
 ## Projectile
 - **Definition:** A shell fired by releasing a charge — from the nose in flight, from the turret in tank mode. Affected by gravity.
@@ -117,11 +145,11 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Rematch
 - **Definition:** A fresh match on the same level and seed, with the score zeroed.
-- **Boundary:** No new-level option until the menus slice.
+- **Boundary:** Keeps the roster and hardcore setting. A new level comes from setup.
 
 ## Seed
 - **Definition:** The number that determines a match's generated level and asteroid spawns.
-- **Boundary:** Logged to the console at match start. Can be fixed with `seed=N` to replay a layout.
+- **Boundary:** Logged to the console at match start. Typed in setup (blank is random) or fixed with `seed=N`.
 
 ## Blob world
 - **Definition:** A generated world shaped from radial noise around a centre, sometimes with a concave notch.

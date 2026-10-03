@@ -244,3 +244,9 @@ test("LevelGen.generate with only snakes keeps them in the margin, apart, and sp
 		end
 	end
 end)
+
+test("every generated level can host a full roster of spawn candidates", function()
+	eachSeed(function(seed, level)
+		assertTrue(#level.spawnCandidates >= Config.players.max, "seed " .. seed .. " has only " .. #level.spawnCandidates .. " candidates")
+	end)
+end)

@@ -14,6 +14,9 @@ local ProjectileSystem = require("src.game.systems.projectile_system")
 local AsteroidSystem = require("src.game.systems.asteroid_system")
 local ParticleSystem = require("src.game.systems.particle_system")
 local RoundSystem = require("src.game.systems.round_system")
+local AI = require("src.game.ai.init")
+local Roster = require("src.game.roster")
+local SpawnPoints = require("src.game.spawn_points")
 
 local Match = {}
 
@@ -34,7 +37,12 @@ local Match = {}
 -- per-run default (os.time() -- plain Lua stdlib, not `love.*`, so this is
 -- fine even in src/game/, which must stay love-free but not
 -- side-effect-free).
-function Match.new(level, config, seed)
+--
+-- `opts.roster` (optional) is the ordered slot list (src/game/roster.lua);
+-- it defaults to two human slots. Ships, scores and respawns scale to it.
+-- `opts.hardcore` (optional) makes rotating burn fuel (docs/CONTEXT.md "Hardcore").
+function Match.new(level, config, seed, opts)
+	local roster = (opts and opts.roster) or Roster.default()
 	local worldField, boundaryField = Field.bake(level, config)
 	local ctx = {
 		dt = 0,
@@ -51,17 +59,42 @@ function Match.new(level, config, seed)
 		rng = Rng.new(seed or os.time()),
 		events = {},
 		camera = Camera.new(),
-		round = RoundSystem.new(),
+		roster = roster,
+		hardcore = (opts and opts.hardcore) or false,
+		round = RoundSystem.new(Roster.count(roster)),
 	}
 
-	-- Two ships spawn floating at the level's fixture spawn points, one per
-	-- player (docs/CONTEXT.md "Ship"; slice 04 "Two ships spawn floating at
-	-- fixture spawn points"). A level with no spawnPoints (e.g. the empty
-	-- `{ worlds = {} }` fixtures earlier unit tests use) simply starts with
-	-- no ships rather than erroring.
+	-- One ship per slot. The first two slots take the level's farthest-pair
+	-- spawnPoints (docs/CONTEXT.md "Spawn point"); further slots take random
+	-- distinct spawnCandidates not already used. A level offers at most
+	-- #spawnCandidates ships; a level with no spawnPoints (e.g. the empty
+	-- `{ worlds = {} }` fixtures) starts with no ships rather than erroring.
 	if level.spawnPoints then
-		for player, spawnPoint in ipairs(level.spawnPoints) do
-			ShipSystem.spawn(ctx, player, spawnPoint)
+		local slots = Roster.count(roster)
+		local candidates = level.spawnCandidates
+		if candidates then
+			slots = math.min(slots, #candidates)
+		end
+		local points, used = {}, {}
+		for _, point in ipairs(level.spawnPoints) do
+			if #points < slots then
+				points[#points + 1] = point
+				used[point] = true
+			end
+		end
+		if candidates and #points < slots then
+			local free = {}
+			for _, point in ipairs(candidates) do
+				if not used[point] then
+					free[#free + 1] = point
+				end
+			end
+			for _, point in ipairs(SpawnPoints.pick(free, slots - #points, ctx.rng)) do
+				points[#points + 1] = point
+			end
+		end
+		for player, point in ipairs(points) do
+			ShipSystem.spawn(ctx, player, point)
 		end
 	end
 
@@ -76,9 +109,10 @@ end
 -- unarmed-projectile-vs-ship contacts via ProjectileSystem.handleContacts;
 -- asteroid contact handling is future work (slice 09).
 function Match.step(ctx)
-	-- 1. Player intents already live on ctx.intents -- app fills them in
-	-- before calling Match.step (src/app/input.lua, src/app/states/
-	-- match_state.lua), so there is nothing to read here.
+	-- 1. Player intents: the app fills human slots on ctx.intents before
+	-- calling Match.step (src/app/input.lua, src/app/states/match_state.lua);
+	-- AI.fill writes the AI slots here.
+	AI.fill(ctx)
 
 	-- 2. Ship controls: rotate, thrust, fire (fire dispatches through
 	-- src/game/components/weapon.lua's Weapon.tryFire, called from
@@ -139,13 +173,7 @@ function Match.step(ctx)
 		end
 	end
 	if #focus >= 1 then
-		local targetZoom = Camera.calculateTargetZoom(
-			focus[1],
-			focus[2] or focus[1],
-			ctx.config.camera.bufferRadius,
-			1280,
-			720
-		)
+		local targetZoom = Camera.calculateTargetZoom(focus, ctx.config.camera.bufferRadius, 1280, 720)
 		Camera.updateZoom(ctx.camera, targetZoom, ctx.config.camera.zoomSpeed, ctx.dt)
 	end
 

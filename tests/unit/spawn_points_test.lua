@@ -120,20 +120,44 @@ test("SpawnPoints.hasClearance rejects a point on the wall of a narrow U gap", f
 	assertTrue(SpawnPoints.hasClearance(worlds, onTop, Config))
 end)
 
-test("SpawnPoints.randomPair returns two distinct candidates", function()
+test("SpawnPoints.pick(…, 2) returns two distinct candidates", function()
 	local Rng = require("src.core.rng")
 	local points = SpawnPoints.cleared(twoBlocks(), Config)
 	for seed = 1, 30 do
-		local pair = SpawnPoints.randomPair(points, Rng.new(seed))
+		local pair = SpawnPoints.pick(points, 2, Rng.new(seed))
 		assertEqual(2, #pair)
 		assertTrue(pair[1] ~= pair[2], "seed " .. seed .. " drew the same candidate twice")
 	end
 end)
 
-test("SpawnPoints.randomPair is deterministic per seed", function()
+test("SpawnPoints.pick is deterministic per seed", function()
 	local Rng = require("src.core.rng")
 	local points = SpawnPoints.cleared(twoBlocks(), Config)
-	local a = SpawnPoints.randomPair(points, Rng.new(7))
-	local b = SpawnPoints.randomPair(points, Rng.new(7))
+	local a = SpawnPoints.pick(points, 2, Rng.new(7))
+	local b = SpawnPoints.pick(points, 2, Rng.new(7))
 	assertTrue(a[1] == b[1] and a[2] == b[2])
+end)
+
+test("SpawnPoints.pick returns N distinct candidates", function()
+	local Rng = require("src.core.rng")
+	local points = {}
+	for i = 1, 8 do
+		points[i] = { x = i, y = 0 }
+	end
+	for seed = 1, 20 do
+		local picked = SpawnPoints.pick(points, 6, Rng.new(seed))
+		assertEqual(6, #picked)
+		local seen = {}
+		for _, p in ipairs(picked) do
+			assertTrue(not seen[p], "seed " .. seed .. " drew a point twice")
+			seen[p] = true
+		end
+	end
+end)
+
+test("SpawnPoints.pick returns fewer when candidates run out", function()
+	local Rng = require("src.core.rng")
+	local points = { { x = 1, y = 0 }, { x = 2, y = 0 }, { x = 3, y = 0 } }
+	assertEqual(3, #SpawnPoints.pick(points, 6, Rng.new(1)))
+	assertEqual(0, #SpawnPoints.pick({}, 4, Rng.new(1)))
 end)

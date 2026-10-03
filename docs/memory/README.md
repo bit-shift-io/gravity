@@ -12,3 +12,5 @@ Situational facts: true only when touching a particular area. One fact per file.
 - [round-reset-through-sweep.md](round-reset-through-sweep.md) — round reset marks records dead and relies on the sweep; also clear timers and events
 - [e2e-harness-has-own-draw-path.md](e2e-harness-has-own-draw-path.md) — e2e harness draws separately from MatchState; add new overlays there too
 - [fixtures-that-kill-ships-end-rounds.md](fixtures-that-kill-ships-end-rounds.md) — tests that kill a ship need `round.endDelay = math.huge` or the round respawns mid-scenario
+- [ai-fill-overwrites-scripted-intents.md](ai-fill-overwrites-scripted-intents.md) — fixtures that script intents must use keyboard slots; `AI.fill` overwrites AI-slot intents every step
+- [register-new-test-files.md](register-new-test-files.md) — unit and integration runners use fixed file lists; register new tests or they never run

@@ -7,6 +7,7 @@ local Bodies = require("src.sim.bodies")
 local Vec2 = require("src.core.vec2")
 local Collide = require("src.sim.collide")
 local TankOutline = require("src.core.tank_outline")
+local PlayerColors = require("src.app.render.player_colors")
 
 local ShipsRender = {}
 
@@ -18,16 +19,11 @@ local ShipsRender = {}
 -- way).
 local SHAPE = Collide.SHIP_SHAPE
 
-local PLAYER_COLOR = {
-	[1] = { 0.3, 0.8, 1, 1 },
-	[2] = { 1, 0.6, 0.3, 1 },
-}
-
 function ShipsRender.draw(ctx)
 	for _, ship in ipairs(ctx.pools.ships) do
 		local body = Bodies.get(ctx.sim.bodies, ship.body)
 		if body then
-			love.graphics.setColor(PLAYER_COLOR[ship.player] or { 1, 1, 1, 1 })
+			love.graphics.setColor(PlayerColors.get(ctx, ship.player))
 
 			if ship.lander and ship.lander.state == "tank" then
 				-- Dome and barrel draw as one outline.

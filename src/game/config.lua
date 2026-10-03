@@ -219,6 +219,48 @@ local Config = {
 		snakeRetries = 10,
 	},
 	match = {},
+	-- Player limits and the one shared colour palette (src/game/roster.lua,
+	-- src/app/render/player_colors.lua). A slot's `color` indexes the palette.
+	-- Hardcore match setting (src/game/components/thruster.lua): rotating a
+	-- flying ship burns rotationBurnRate fuel units per second.
+	hardcore = {
+		rotationBurnRate = 1,
+	},
+	players = {
+		-- Stick magnitude below this reads as centred (src/app/bindings.lua).
+		gamepadDeadzone = 0.3,
+		min = 2,
+		max = 6,
+		maxHumans = 4,
+		palette = {
+			{ 0.3, 0.8, 1, 1 },
+			{ 1, 0.6, 0.3, 1 },
+			{ 0.5, 1, 0.4, 1 },
+			{ 1, 0.4, 0.7, 1 },
+			{ 1, 0.9, 0.3, 1 },
+			{ 0.7, 0.5, 1, 1 },
+		},
+	},
+	-- Roster setup screen (src/app/states/setup_state.lua). seedMaxDigits caps
+	-- the typed seed so it stays a safe integer (15 digits < 2^53).
+	setup = {
+		seedMaxDigits = 15,
+	},
+	-- AI players (src/game/ai/). A level is just numbers for the one behaviour:
+	-- aimError is the max random aim offset in radians redrawn each think;
+	-- reactionDelay is the seconds between thinks (the intent is held between
+	-- them). fireTolerance (rad) is how close the aim must be to start a
+	-- charge; fullChargeDistance (px) is the target distance that gets a full
+	-- charge, nearer targets get proportionally less.
+	ai = {
+		fireTolerance = 0.08,
+		fullChargeDistance = 700,
+		levels = {
+			easy = { aimError = 0.35, reactionDelay = 0.35 },
+			medium = { aimError = 0.15, reactionDelay = 0.15 },
+			hard = { aimError = 0.03, reactionDelay = 0.04 },
+		},
+	},
 	-- Round cycle (src/game/systems/round_system.lua). endDelay is the seconds
 	-- between the round result locking and the next round's respawn;
 	-- winsToWin is the round wins that take the match (used by a later slice).

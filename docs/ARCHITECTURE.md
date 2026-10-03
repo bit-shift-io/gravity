@@ -64,7 +64,7 @@ end
 ```
 
 - The whole frame order lives in one function, `Match.step(ctx)`:
-  1. Read player intents (from `ctx.intents`, filled by `app`).
+  1. Read player intents (from `ctx.intents`). `app` fills human slots; `AI.fill(ctx)` fills AI slots.
   2. Ship controls: rotate, thrust, fire.
   3. Spawners (asteroids).
   4. `Sim.step`: gravity, integrate, collide → contact list.

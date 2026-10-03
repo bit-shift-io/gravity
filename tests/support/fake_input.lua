@@ -3,9 +3,7 @@
 -- love_mock, or real LÖVE under the e2e tier) so construct a FakeInput only
 -- after GameHarness.startMatch() has run under a `love` global.
 --
--- No input mapping exists yet (that's a later slice) -- this only shims
--- love.keyboard.isDown; extend it (per-player joystick assignment, etc.)
--- once src/app wires ctx.intents from real input.
+-- Shims love.keyboard.isDown and love.joystick.getJoysticks.
 local FrameStepper = require("tests.support.frame_stepper")
 
 local FakeInput = {}
@@ -19,7 +17,38 @@ function FakeInput.new()
 		return state.keysDown[key] == true
 	end
 
+	love.joystick = love.joystick or {}
+	love.joystick.getJoysticks = function()
+		return state.joysticks
+	end
+
 	return setmetatable({ state = state }, FakeInput)
+end
+
+-- A fake gamepad. Buttons and axes use LÖVE's gamepad names ("a", "dpleft",
+-- "leftx"); drive it with :press/:release/:setAxis.
+function FakeInput:addJoystick(name)
+	local buttons, axes = {}, {}
+	local joystick = { connected = true }
+	function joystick:isConnected() return self.connected end
+	function joystick:getName() return name or "fake pad" end
+	function joystick:isGamepadDown(button) return buttons[button] == true end
+	function joystick:getGamepadAxis(axis) return axes[axis] or 0 end
+	function joystick:press(button) buttons[button] = true end
+	function joystick:release(button) buttons[button] = nil end
+	function joystick:setAxis(axis, value) axes[axis] = value end
+	table.insert(self.state.joysticks, joystick)
+	return joystick
+end
+
+function FakeInput:removeJoystick(joystick)
+	joystick.connected = false
+	for i, j in ipairs(self.state.joysticks) do
+		if j == joystick then
+			table.remove(self.state.joysticks, i)
+			return
+		end
+	end
 end
 
 function FakeInput:press(key)

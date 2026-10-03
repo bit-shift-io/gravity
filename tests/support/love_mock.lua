@@ -6,11 +6,14 @@
 local LoveMock = {}
 
 -- Builds one fresh love mock (own keyboard/joystick state) per test so
--- tests don't leak input state between each other.
-function LoveMock.new()
+-- tests don't leak input state between each other. `files` is the in-memory
+-- save directory (path -> contents); pass the same table to a second mock to
+-- model a relaunch against the same save directory.
+function LoveMock.new(files)
 	local state = {
 		keysDown = {},
 		joysticks = {},
+		files = files or {},
 	}
 
 	local love = {}
@@ -37,6 +40,25 @@ function LoveMock.new()
 			return love.timer._getTime
 		end,
 		sleep = function() end,
+	}
+
+	love.filesystem = {
+		getInfo = function(path)
+			if state.files[path] ~= nil then
+				return { type = "file", size = #state.files[path] }
+			end
+			return nil
+		end,
+		read = function(path)
+			if state.files[path] == nil then
+				return nil, "Could not open file " .. path
+			end
+			return state.files[path]
+		end,
+		write = function(path, data)
+			state.files[path] = data
+			return true
+		end,
 	}
 
 	love.getVersion = function()

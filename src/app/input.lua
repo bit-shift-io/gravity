@@ -1,45 +1,28 @@
 -- Input for the app layer -- the only layer allowed to touch `love.*`
 -- (docs/ARCHITECTURE.md "Layers"). Two independent jobs live in this file:
 -- 1/2 debug-overlay toggles (Input.newDebugState/Input.update, from the
--- previous slice), and gameplay intent mapping (Input.updateIntents, this
--- slice) -- keyboard state straight into ctx.intents[player], read every
+-- previous slice), and gameplay intent mapping (Input.updateIntents, via
+-- src/app/bindings.lua) -- device state into ctx.intents[slot], read every
 -- frame by whichever caller owns ctx (src/app/states/match_state.lua,
 -- tests/support/game_harness.lua).
 local Input = {}
 
--- P1 (WASD) and P2 (arrows) share one keyboard (slice 04 "Two ships spawn
--- ... P1 (WASD) and P2 (arrows) rotate and thrust"). `rotate` is -1/0/1
--- (left/none/right); `thrust` and `fire` are booleans. There's no weapon
--- component yet (this slice's Gotcha: "Leave a place ... for weapon; nil
--- for now"), so `fire` is read and handed to ctx.intents now so the
--- mapping already exists when a later slice gives it something to act on.
-local KEY_MAP = {
-	[1] = { left = "a", right = "d", thrust = "w", fire = "q" },
-	[2] = { left = "left", right = "right", thrust = "up", fire = "rshift" },
-}
+local Bindings = require("src.app.bindings")
+local Compat = require("src.app.compat")
+local Roster = require("src.game.roster")
 
-local function readIntent(keys)
-	local rotate = 0
-	if love.keyboard.isDown(keys.left) then
-		rotate = rotate - 1
-	end
-	if love.keyboard.isDown(keys.right) then
-		rotate = rotate + 1
-	end
-
-	return {
-		rotate = rotate,
-		thrust = love.keyboard.isDown(keys.thrust),
-		fire = love.keyboard.isDown(keys.fire),
-	}
-end
-
--- Fills ctx.intents[1] and ctx.intents[2] from the current keyboard state.
+-- Fills ctx.intents[slot] for every human slot in the roster (defaults to
+-- ctx.roster) from the device its binding names. AI slots are skipped.
 -- Call once per frame, before Match.step reads them (docs/ARCHITECTURE.md
 -- "Systems and frame order", step 1).
-function Input.updateIntents(ctx)
-	for player, keys in pairs(KEY_MAP) do
-		ctx.intents[player] = readIntent(keys)
+function Input.updateIntents(ctx, roster)
+	roster = roster or ctx.roster
+	local joysticks = Compat.getJoysticks()
+	local devices = { isDown = love.keyboard.isDown, joysticks = joysticks }
+	for slot = 1, Roster.count(roster) do
+		if Roster.isHuman(roster, slot) then
+			ctx.intents[slot] = Bindings.readIntent(roster[slot].binding, devices)
+		end
 	end
 end
 

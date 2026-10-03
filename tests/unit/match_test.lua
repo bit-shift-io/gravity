@@ -148,3 +148,66 @@ test("Match.step keeps both ships alive as tanks for 120 steps on snake-only lev
 		end
 	end
 end)
+
+local function sixPointLevel(candidateCount)
+	local world = {
+		vertices = { { x = -400, y = 0 }, { x = 400, y = 0 }, { x = 400, y = 40 }, { x = -400, y = 40 } },
+		mass = 1000,
+	}
+	local candidates = {}
+	for i = 1, candidateCount do
+		candidates[i] = { x = -350 + i * 60, y = 0, normal = { x = 0, y = -1 }, world = world }
+	end
+	return { worlds = { world }, spawnPoints = { candidates[1], candidates[candidateCount] }, spawnCandidates = candidates }
+end
+
+local function aiRoster(n)
+	local roster = {}
+	for i = 1, n do
+		roster[i] = { color = i, binding = { kind = "ai", level = "easy" } }
+	end
+	return roster
+end
+
+test("Match.new defaults to a two-slot roster", function()
+	local ctx = Match.new(sixPointLevel(8), Config, 1)
+	assertEqual(2, #ctx.roster)
+	assertEqual(2, #ctx.pools.ships)
+	assertEqual(2, #ctx.round.score)
+end)
+
+test("Match.new spawns one ship per roster slot on distinct points, slot index as player", function()
+	local ctx = Match.new(sixPointLevel(8), Config, 5, { roster = aiRoster(6) })
+	assertEqual(6, #ctx.pools.ships)
+	local seen = {}
+	for i, ship in ipairs(ctx.pools.ships) do
+		assertEqual(i, ship.player)
+		local body = Bodies.get(ctx.sim.bodies, ship.body)
+		assertTrue(not seen[body.x], "two ships share a point")
+		seen[body.x] = true
+	end
+end)
+
+test("Match.new puts the first two slots on the farthest-pair spawn points", function()
+	local level = sixPointLevel(8)
+	local ctx = Match.new(level, Config, 5, { roster = aiRoster(4) })
+	local first = Bodies.get(ctx.sim.bodies, ctx.pools.ships[1].body)
+	local second = Bodies.get(ctx.sim.bodies, ctx.pools.ships[2].body)
+	assertEqual(level.spawnPoints[1].x, first.x)
+	assertEqual(level.spawnPoints[2].x, second.x)
+end)
+
+test("Match.new spawns no more ships than the level has spawn candidates", function()
+	local ctx = Match.new(sixPointLevel(4), Config, 5, { roster = aiRoster(6) })
+	assertEqual(4, #ctx.pools.ships)
+end)
+
+test("the camera frames a living ship that is far from the others", function()
+	local ctx = Match.new(sixPointLevel(8), Config, 5, { roster = aiRoster(3) })
+	ctx.dt = 1 / 60
+	local body = Bodies.get(ctx.sim.bodies, ctx.pools.ships[3].body)
+	body.x, body.y = 0, -900
+	ctx.camera.zoom = 1
+	Match.step(ctx)
+	assertTrue(ctx.camera.zoom < 1, "zoom must back off to keep the far ship in frame")
+end)

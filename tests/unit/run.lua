@@ -7,6 +7,10 @@ local defaultTestFiles = {
 	"tests/unit/post_mode_test.lua",
 	"tests/unit/glow_math_test.lua",
 	"tests/unit/camera_test.lua",
+	"tests/unit/bindings_test.lua",
+	"tests/unit/menu_nav_test.lua",
+	"tests/unit/roster_test.lua",
+	"tests/unit/settings_codec_test.lua",
 	"tests/unit/match_test.lua",
 	"tests/unit/spawn_points_test.lua",
 	"tests/unit/level_gen_test.lua",
@@ -22,6 +26,7 @@ local defaultTestFiles = {
 	"tests/unit/integrate_test.lua",
 	"tests/unit/fuel_test.lua",
 	"tests/unit/thruster_test.lua",
+	"tests/unit/hardcore_rotation_test.lua",
 	"tests/unit/thruster_effect_test.lua",
 	"tests/unit/particle_alpha_test.lua",
 	"tests/unit/collide_test.lua",
@@ -40,6 +45,7 @@ local defaultTestFiles = {
 	"tests/unit/round_system_test.lua",
 	"tests/unit/score_card_test.lua",
 	"tests/unit/match_over_test.lua",
+	"tests/unit/ai_basic_test.lua",
 }
 
 local tests = {}

@@ -4,6 +4,7 @@
 -- `draw` touches `love.*` (docs/ARCHITECTURE.md "Layers").
 local RoundSystem = require("src.game.systems.round_system")
 local Fonts = require("src.app.render.fonts")
+local PlayerColors = require("src.app.render.player_colors")
 
 local ScoreCard = {}
 
@@ -12,13 +13,9 @@ local SCREEN_HEIGHT = 720
 local PIP_RADIUS = 8
 local PIP_SPACING = 24
 local GROUP_GAP = 80
+local SIDE_MARGIN = 40
 local TITLE_SIZE = 64
 local LABEL_SIZE = 32
-
-local PLAYER_COLOR = {
-	[1] = { 0.3, 0.8, 1, 1 },
-	[2] = { 1, 0.6, 0.3, 1 },
-}
 
 function ScoreCard.resultText(result)
 	if result.draw then
@@ -40,13 +37,43 @@ local function groupWidth(total)
 	return (total - 1) * PIP_SPACING + PIP_RADIUS * 2
 end
 
+-- Gap between slot groups: the usual gap, tightened so `count` groups of
+-- `width` plus labels still fit the screen. Pure.
+function ScoreCard.groupGap(count, groupSpan)
+	if count < 2 then
+		return GROUP_GAP
+	end
+	return math.min(GROUP_GAP, (SCREEN_WIDTH - 2 * SIDE_MARGIN - count * groupSpan) / (count - 1))
+end
+
+-- "P1 ●●○  P2 ●○○ ...": a label then pips for every slot, the row centred at
+-- height `y`. Shared by the score card and the match-over screen.
+function ScoreCard.drawScores(ctx, y)
+	local total = ctx.config.round.winsToWin
+	local labelFont = Fonts.get(LABEL_SIZE)
+	local count = #ctx.round.score
+	local labelWidth = labelFont:getWidth("P1 ")
+	local span = labelWidth + groupWidth(total)
+	local gap = ScoreCard.groupGap(count, span)
+	local x = (SCREEN_WIDTH - (count * span + (count - 1) * gap)) / 2
+	for player = 1, count do
+		love.graphics.setColor(PlayerColors.get(ctx, player))
+		love.graphics.setFont(labelFont)
+		love.graphics.print("P" .. player, x, y - labelFont:getHeight() / 2)
+		local pipX = x + labelWidth + PIP_RADIUS
+		for i, filled in ipairs(ScoreCard.pips(ctx.round.score[player], total)) do
+			love.graphics.circle(filled and "fill" or "line", pipX + (i - 1) * PIP_SPACING, y, PIP_RADIUS)
+		end
+		x = x + span + gap
+	end
+end
+
 function ScoreCard.draw(ctx)
 	if not RoundSystem.cardVisible(ctx.round, ctx.config.round) then
 		return
 	end
 
 	local titleFont = Fonts.get(TITLE_SIZE)
-	local labelFont = Fonts.get(LABEL_SIZE)
 	local title = ScoreCard.resultText(ctx.round.result)
 	local titleWidth = titleFont:getWidth(title)
 	local titleY = SCREEN_HEIGHT / 2 - 60
@@ -58,22 +85,7 @@ function ScoreCard.draw(ctx)
 	love.graphics.setFont(titleFont)
 	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, titleY)
 
-	-- "P1 ●●○  P2 ●○○": a label then pips per player, the pair centred.
-	local total = ctx.config.round.winsToWin
-	local labelWidth = labelFont:getWidth("P1 ")
-	local width = groupWidth(total)
-	local x = (SCREEN_WIDTH - (2 * (labelWidth + width) + GROUP_GAP)) / 2
-	local y = SCREEN_HEIGHT / 2 + 40
-	for player = 1, 2 do
-		love.graphics.setColor(PLAYER_COLOR[player])
-		love.graphics.setFont(labelFont)
-		love.graphics.print("P" .. player, x, y - labelFont:getHeight() / 2)
-		local pipX = x + labelWidth + PIP_RADIUS
-		for i, filled in ipairs(ScoreCard.pips(ctx.round.score[player], total)) do
-			love.graphics.circle(filled and "fill" or "line", pipX + (i - 1) * PIP_SPACING, y, PIP_RADIUS)
-		end
-		x = x + labelWidth + width + GROUP_GAP
-	end
+	ScoreCard.drawScores(ctx, SCREEN_HEIGHT / 2 + 40)
 
 	love.graphics.setColor(1, 1, 1, 1)
 end

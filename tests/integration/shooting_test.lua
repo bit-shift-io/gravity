@@ -251,7 +251,12 @@ test("an armed blast kills multiple ships in its radius", function()
 		},
 	}
 	local config = withMinSpeed(800) -- High speed to ensure blast on first ship
-	local game = GameHarness.startMatch(level, { config = config })
+	local roster = {}
+	local layouts = { "wasd", "arrows", "ijkl" }
+	for slot = 1, 3 do
+		roster[slot] = { color = slot, binding = { kind = "keyboard", layout = layouts[slot] } }
+	end
+	local game = GameHarness.startMatch(level, { config = config, roster = roster })
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 	local target = ctx.pools.ships[2]

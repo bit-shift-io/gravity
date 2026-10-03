@@ -66,18 +66,18 @@ function SpawnPoints.cleared(worlds, config)
 	return points
 end
 
--- Two distinct entries of `points` drawn with `rng` (src/core/rng.lua);
--- no minimum distance. Returns fewer when `points` has fewer than two.
-function SpawnPoints.randomPair(points, rng)
+-- Up to `n` distinct entries of `points` drawn with `rng` (src/core/rng.lua);
+-- no minimum distance. Returns fewer when `points` has fewer than `n`.
+function SpawnPoints.pick(points, n, rng)
 	local pool = {}
 	for i, point in ipairs(points) do
 		pool[i] = point
 	end
-	local pair = {}
-	for _ = 1, math.min(2, #pool) do
-		pair[#pair + 1] = table.remove(pool, rng:int(1, #pool))
+	local picked = {}
+	for _ = 1, math.min(n, #pool) do
+		picked[#picked + 1] = table.remove(pool, rng:int(1, #pool))
 	end
-	return pair
+	return picked
 end
 
 -- Returns two spawn points `{ x, y, normal = { x, y }, world }`, the farthest-apart

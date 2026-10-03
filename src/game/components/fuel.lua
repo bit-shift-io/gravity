@@ -11,8 +11,10 @@ end
 -- Burns burnRate * dt worth of fuel, clamped so amount never goes below 0
 -- (docs/ARCHITECTURE.md "Nothing is removed... outside the despawn sweep"
 -- doesn't apply here, but the same never-go-negative discipline does).
-function Fuel.consume(fuel, dt)
-	fuel.amount = math.max(0, fuel.amount - fuel.burnRate * dt)
+-- `rate` (optional) overrides burnRate, so thrust and rotation share this one
+-- clamp.
+function Fuel.consume(fuel, dt, rate)
+	fuel.amount = math.max(0, fuel.amount - (rate or fuel.burnRate) * dt)
 end
 
 -- Refuels by `amount`, clamped to capacity. Used by the lander component

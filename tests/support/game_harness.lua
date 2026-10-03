@@ -25,6 +25,7 @@ local GameHarness = {}
 -- opts.seed (optional) fixes the match's RNG seed (docs/CONTEXT.md "Seed")
 -- -- a test that needs a reproducible asteroid sequence passes an explicit
 -- one; omitted, Match.new falls back to its own per-run default.
+-- opts.roster (optional) is the slot list (src/game/roster.lua); defaults to two humans.
 -- opts.real = true additionally announces the started game to the e2e
 -- runner via _G.E2E_ON_GAME_STARTED, mirroring the real app's fixed-timestep
 -- accumulator so headless and headed tests drive the match identically.
@@ -36,7 +37,7 @@ function GameHarness.startMatch(level, opts)
 		error("invalid level: " .. tostring(err))
 	end
 
-	local ctx = Match.new(level, opts.config or Config, opts.seed)
+	local ctx = Match.new(level, opts.config or Config, opts.seed, { roster = opts.roster })
 	-- Same debug-toggle wiring as src/app/states/match_state.lua, so e2e
 	-- scenarios can press 1/2 (tests/support/fake_input.lua) against a
 	-- harnessed match exactly as they would against the real app.
@@ -51,7 +52,7 @@ function GameHarness.startMatch(level, opts)
 		-- rather than erroring on a missing love.keyboard.
 		if love then
 			Input.update(ctx.debug)
-			Input.updateIntents(ctx)
+			Input.updateIntents(ctx, ctx.roster)
 		end
 		ctx.dt = dt
 		ctx.time = ctx.time + dt

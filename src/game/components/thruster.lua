@@ -2,8 +2,9 @@
 -- sub-table `{ accel }` plus this pure function over it. Called explicitly
 -- by src/game/systems/ship_system.lua -- never updates itself. Burns fuel
 -- via src/game/components/fuel.lua; does nothing once the tank is empty, so
--- an out-of-fuel ship keeps rotating (no fuel cost for that) but drifts
--- instead of accelerating (slice 04 acceptance criteria).
+-- an out-of-fuel ship drifts instead of accelerating (slice 04 acceptance
+-- criteria). Rotation is free unless ctx.hardcore, where it burns fuel too
+-- and an empty tank cannot rotate.
 local Fuel = require("src.game.components.fuel")
 local Bodies = require("src.sim.bodies")
 local Vec2 = require("src.core.vec2")
@@ -32,6 +33,21 @@ function Thruster.isThrusting(ship, ctx)
 	end
 
 	return intent.thrust or false
+end
+
+-- Returns the rotate intent (-1/0/1) the ship may act on this frame. With
+-- ctx.hardcore, a non-zero rotation burns fuel (Config.hardcore.rotationBurnRate)
+-- and an empty tank returns 0.
+function Thruster.rotation(ship, ctx)
+	local intent = ctx.intents[ship.player]
+	local rotate = intent and intent.rotate or 0
+	if ctx.hardcore and rotate ~= 0 then
+		if Fuel.isEmpty(ship.fuel) then
+			return 0
+		end
+		Fuel.consume(ship.fuel, ctx.dt, ctx.config.hardcore.rotationBurnRate)
+	end
+	return rotate
 end
 
 function Thruster.apply(ship, ctx)

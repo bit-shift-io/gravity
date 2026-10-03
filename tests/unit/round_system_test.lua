@@ -280,3 +280,103 @@ test("no further round locks once the match is over", function()
 	assertEqual(0, ctx.round.score[2])
 	assertEqual(1, ctx.round.result.winner)
 end)
+
+-- N-slot rounds: a floor with 2 spawn points and 8 candidates.
+local function manySlotRoster(n)
+	local roster = {}
+	for i = 1, n do
+		roster[i] = { color = i, binding = { kind = "ai", level = "easy" } }
+	end
+	return roster
+end
+
+local function manySlotCtx(n, seed)
+	local world = floorWorld()
+	local function point(x)
+		return { x = x, y = 0, normal = { x = 0, y = -1 }, world = world }
+	end
+	local candidates = {}
+	for i = 1, 8 do
+		candidates[i] = point(-280 + i * 60)
+	end
+	local lvl = { worlds = { world }, spawnPoints = { candidates[1], candidates[8] }, spawnCandidates = candidates }
+	local ctx = Match.new(lvl, Config, seed or 1, { roster = manySlotRoster(n) })
+	ctx.dt = 1 / 60
+	return ctx
+end
+
+test("a 4-slot match starts 4 ships on a 4-entry score", function()
+	local ctx = manySlotCtx(4)
+	assertEqual(4, #ctx.pools.ships)
+	assertEqual(4, #ctx.round.score)
+	assertEqual("playing", ctx.round.phase)
+end)
+
+test("in a 6-slot round the last ship alive wins the point", function()
+	local ctx = manySlotCtx(6)
+	for i = 1, 5 do
+		kill(ctx, ctx.pools.ships[i])
+	end
+	Match.step(ctx)
+
+	assertEqual("roundOver", ctx.round.phase)
+	assertEqual(6, ctx.round.result.winner)
+	assertEqual(1, ctx.round.score[6])
+	assertEqual(0, ctx.round.score[1])
+end)
+
+test("a round with several ships left alive keeps playing", function()
+	local ctx = manySlotCtx(4)
+	kill(ctx, ctx.pools.ships[1])
+	kill(ctx, ctx.pools.ships[2])
+	Match.step(ctx)
+	assertEqual("playing", ctx.round.phase)
+end)
+
+test("the last several ships dying in the same step is a draw", function()
+	local ctx = manySlotCtx(4)
+	for _, ship in ipairs(ctx.pools.ships) do
+		kill(ctx, ship)
+	end
+	Match.step(ctx)
+
+	assertTrue(ctx.round.result.draw)
+	for slot = 1, 4 do
+		assertEqual(0, ctx.round.score[slot])
+	end
+end)
+
+test("the first of 6 slots to winsToWin ends the match", function()
+	local ctx = manySlotCtx(6)
+	ctx.round.score[5] = Config.round.winsToWin - 1
+	for i = 1, 6 do
+		if i ~= 5 then
+			kill(ctx, ctx.pools.ships[i])
+		end
+	end
+	Match.step(ctx)
+
+	assertEqual("matchOver", ctx.round.phase)
+	assertEqual(5, ctx.round.winner)
+end)
+
+test("a 6-slot respawn places six ships on distinct points", function()
+	local ctx = manySlotCtx(6, 3)
+	for i = 1, 5 do
+		kill(ctx, ctx.pools.ships[i])
+	end
+	runSeconds(ctx, holdSeconds())
+
+	assertEqual("playing", ctx.round.phase)
+	local alive, seen = {}, {}
+	for _, ship in ipairs(ctx.pools.ships) do
+		if not ship.dead then
+			alive[#alive + 1] = ship
+			local body = Bodies.get(ctx.sim.bodies, ship.body)
+			local key = body.x .. "," .. body.y
+			assertTrue(not seen[key], "two ships share a spawn point")
+			seen[key] = true
+		end
+	end
+	assertEqual(6, #alive)
+end)

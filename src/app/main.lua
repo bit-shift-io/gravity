@@ -3,12 +3,10 @@
 -- app-layer module hangs off it. No sim/game/core module may require
 -- anything from here (see docs/ARCHITECTURE.md "Layers").
 local Screen = require("src.app.screen")
-local Config = require("src.game.config")
-local MatchState = require("src.app.states.match_state")
-local LevelGen = require("src.game.level_gen")
-local RoundSystem = require("src.game.systems.round_system")
-local PostMode = require("src.app.post.post_mode")
+local Flow = require("src.app.flow")
 local Pipeline = require("src.app.post.pipeline")
+local Compat = require("src.app.compat")
+local SettingsStore = require("src.app.settings_store")
 
 -- Fixed timestep of 1/60 s (docs/ARCHITECTURE.md "Rules"): the simulation
 -- must be deterministic for a given seed and input sequence, which a
@@ -17,20 +15,10 @@ local FIXED_DT = 1 / 60
 
 local App = {}
 
-App.ctx = nil
+-- The flow (src/app/flow.lua) owns the state stack: title, match, pause.
+App.flow = nil
 App.accumulator = 0
-App.seed = nil
-App.postMode = Config.post.defaultMode
-
--- Rematch (and dev reset on R): rebuild the match from a fresh level with the original seed, so
--- a reset reproduces the initial state exactly.
-function App.reset()
-	-- Both ships start as tanks on the farthest-apart pair of surface points.
-	local level = LevelGen.generate(App.seed, Config)
-	App.ctx = MatchState.enter(level, Config, App.seed)
-	App.accumulator = 0
-end
-
+App.lastTop = nil
 
 local function findArg(args, arg)
 	for _, a in ipairs(args or {}) do
@@ -78,31 +66,69 @@ function love.load(args)
 	end
 
 	love.graphics.setBackgroundColor(0, 0, 0)
+	-- Setup's randomise action draws from math.random.
+	math.randomseed(os.time())
+	Compat.loadGamepadMappings("res/gamecontrollerdb.txt")
 
-	-- No menu yet (slice 12) -- match_state is the only state, so it's
-	-- entered directly rather than showing a title screen first. seed=N
-	-- fixes the generated level; otherwise the clock picks one, logged so a
-	-- good layout can be replayed.
-	App.seed = tonumber(findArg(args, "^seed=(.+)$")) or os.time()
-	print("seed=" .. App.seed)
-	App.reset()
+	-- seed=N fixes the generated level for every Play; otherwise each Play
+	-- picks a fresh seed, logged so a good layout can be replayed.
+	-- hardcore=1 makes rotating burn fuel.
+	-- The last roster and hardcore setting reload here and save when a match
+	-- starts; the seed is never saved. The launch args win for this launch.
+	local saved = SettingsStore.load()
+	App.flow = Flow.new({
+		seed = tonumber(findArg(args, "^seed=(.+)$")),
+		hardcore = findArg(args, "^hardcore=(.+)$") == "1" or saved.hardcore,
+		roster = saved.roster,
+		onStart = SettingsStore.save,
+		quit = love.event.quit,
+	})
 end
 
+-- Every input callback goes through the state stack; the match state keeps the
+-- R/P dev keys and rematch, Esc / gamepad Start pause.
 function love.keypressed(key)
-	if key == "r" and App.ctx then
-		App.reset()
-	elseif (key == "return" or key == "kpenter" or key == "space") and App.ctx and RoundSystem.matchOver(App.ctx.round) then
-		App.reset()
-	elseif key == "p" then
-		App.postMode = PostMode.next(App.postMode)
-	end
+	App.flow:keypressed(key)
+end
+
+function love.gamepadpressed(joystick, button)
+	App.flow:gamepadpressed(joystick, button)
+end
+
+function love.gamepadaxis(joystick, axis, value)
+	App.flow:gamepadaxis(joystick, axis, value)
+end
+
+function love.textinput(text)
+	App.flow:textinput(text)
+end
+
+-- Pads are polled by ordinal every frame (src/app/input.lua), so hot-plugging
+-- needs no bookkeeping in a match; the setup screen re-validates its gamepad
+-- bindings on these events. They are logged too.
+function love.joystickadded(joystick)
+	print("joystick added: " .. tostring(joystick:getName()))
+	App.flow:joystickadded(joystick)
+end
+
+function love.joystickremoved(joystick)
+	print("joystick removed: " .. tostring(joystick:getName()))
+	App.flow:joystickremoved(joystick)
 end
 
 function love.update(dt)
+	-- Pausing, resuming or changing screen drops the leftover time, so a state
+	-- change never bursts catch-up steps.
+	local top = App.flow.stack:top()
+	if top ~= App.lastTop then
+		App.lastTop = top
+		App.accumulator = 0
+	end
+
 	App.accumulator = App.accumulator + dt
 
 	while App.accumulator >= FIXED_DT do
-		MatchState.update(App.ctx, FIXED_DT)
+		App.flow:update(FIXED_DT)
 		App.accumulator = App.accumulator - FIXED_DT
 	end
 end
@@ -114,8 +140,8 @@ function love.draw()
 	-- Bars stay plain black: clear the window, then the pipeline draws the
 	-- game rectangle only.
 	love.graphics.clear(0, 0, 0, 1)
-	Pipeline.draw(fit, App.postMode, function()
-		MatchState.draw(App.ctx)
+	Pipeline.draw(fit, App.flow.session.postMode, function()
+		App.flow:draw()
 	end)
 end
 

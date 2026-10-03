@@ -166,7 +166,7 @@ function ShipSystem.update(ctx)
 					Weapon.update(ship, ctx, origin, direction)
 				end
 			else
-				local rotate = intent and intent.rotate or 0
+				local rotate = Thruster.rotation(ship, ctx)
 				body.angularVelocity = rotate * rotationSpeed
 				Thruster.apply(ship, ctx)
 

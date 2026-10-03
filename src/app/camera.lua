@@ -1,4 +1,4 @@
--- Camera system: manages zoom level to fit both players with buffer in viewport.
+-- Camera system: manages zoom level to fit every focus position with buffer in viewport.
 -- Pure math -- no `love.*` calls -- so it is unit-testable directly.
 -- src/app/states/match_state.lua applies the camera transform with love.graphics.
 local Camera = {}
@@ -12,31 +12,30 @@ function Camera.new()
 	}
 end
 
--- Calculate target zoom to fit both player positions with buffer in viewport.
--- Returns a zoom level that fits both players' buffer spheres in the viewport,
+-- Calculate target zoom to fit all given positions with buffer in viewport.
+-- Returns a zoom level that fits every position's buffer sphere in the viewport,
 -- clamped between minimum (entire play area visible) and maximum (hard boundary visible).
 --
 -- Parameters:
---   pos1, pos2: player positions { x, y }
+--   positions: list of { x, y } the camera must keep in frame (ships, crash sites)
 --   bufferRadius: additional radius around each player (pixels)
 --   viewportWidth, viewportHeight: virtual resolution dimensions
 --
 -- Formula:
---   1. Find the furthest point from origin considering both players and their buffers
+--   1. Find the furthest point from origin considering every position and its buffer
 --   2. Calculate zoom needed to fit that distance in viewport: zoom = min(Vw, Vh) / (2 * maxDist)
 --   3. Clamp zoom to [minZoom, maxZoom]
-function Camera.calculateTargetZoom(pos1, pos2, bufferRadius, viewportWidth, viewportHeight)
+function Camera.calculateTargetZoom(positions, bufferRadius, viewportWidth, viewportHeight)
 	-- Constants from the game
 	local PLAY_AREA_WIDTH = 1280
 	local PLAY_AREA_HEIGHT = 720
 	local HARD_BOUNDARY_RADIUS = 1280  -- Distance from origin to hard boundary
 
-	-- Calculate distances from origin for each player plus buffer
-	local dist1 = math.sqrt(pos1.x * pos1.x + pos1.y * pos1.y) + bufferRadius
-	local dist2 = math.sqrt(pos2.x * pos2.x + pos2.y * pos2.y) + bufferRadius
-
-	-- Max distance that needs to fit in viewport
-	local maxDist = math.max(dist1, dist2)
+	-- Max distance from origin that needs to fit in viewport
+	local maxDist = bufferRadius
+	for _, pos in ipairs(positions) do
+		maxDist = math.max(maxDist, math.sqrt(pos.x * pos.x + pos.y * pos.y) + bufferRadius)
+	end
 
 	-- Unclamped target zoom: fit maxDist in viewport
 	-- Zoom = viewportDimension / (2 * maxDist)

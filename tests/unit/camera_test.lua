@@ -15,7 +15,7 @@ test("Camera.calculateTargetZoom with two players close together fits both with 
 	local pos2 = { x = 100, y = 100 }
 	local bufferRadius = 50
 
-	local targetZoom = Camera.calculateTargetZoom(pos1, pos2, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoom = Camera.calculateTargetZoom({ pos1, pos2 }, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
 
 	-- When two players are very close, the max distance is roughly bufferRadius
 	-- The zoom must fit both buffers (distance to furthest point from origin)
@@ -31,8 +31,8 @@ test("Camera.calculateTargetZoom with two players far apart increases zoom", fun
 	local pos2 = { x = 300, y = 200 }
 	local bufferRadius = 50
 
-	local targetZoomClose = Camera.calculateTargetZoom({ x = 0, y = 0 }, { x = 100, y = 100 }, 50, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
-	local targetZoomFar = Camera.calculateTargetZoom(pos1, pos2, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoomClose = Camera.calculateTargetZoom({ { x = 0, y = 0 }, { x = 100, y = 100 } }, 50, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoomFar = Camera.calculateTargetZoom({ pos1, pos2 }, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
 
 	-- Further players should require a smaller zoom (more of the world visible)
 	assertTrue(targetZoomFar < targetZoomClose, "farther players should require smaller zoom")
@@ -47,7 +47,7 @@ test("Camera.calculateTargetZoom with one player at hard boundary respects max z
 	local pos2 = { x = 1280, y = 0 }  -- At hard boundary edge
 	local bufferRadius = 50
 
-	local targetZoom = Camera.calculateTargetZoom(pos1, pos2, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoom = Camera.calculateTargetZoom({ pos1, pos2 }, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
 
 	-- Max distance from origin: 1280 + 50 = 1330
 	-- Zoom to fit: min(1280 / 2660, 720 / 2660) ≈ 0.27
@@ -61,7 +61,7 @@ test("Camera.calculateTargetZoom respects minimum zoom (entire play area visible
 	local pos2 = { x = 0, y = 0 }
 	local bufferRadius = 10
 
-	local targetZoom = Camera.calculateTargetZoom(pos1, pos2, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoom = Camera.calculateTargetZoom({ pos1, pos2 }, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
 
 	-- Minimum zoom should fit the entire play area (1280x720)
 	-- Min zoom = min(1280 / 1280, 720 / 720) = 1.0
@@ -76,7 +76,7 @@ test("Camera.calculateTargetZoom respects maximum zoom (hard boundary visible)",
 	local pos2 = { x = 50, y = 50 }
 	local bufferRadius = 10
 
-	local targetZoom = Camera.calculateTargetZoom(pos1, pos2, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoom = Camera.calculateTargetZoom({ pos1, pos2 }, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
 
 	-- Maximum zoom is clamped to fit the play area (1280x720) = zoom 1.0
 	assertTrue(targetZoom <= 1.0, "zoom should be clamped to max of 1.0 (play area fits on screen)")
@@ -137,10 +137,22 @@ test("Camera stays centered on play area origin", function()
 	local bufferRadius = 50
 
 	-- Update camera with new player positions
-	local targetZoom = Camera.calculateTargetZoom(pos1, pos2, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local targetZoom = Camera.calculateTargetZoom({ pos1, pos2 }, bufferRadius, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
 	Camera.updateZoom(camera, targetZoom, 2.0, 0.016)
 
 	-- Camera center should remain at origin
 	assertEqual(0, camera.x, "camera x should remain at origin")
 	assertEqual(0, camera.y, "camera y should remain at origin")
+end)
+
+test("Camera.calculateTargetZoom is driven by the farthest of N positions", function()
+	local near = { { x = 0, y = 0 }, { x = 50, y = 0 }, { x = 0, y = 50 }, { x = -50, y = 0 } }
+	local withFar = { { x = 0, y = 0 }, { x = 50, y = 0 }, { x = 0, y = 50 }, { x = -50, y = 0 }, { x = 0, y = -600 } }
+
+	local zoomNear = Camera.calculateTargetZoom(near, 10, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local zoomFar = Camera.calculateTargetZoom(withFar, 10, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+	local zoomFarAlone = Camera.calculateTargetZoom({ { x = 0, y = -600 } }, 10, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
+
+	assertTrue(zoomFar < zoomNear, "a far fifth position must zoom out")
+	assertEqual(zoomFarAlone, zoomFar)
 end)
