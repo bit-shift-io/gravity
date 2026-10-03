@@ -55,8 +55,10 @@ function Camera.calculateTargetZoom(positions, bufferRadius, viewportWidth, view
 	return math.max(minZoomLevel, math.min(maxZoomLevel, targetZoom))
 end
 
--- Update camera zoom toward target zoom with smooth interpolation.
--- Uses linear interpolation: newZoom = oldZoom + (target - oldZoom) * speed * dt
+-- Update camera zoom toward target zoom.
+-- Zooming in is smoothed: newZoom = oldZoom + (target - oldZoom) * speed * dt
+-- Zooming out is immediate: the target is the zoom that fits every focus
+-- position, so easing it would let a fast-moving ship leave the frame.
 --
 -- Parameters:
 --   camera: camera table with zoom field
@@ -65,6 +67,10 @@ end
 --   dt: delta time since last frame (seconds)
 function Camera.updateZoom(camera, targetZoom, zoomSpeed, dt)
 	local diff = targetZoom - camera.zoom
+	if diff < 0 then
+		camera.zoom = targetZoom
+		return
+	end
 	camera.zoom = camera.zoom + diff * zoomSpeed * dt
 end
 

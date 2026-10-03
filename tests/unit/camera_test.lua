@@ -84,27 +84,33 @@ test("Camera.calculateTargetZoom respects maximum zoom (hard boundary visible)",
 	assertTrue(targetZoom >= 0.8, "zoom for close players should be fairly high")
 end)
 
--- Smooth transitions: zoom interpolates toward target
-test("Camera.updateZoom interpolates toward target zoom", function()
+-- Smooth transitions: zooming in interpolates toward target
+test("Camera.updateZoom eases zoom in toward target zoom", function()
+	local camera = Camera.new()
+	camera.zoom = 0.5
+
+	Camera.updateZoom(camera, 1.0, 2.0, 0.1)
+
+	-- newZoom = 0.5 + (1.0 - 0.5) * 2.0 * 0.1 = 0.6
+	assertTrue(camera.zoom > 0.5, "zoom should move toward target")
+	assertTrue(camera.zoom < 1.0, "zoom should not reach target in one frame")
+end)
+
+-- Zooming out must never lag, or ships leave the frame
+test("Camera.updateZoom zooms out immediately to keep everyone in frame", function()
 	local camera = Camera.new()
 	camera.zoom = 1.0
-	local targetZoom = 0.5
-	local zoomSpeed = 2.0
-	local dt = 0.1
 
-	Camera.updateZoom(camera, targetZoom, zoomSpeed, dt)
+	Camera.updateZoom(camera, 0.5, 2.0, 0.016)
 
-	-- Should move toward target: newZoom = oldZoom + (target - oldZoom) * speed * dt
-	-- newZoom = 1.0 + (0.5 - 1.0) * 2.0 * 0.1 = 1.0 - 0.1 = 0.9
-	assertTrue(camera.zoom > 1.0 * (1 - zoomSpeed * dt), "zoom should move toward target")
-	assertTrue(camera.zoom < 1.0, "zoom should not overshoot in the direction of target")
+	assertEqual(0.5, camera.zoom, "zoom out should snap to the fit zoom")
 end)
 
 -- Smooth transitions: converges toward target
 test("Camera.updateZoom converges to target over multiple frames", function()
 	local camera = Camera.new()
-	camera.zoom = 1.0
-	local targetZoom = 0.5
+	camera.zoom = 0.5
+	local targetZoom = 1.0
 	local zoomSpeed = 5.0  -- Higher speed constant for exponential convergence
 
 	-- Run 300 frames (~5 seconds at 60 FPS) to reach target
