@@ -4,7 +4,6 @@
 local RoundSystem = require("src.game.systems.round_system")
 local ScoreCard = require("src.app.render.score_card")
 local Fonts = require("src.app.render.fonts")
-local PlayerColors = require("src.app.render.player_colors")
 
 local MatchOver = {}
 
@@ -34,22 +33,22 @@ function MatchOver.draw(ctx)
 	local titleWidth = titleFont:getWidth(title)
 
 	local listHeight = ScoreCard.listHeight(#ctx.round.score)
-	local panelHeight = TITLE_BLOCK + listHeight + PROMPT_BLOCK
-	local panelTop = (SCREEN_HEIGHT - panelHeight) / 2
+	local contentHeight = TITLE_BLOCK + listHeight + PROMPT_BLOCK
+	local panelTop, panelHeight = ScoreCard.panelBounds(contentHeight)
+	local contentTop = panelTop + (panelHeight - contentHeight) / 2
 
-	love.graphics.setColor(0, 0, 0, 0.7)
-	love.graphics.rectangle("fill", 0, panelTop, SCREEN_WIDTH, panelHeight)
+	ScoreCard.drawPanel(panelTop, panelHeight, 0.7, 1)
 
-	love.graphics.setColor(PlayerColors.get(ctx, ctx.round.winner))
+	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setFont(titleFont)
-	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, panelTop + 25)
+	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, contentTop + 25)
 
-	ScoreCard.drawScores(ctx, panelTop + TITLE_BLOCK)
+	ScoreCard.drawScores(ctx, contentTop + TITLE_BLOCK)
 
 	local prompt = MatchOver.prompt()
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setFont(promptFont)
-	love.graphics.print(prompt, (SCREEN_WIDTH - promptFont:getWidth(prompt)) / 2, panelTop + TITLE_BLOCK + listHeight + 15)
+	love.graphics.print(prompt, (SCREEN_WIDTH - promptFont:getWidth(prompt)) / 2, contentTop + TITLE_BLOCK + listHeight + 15)
 end
 
 return MatchOver

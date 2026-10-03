@@ -104,7 +104,7 @@ function State:keypressed(key)
 	elseif key == "r" then
 		self.flow:rematch(self)
 	elseif (key == "return" or key == "kpenter" or key == "space") and RoundSystem.matchOver(self.ctx.round) then
-		self.flow:rematch(self)
+		self.flow:rematch(self, true)
 	elseif key == "p" then
 		self.flow.session.postMode = PostMode.next(self.flow.session.postMode)
 	end
@@ -114,7 +114,7 @@ function State:gamepadpressed(_, button)
 	if button == "start" then
 		self.flow:pause()
 	elseif button == "a" and RoundSystem.matchOver(self.ctx.round) then
-		self.flow:rematch(self)
+		self.flow:rematch(self, true)
 	end
 end
 

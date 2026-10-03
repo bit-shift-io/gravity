@@ -68,6 +68,10 @@ function Menu.draw(opts)
 	if opts.dim then
 		love.graphics.setColor(0, 0, 0, opts.dim)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+		love.graphics.setColor(1, 1, 1, 1)
+		love.graphics.setLineWidth(2)
+		love.graphics.rectangle("line", 1, 1, SCREEN_WIDTH - 2, SCREEN_HEIGHT - 2)
+		love.graphics.setLineWidth(1)
 	end
 
 	local titleHeight = titleFont:getHeight()

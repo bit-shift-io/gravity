@@ -60,20 +60,30 @@ function Flow:settingsChanged()
 	end
 end
 
+local function freshSeed()
+	return os.time() + math.floor(os.clock() * 1000)
+end
+
 -- Setup -> Match with the current settings (empty rows dropped); a blank seed picks a fresh one.
 function Flow:start()
 	local settings = self.settings
 	if self.onStart then
 		self.onStart(settings)
 	end
-	local seed = tonumber(settings.seedText) or (os.time() + math.floor(os.clock() * 1000))
+	local seed = tonumber(settings.seedText) or freshSeed()
 	print(string.format("seed=%d", seed))
 	self.stack:replace(MatchState.new(self, seed, Roster.active(settings.roster), settings.hardcore))
 end
 
--- Same level and seed, same roster.
-function Flow:rematch(match)
-	self.stack:replace(MatchState.new(self, match.seed, match.roster, match.hardcore))
+-- Same roster. Keeps the level and seed (the R dev key replays it); newLayout
+-- picks a fresh seed (the match-over rematch).
+function Flow:rematch(match, newLayout)
+	local seed = match.seed
+	if newLayout then
+		seed = freshSeed()
+		print(string.format("seed=%d", seed))
+	end
+	self.stack:replace(MatchState.new(self, seed, match.roster, match.hardcore))
 end
 
 function Flow:pause()

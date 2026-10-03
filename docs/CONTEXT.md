@@ -144,8 +144,8 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Draws never end it. Ends on a match-over overlay offering a rematch.
 
 ## Rematch
-- **Definition:** A fresh match on the same level and seed, with the score zeroed.
-- **Boundary:** Keeps the roster and hardcore setting. A new level comes from setup.
+- **Definition:** A fresh match with the score zeroed. The match-over rematch (Enter / Space / pad A) rolls a new seed and so a new level.
+- **Boundary:** Keeps the roster and hardcore setting. The R dev key replays the same level and seed.
 
 ## Seed
 - **Definition:** The number that determines a match's generated level and asteroid spawns.

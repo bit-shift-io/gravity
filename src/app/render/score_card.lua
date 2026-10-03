@@ -10,6 +10,9 @@ local ScoreCard = {}
 
 local SCREEN_WIDTH = 1280
 local SCREEN_HEIGHT = 720
+local PANEL_WIDTH = SCREEN_WIDTH / 2
+local PANEL_LEFT = (SCREEN_WIDTH - PANEL_WIDTH) / 2
+local PANEL_MIN_HEIGHT = SCREEN_HEIGHT / 2
 local PIP_RADIUS = 8
 local PIP_SPACING = 24
 local ROW_HEIGHT = 40
@@ -19,6 +22,7 @@ local PANEL_PAD = 20
 local TITLE_BLOCK = 100 -- panel top to the first score row
 local HOLD = 1 -- seconds the result sits alone, centred
 local SLIDE = 0.7 -- seconds the title moves up as the scores rise in
+local FADE_IN = 0.4 -- seconds the title and panel fade in when the card appears
 local FADE_OUT = 0.5 -- seconds the card fades before the next round
 local SCORE_RISE = 60 -- px the score rows travel while revealing
 
@@ -35,11 +39,13 @@ end
 
 -- Card timeline `elapsed` seconds after it appears, out of `duration`.
 -- Returns reveal (0 while the result holds centred, eased to 1 as it slides
--- up and the scores come in) and alpha (1, then fading to 0 at the end). Pure.
+-- up and the scores come in), alpha (1, then fading to 0 at the end) and
+-- intro (0 to 1 as the title and panel fade in at the start). Pure.
 function ScoreCard.animation(elapsed, duration)
 	local reveal = easeOut(math.max(0, math.min(1, (elapsed - HOLD) / SLIDE)))
 	local alpha = math.max(0, math.min(1, (duration - elapsed) / FADE_OUT))
-	return reveal, alpha
+	local intro = math.max(0, math.min(1, elapsed / FADE_IN))
+	return reveal, alpha, intro
 end
 
 -- One boolean per pip: filled for each win, empty for the rest.
@@ -99,6 +105,24 @@ function ScoreCard.drawScores(ctx, top, alpha)
 	end
 end
 
+-- Height and top of the centred panel for content `contentHeight` tall: half
+-- the screen, or taller when the content needs it. Pure.
+function ScoreCard.panelBounds(contentHeight)
+	local height = math.max(PANEL_MIN_HEIGHT, contentHeight)
+	return (SCREEN_HEIGHT - height) / 2, height
+end
+
+-- A tinted panel with a white outline so its edge reads as a panel rather
+-- than a stray overlay. `alpha` fades both.
+function ScoreCard.drawPanel(top, height, tint, alpha)
+	love.graphics.setColor(0, 0, 0, tint * alpha)
+	love.graphics.rectangle("fill", PANEL_LEFT, top, PANEL_WIDTH, height)
+	love.graphics.setColor(1, 1, 1, alpha)
+	love.graphics.setLineWidth(2)
+	love.graphics.rectangle("line", PANEL_LEFT, top, PANEL_WIDTH, height)
+	love.graphics.setLineWidth(1)
+end
+
 function ScoreCard.draw(ctx)
 	local roundConfig = ctx.config.round
 	if not RoundSystem.cardVisible(ctx.round, roundConfig) then
@@ -106,25 +130,25 @@ function ScoreCard.draw(ctx)
 	end
 
 	local elapsed = ctx.round.timer - roundConfig.endDelay
-	local reveal, fade = ScoreCard.animation(elapsed, roundConfig.cardDuration)
+	local reveal, fade, intro = ScoreCard.animation(elapsed, roundConfig.cardDuration)
 
 	local titleFont = Fonts.get(TITLE_SIZE)
 	local title = ScoreCard.resultText(ctx.round.result)
 	local titleWidth = titleFont:getWidth(title)
 	local listHeight = ScoreCard.listHeight(#ctx.round.score)
-	local panelHeight = TITLE_BLOCK + listHeight + PANEL_PAD
-	local panelTop = (SCREEN_HEIGHT - panelHeight) / 2
+	local contentHeight = TITLE_BLOCK + listHeight + PANEL_PAD
+	local panelTop, panelHeight = ScoreCard.panelBounds(contentHeight)
+	local contentTop = panelTop + (panelHeight - contentHeight) / 2
 
-	love.graphics.setColor(0, 0, 0, 0.6 * reveal * fade)
-	love.graphics.rectangle("fill", 0, panelTop, SCREEN_WIDTH, panelHeight)
+	ScoreCard.drawPanel(panelTop, panelHeight, 0.6, intro * fade)
 
 	local titleAlone = (SCREEN_HEIGHT - titleFont:getHeight()) / 2
-	local titleSettled = panelTop + PANEL_PAD
-	love.graphics.setColor(1, 1, 1, fade)
+	local titleSettled = contentTop + PANEL_PAD
+	love.graphics.setColor(1, 1, 1, intro * fade)
 	love.graphics.setFont(titleFont)
 	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, titleAlone + (titleSettled - titleAlone) * reveal)
 
-	ScoreCard.drawScores(ctx, panelTop + TITLE_BLOCK + (1 - reveal) * SCORE_RISE, reveal * fade)
+	ScoreCard.drawScores(ctx, contentTop + TITLE_BLOCK + (1 - reveal) * SCORE_RISE, reveal * fade)
 
 	love.graphics.setColor(1, 1, 1, 1)
 end

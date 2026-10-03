@@ -183,8 +183,10 @@ test("match-over rematch still works by Enter and by pad A", function()
 			error("test setup: could not mark the match over")
 		end
 		local first = flow:topCtx()
+		local firstSeed = first.seed
 		flow:keypressed("return")
 		assertTrue(flow:topCtx() ~= first)
+		assertTrue(flow:topCtx().seed ~= firstSeed, "rematch should roll a new seed")
 		assertFalse(RoundSystem.matchOver(flow:topCtx().round))
 
 		endMatch()
