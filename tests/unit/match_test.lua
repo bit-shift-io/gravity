@@ -188,13 +188,16 @@ test("Match.new spawns one ship per roster slot on distinct points, slot index a
 	end
 end)
 
-test("Match.new puts the first two slots on the farthest-pair spawn points", function()
+test("Match.new draws round 1 spawns from the level's spawn candidates", function()
 	local level = sixPointLevel(8)
 	local ctx = Match.new(level, Config, 5, { roster = aiRoster(4) })
-	local first = Bodies.get(ctx.sim.bodies, ctx.pools.ships[1].body)
-	local second = Bodies.get(ctx.sim.bodies, ctx.pools.ships[2].body)
-	assertEqual(level.spawnPoints[1].x, first.x)
-	assertEqual(level.spawnPoints[2].x, second.x)
+	local isCandidate = {}
+	for _, point in ipairs(level.spawnCandidates) do
+		isCandidate[point.x] = true
+	end
+	for _, ship in ipairs(ctx.pools.ships) do
+		assertTrue(isCandidate[Bodies.get(ctx.sim.bodies, ship.body).x], "ship is not on a candidate")
+	end
 end)
 
 test("Match.new spawns no more ships than the level has spawn candidates", function()

@@ -64,36 +64,15 @@ function Match.new(level, config, seed, opts)
 		round = RoundSystem.new(Roster.count(roster)),
 	}
 
-	-- One ship per slot. The first two slots take the level's farthest-pair
-	-- spawnPoints (docs/CONTEXT.md "Spawn point"); further slots take random
-	-- distinct spawnCandidates not already used. A level offers at most
-	-- #spawnCandidates ships; a level with no spawnPoints (e.g. the empty
-	-- `{ worlds = {} }` fixtures) starts with no ships rather than erroring.
-	if level.spawnPoints then
+	-- One ship per slot, on distinct random spawnCandidates, the same draw
+	-- every later round makes (RoundSystem.respawn). A level offers at most
+	-- #spawnCandidates ships. Fixture levels without a candidate list use
+	-- their spawnPoints; a level with neither (e.g. the empty `{ worlds = {} }`
+	-- fixtures) starts with no ships rather than erroring.
+	local points = level.spawnCandidates or level.spawnPoints
+	if points then
 		local slots = Roster.count(roster)
-		local candidates = level.spawnCandidates
-		if candidates then
-			slots = math.min(slots, #candidates)
-		end
-		local points, used = {}, {}
-		for _, point in ipairs(level.spawnPoints) do
-			if #points < slots then
-				points[#points + 1] = point
-				used[point] = true
-			end
-		end
-		if candidates and #points < slots then
-			local free = {}
-			for _, point in ipairs(candidates) do
-				if not used[point] then
-					free[#free + 1] = point
-				end
-			end
-			for _, point in ipairs(SpawnPoints.pick(free, slots - #points, ctx.rng)) do
-				points[#points + 1] = point
-			end
-		end
-		for player, point in ipairs(points) do
+		for player, point in ipairs(SpawnPoints.pick(points, slots, ctx.rng)) do
 			ShipSystem.spawn(ctx, player, point)
 		end
 	end

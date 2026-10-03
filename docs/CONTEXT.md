@@ -160,7 +160,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Always a simple polygon. Vertices are lightly jittered.
 
 ## Spawn point
-- **Definition:** A surface point with an outward normal where a ship starts in tank mode, chosen as the farthest-apart pair.
+- **Definition:** A surface point with an outward normal where a ship starts in tank mode, drawn at random (distinct) from the cleared candidates every round.
 - **Boundary:** Needs clear space above it. A point with no normal means a floating start.
 
 ## Hardcore
