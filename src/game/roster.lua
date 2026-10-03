@@ -10,7 +10,7 @@ local Roster = {}
 -- Cycle order of the choosable bindings: keyboard layouts, then connected
 -- gamepads (ascending ordinal), AI levels, then none (empty).
 Roster.LAYOUTS = { "wasd", "arrows", "ijkl" }
-Roster.AI_LEVELS = { "easy", "medium", "hard" }
+Roster.AI_LEVELS = { "easy", "hard" }
 
 -- The classic two-player match: two keyboard humans, colours 1 and 2.
 function Roster.default()

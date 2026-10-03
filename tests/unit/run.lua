@@ -47,6 +47,14 @@ local defaultTestFiles = {
 	"tests/unit/score_card_test.lua",
 	"tests/unit/match_over_test.lua",
 	"tests/unit/ai_basic_test.lua",
+	"tests/unit/ai_personality_test.lua",
+	"tests/unit/ai_trajectory_test.lua",
+	"tests/unit/ai_danger_test.lua",
+	"tests/unit/ai_hopper_test.lua",
+	"tests/unit/ai_flight_test.lua",
+	"tests/unit/ai_hunter_test.lua",
+	"tests/unit/ai_vantage_test.lua",
+	"tests/unit/ai_sniper_test.lua",
 }
 
 local tests = {}

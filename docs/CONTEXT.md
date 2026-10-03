@@ -47,8 +47,12 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** No HUD fuel bar or pips. Listed on the score card and match-over overlay.
 
 ## AI level
-- **Definition:** Easy, medium or hard: a set of config numbers (aim error, reaction delay) for one AI behaviour.
+- **Definition:** Easy or hard: a set of config numbers (aim error, reaction delay, prediction horizon, dodge quality) applied to any personality.
 - **Boundary:** Not different logic per level.
+
+## Personality
+- **Definition:** A registered AI behaviour with its own state machine (Hunter, Hopper, Sniper), drawn at random per AI slot from the match seed.
+- **Boundary:** Not chosen in setup. Not tied to a level: any personality runs at either level. Listed on the score card and match-over overlay.
 
 ## Record
 - **Definition:** A plain table in a pool, holding a body id and component sub-tables.

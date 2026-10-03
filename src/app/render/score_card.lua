@@ -16,6 +16,7 @@ local PIP_SPACING = 24
 local ROW_HEIGHT = 40
 local TITLE_SIZE = 64
 local LABEL_SIZE = 32
+local TAG_SIZE = 18
 local PANEL_PAD = 20
 local TITLE_BLOCK = 100 -- panel top to the first score row
 local HOLD = 1 -- seconds the result sits alone, centred
@@ -59,6 +60,15 @@ local function groupWidth(total)
 	return (total - 1) * PIP_SPACING + PIP_RADIUS * 2
 end
 
+-- "EASY BASIC" for an AI slot (level then personality), nil for a human. Pure.
+function ScoreCard.aiLabel(ctx, slot)
+	local binding = ctx.roster[slot].binding
+	if binding.kind ~= "ai" then
+		return nil
+	end
+	return string.upper(binding.level .. " " .. ((ctx.personalities and ctx.personalities[slot]) or "basic"))
+end
+
 -- Slot indexes ordered by wins, most first; ties keep slot order. Pure, and
 -- leaves `score` alone.
 function ScoreCard.sortedSlots(score)
@@ -88,6 +98,7 @@ function ScoreCard.drawScores(ctx, top, alpha)
 	alpha = alpha or 1
 	local total = ctx.config.round.winsToWin
 	local labelFont = Fonts.get(LABEL_SIZE)
+	local tagFont = Fonts.get(TAG_SIZE)
 	local labelWidth = labelFont:getWidth("P6 ")
 	local left = (SCREEN_WIDTH - (labelWidth + groupWidth(total))) / 2
 	love.graphics.setFont(labelFont)
@@ -99,6 +110,12 @@ function ScoreCard.drawScores(ctx, top, alpha)
 		local pipX = left + labelWidth + PIP_RADIUS
 		for i, filled in ipairs(ScoreCard.pips(ctx.round.score[player], total)) do
 			love.graphics.circle(filled and "fill" or "line", pipX + (i - 1) * PIP_SPACING, y, PIP_RADIUS)
+		end
+		local label = ScoreCard.aiLabel(ctx, player)
+		if label then
+			love.graphics.setFont(tagFont)
+			love.graphics.print(label, left + labelWidth + groupWidth(total) + 12, y - tagFont:getHeight() / 2)
+			love.graphics.setFont(labelFont)
 		end
 	end
 end

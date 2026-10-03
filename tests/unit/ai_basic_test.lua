@@ -16,10 +16,11 @@ local function floorLevel()
 	return { worlds = { world }, spawnPoints = { point(-300), point(300) } }
 end
 
+-- Both slots run the basic behaviour by name: it is not in the drawn pool.
 local function aiRoster(level1, level2)
 	return {
-		{ color = 1, binding = { kind = "ai", level = level1 } },
-		{ color = 2, binding = { kind = "ai", level = level2 or level1 } },
+		{ color = 1, binding = { kind = "ai", level = level1, behavior = "basic" } },
+		{ color = 2, binding = { kind = "ai", level = level2 or level1, behavior = "basic" } },
 	}
 end
 
@@ -27,7 +28,7 @@ end
 local function slowConfig()
 	return setmetatable({
 		ai = setmetatable({
-			levels = { slow = { aimError = 0, reactionDelay = 1 } },
+			levels = { slow = { aimError = 0, reactionDelay = 1, predictionHorizon = 0 } },
 		}, { __index = Config.ai }),
 	}, { __index = Config })
 end
@@ -128,10 +129,9 @@ local function maxAimOffset(levelName)
 end
 
 test("aim error scales with the level's config number", function()
-	local easy, medium, hard = maxAimOffset("easy"), maxAimOffset("medium"), maxAimOffset("hard")
+	local easy, hard = maxAimOffset("easy"), maxAimOffset("hard")
 
-	assertTrue(easy > medium, "easy sloppier than medium")
-	assertTrue(medium > hard, "medium sloppier than hard")
+	assertTrue(easy > hard, "easy sloppier than hard")
 	assertTrue(easy <= Config.ai.levels.easy.aimError)
 	assertTrue(hard <= Config.ai.levels.hard.aimError)
 end)

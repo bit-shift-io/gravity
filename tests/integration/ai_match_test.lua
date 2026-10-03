@@ -1,13 +1,16 @@
 -- AI players through the real harness: no human input, only Match.step.
+-- Seeded mixed-personality matches on generated levels, and hard against
+-- easy, live in tests/integration/ai_personalities_test.lua.
 local GameHarness = require("tests.support.game_harness")
 local FrameStepper = require("tests.support.frame_stepper")
 local Config = require("src.game.config")
 local Bodies = require("src.sim.bodies")
 
+-- A flat floor about as heavy as a generated world (top edge y = 100).
 local function floorLevel()
 	local world = {
 		vertices = { { x = -400, y = 100 }, { x = 400, y = 100 }, { x = 400, y = 200 }, { x = -400, y = 200 } },
-		mass = 1000,
+		mass = 40000,
 	}
 	local function point(x)
 		return { x = x, y = 100, normal = { x = 0, y = -1 }, world = world }
@@ -19,10 +22,12 @@ local function floorLevel()
 	}
 end
 
-local function roster(a, b)
+-- Two AI slots; `behavior` (optional) binds both to one behaviour instead
+-- of the seeded personality draw.
+local function roster(a, b, behavior)
 	return {
-		{ color = 1, binding = { kind = "ai", level = a } },
-		{ color = 2, binding = { kind = "ai", level = b } },
+		{ color = 1, binding = { kind = "ai", level = a, behavior = behavior } },
+		{ color = 2, binding = { kind = "ai", level = b, behavior = behavior } },
 	}
 end
 
@@ -40,14 +45,15 @@ local function playMatch(seed, a, b)
 end
 
 test("two AIs play a full match to a winner with no human input", function()
-	local ctx = playMatch(3, "medium", "medium")
+	local ctx = playMatch(3, "easy", "easy")
 
 	assertEqual("matchOver", ctx.round.phase)
 	assertTrue(ctx.round.winner == 1 or ctx.round.winner == 2)
 end)
 
 test("an AI in tank mode shoots at an enemy", function()
-	local game = GameHarness.startMatch(floorLevel(), { seed = 5, roster = roster("hard", "hard") })
+	-- Basic stays landed while its turret reaches the target.
+	local game = GameHarness.startMatch(floorLevel(), { seed = 5, roster = roster("hard", "hard", "basic") })
 	local ctx = game.ctx
 	-- Enemy straight above slot 1's turret, so the AI stays landed to shoot.
 	local enemy = Bodies.get(ctx.sim.bodies, ctx.pools.ships[2].body)
@@ -68,7 +74,8 @@ test("an AI in tank mode shoots at an enemy", function()
 end)
 
 test("an AI in flight shoots at an enemy", function()
-	local game = GameHarness.startMatch(floorLevel(), { seed = 5, roster = roster("hard", "hard") })
+	-- Hunter is the personality that fires from the air.
+	local game = GameHarness.startMatch(floorLevel(), { seed = 5, roster = roster("hard", "hard", "hunter") })
 	local ctx = game.ctx
 	local shooter = ctx.pools.ships[1]
 	local body = Bodies.get(ctx.sim.bodies, shooter.body)
@@ -86,6 +93,7 @@ test("an AI in flight shoots at an enemy", function()
 	end
 
 	assertTrue(fired, "expected the flying AI to launch a shell")
+	assertEqual("flying", shooter.lander.state)
 end)
 
 test("the same seed and roster give identical results twice", function()
@@ -95,23 +103,4 @@ test("the same seed and roster give identical results twice", function()
 	assertEqual(a.round.score[1], b.round.score[1])
 	assertEqual(a.round.score[2], b.round.score[2])
 	assertEqual(a.time, b.time)
-end)
-
-test("hard beats easy more often than not over many seeded matches", function()
-	local hardWins, easyWins = 0, 0
-	for seed = 1, 12 do
-		local ctx = playMatch(seed, "hard", "easy")
-		if ctx.round.winner == 1 then
-			hardWins = hardWins + 1
-		elseif ctx.round.winner == 2 then
-			easyWins = easyWins + 1
-		end
-		ctx = playMatch(seed, "easy", "hard")
-		if ctx.round.winner == 2 then
-			hardWins = hardWins + 1
-		elseif ctx.round.winner == 1 then
-			easyWins = easyWins + 1
-		end
-	end
-	assertTrue(hardWins > easyWins, string.format("hard %d vs easy %d", hardWins, easyWins))
 end)

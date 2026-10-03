@@ -43,6 +43,7 @@ local Match = {}
 -- `opts.hardcore` (optional) makes rotating burn fuel (docs/CONTEXT.md "Hardcore").
 function Match.new(level, config, seed, opts)
 	local roster = (opts and opts.roster) or Roster.default()
+	seed = seed or os.time()
 	local worldField, boundaryField = Field.bake(level, config)
 	local ctx = {
 		dt = 0,
@@ -56,13 +57,16 @@ function Match.new(level, config, seed, opts)
 		level = level,
 		config = config,
 		intents = {},
-		rng = Rng.new(seed or os.time()),
+		rng = Rng.new(seed),
 		events = {},
 		camera = Camera.new(),
 		roster = roster,
 		hardcore = (opts and opts.hardcore) or false,
 		round = RoundSystem.new(Roster.count(roster)),
 	}
+	-- Personalities draw from their own rng derived from the seed, never
+	-- ctx.rng, so level generation and asteroid spawns are unchanged.
+	ctx.personalities = AI.draw(seed, roster)
 
 	-- One ship per slot, on distinct random spawnCandidates, the same draw
 	-- every later round makes (RoundSystem.respawn). A level offers at most

@@ -67,3 +67,15 @@ test("the reveal rises part way through the slide", function()
 	local reveal = ScoreCard.animation(1.35, 4)
 	assertTrue(reveal > 0 and reveal < 1)
 end)
+
+test("an AI slot's label gives its level and personality, a human's is nil", function()
+	local ctx = {
+		roster = {
+			{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
+			{ color = 2, binding = { kind = "ai", level = "hard" } },
+		},
+		personalities = { [2] = "basic" },
+	}
+	assertTrue(ScoreCard.aiLabel(ctx, 1) == nil)
+	assertEqual("HARD BASIC", ScoreCard.aiLabel(ctx, 2))
+end)

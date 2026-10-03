@@ -247,19 +247,98 @@ local Config = {
 	setup = {
 		seedMaxDigits = 15,
 	},
-	-- AI players (src/game/ai/). A level is just numbers for the one behaviour:
+	-- AI players (src/game/ai/). A level is just numbers, shared by every behaviour:
 	-- aimError is the max random aim offset in radians redrawn each think;
 	-- reactionDelay is the seconds between thinks (the intent is held between
 	-- them). fireTolerance (rad) is how close the aim must be to start a
 	-- charge; fullChargeDistance (px) is the target distance that gets a full
 	-- charge, nearer targets get proportionally less.
+	-- Shot prediction (src/game/ai/skills/aim.lua): each think tries aimAngles
+	-- launch angles spread over +/- aimSpread rad around the direct angle, then
+	-- aimRefine halvings around the closest miss, at each of aimCharges evenly
+	-- spaced charges (full first). A level's predictionHorizon is the seconds
+	-- of flight it can foresee; no hit inside it falls back to direct aim.
+	-- Flight (src/game/ai/skills/flight.lua): landing brakes while the
+	-- coasting touchdown would be faster than landSpeed (px/s), thrusting only
+	-- once the nose is within thrustTolerance (rad) of retrograde, and burns
+	-- as late as brakeShare of full thrust allows.
+	-- Hopper (src/game/ai/hopper.lua): hops only with at least hopFuel in the
+	-- tank, keeps flying clear of a threat only while above landFuel (kept for
+	-- braking), and tilts its hop up to dodgeTilt (rad) off the surface normal.
+	-- A level's dangerHorizon is the seconds ahead it senses threats; hopTime
+	-- is the least seconds of thrust in a hop.
+	-- Flying to a point (Flight.flyTo): travels at up to cruiseSpeed (px/s),
+	-- closing the velocity error over flightTau seconds, and burns only when
+	-- that asks for at least thrustShare of full thrust. A blocked path tries
+	-- up to `detours` turns of detourStep (rad) either side, and a path is
+	-- clear only flightClearance (px) from every world. A level's
+	-- flightHorizon is the seconds of its own thrusting path it foresees.
+	-- Hunter (src/game/ai/hunter.lua): flies to standoff (px) from its
+	-- target and attacks within attackRange (px) while no impact is nearer
+	-- than attackClearance seconds; evades evadeDistance (px) across a
+	-- threat's path; lands to refuel below refuelFuel (plus hardcoreReserve
+	-- in a hardcore match) and lifts off again at takeoffFuel.
 	ai = {
 		fireTolerance = 0.08,
 		fullChargeDistance = 700,
+		aimAngles = 13,
+		aimSpread = math.rad(60),
+		aimRefine = 7,
+		aimCharges = 3,
+		landSpeed = 150,
+		thrustTolerance = 0.3,
+		brakeShare = 0.6,
+		hopFuel = 6,
+		landFuel = 1.5,
+		dodgeTilt = 0.6,
+		cruiseSpeed = 200,
+		flightTau = 0.4,
+		thrustShare = 0.4,
+		detourStep = math.rad(30),
+		detours = 5,
+		flightClearance = 20,
+		standoff = 220,
+		attackRange = 450,
+		attackClearance = 1,
+		evadeDistance = 200,
+		refuelFuel = 3,
+		hardcoreReserve = 2,
+		takeoffFuel = 9,
+		-- Sniper (src/game/ai/sniper.lua, skills/vantage.lua): at most
+		-- vantageSolves shot solves per vantage pick (each ~3 ms). It
+		-- relocates after relocateDelay seconds without a solved shot, flying
+		-- to vantageApproach px up the vantage's normal, and descends onto it
+		-- once within vantageArrive px of that point and slower than
+		-- vantageSpeed px/s.
+		vantageSolves = 4,
+		relocateDelay = 3,
+		vantageApproach = 60,
+		vantageArrive = 30,
+		vantageSpeed = 40,
+		-- Tuned with seeded matches on generated levels
+		-- (tests/integration/ai_personalities_test.lua): hard wins about 60%
+		-- of rounds against easy flying the same personality, and in mixed
+		-- six-AI matches. A longer hopTime makes hard worse, not better --
+		-- every hop is time in the air, where asteroids do most of the killing.
 		levels = {
-			easy = { aimError = 0.35, reactionDelay = 0.35 },
-			medium = { aimError = 0.15, reactionDelay = 0.15 },
-			hard = { aimError = 0.03, reactionDelay = 0.04 },
+			easy = {
+				aimError = 0.35,
+				reactionDelay = 0.35,
+				predictionHorizon = 0.7,
+				dangerHorizon = 0.5,
+				hopTime = 0.25,
+				flightHorizon = 1,
+				vantageRange = 300,
+			},
+			hard = {
+				aimError = 0.03,
+				reactionDelay = 0.04,
+				predictionHorizon = 3,
+				dangerHorizon = 1.2,
+				hopTime = 0.25,
+				flightHorizon = 1.5,
+				vantageRange = 450,
+			},
 		},
 	},
 	-- Round cycle (src/game/systems/round_system.lua). endDelay is the seconds

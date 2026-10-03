@@ -22,7 +22,7 @@ local roster = {
 	{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
 	{ color = 2, binding = { kind = "ai", level = "easy" } },
 	{ color = 3, binding = { kind = "gamepad", id = 1 } },
-	{ color = 4, binding = { kind = "ai", level = "medium" } },
+	{ color = 4, binding = { kind = "ai", level = "hard" } },
 }
 
 test("four ships, a human-only HUD and a four-slot score card render", function()

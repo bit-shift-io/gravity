@@ -136,6 +136,13 @@ test("duplicate and out-of-palette colours are reassigned to free palette colour
 	assertEqual(2, settings.roster[1].color)
 end)
 
+test("a saved medium AI level is repaired to easy", function()
+	local settings = SettingsCodec.decode(encodeSlots("slot 1 keyboard wasd", "slot 2 ai medium"), {})
+	assertEqual("ai", settings.roster[2].binding.kind)
+	assertEqual("easy", settings.roster[2].binding.level)
+	assertValid(settings, {})
+end)
+
 test("an unknown layout, AI level or binding kind is replaced so the roster still validates", function()
 	local settings = SettingsCodec.decode(encodeSlots("slot 1 keyboard dvorak", "slot 2 ai godlike", "slot 3 touchscreen x"), {})
 	assertEqual(6, #settings.roster)

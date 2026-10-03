@@ -73,7 +73,7 @@ test("cycling a binding walks layouts, connected gamepads then AI levels, skippi
 	Roster.cycleBinding(roster, 1, pads, 1)
 	assertEqual("easy", roster[1].binding.level)
 	Roster.cycleBinding(roster, 1, pads, 1)
-	assertEqual("medium", roster[1].binding.level)
+	assertEqual("hard", roster[1].binding.level)
 	Roster.cycleBinding(roster, 1, pads, -1)
 	assertEqual("easy", roster[1].binding.level)
 end)
@@ -88,10 +88,10 @@ end)
 
 test("AI bindings may repeat across slots", function()
 	local roster = { { color = 1, binding = { kind = "keyboard", layout = "wasd" } }, ai(2), ai(3) }
-	Roster.cycleBinding(roster, 2, {}, 1) -- easy -> medium
+	Roster.cycleBinding(roster, 2, {}, 1) -- easy -> hard
 	Roster.cycleBinding(roster, 3, {}, 1)
-	assertEqual("medium", roster[2].binding.level)
-	assertEqual("medium", roster[3].binding.level)
+	assertEqual("hard", roster[2].binding.level)
+	assertEqual("hard", roster[3].binding.level)
 	assertEqual(0, #Roster.validate(roster, {}))
 end)
 
