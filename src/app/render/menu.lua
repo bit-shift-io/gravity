@@ -85,6 +85,14 @@ function Menu.draw(opts)
 	love.graphics.setFont(itemFont)
 	love.graphics.setLineWidth(2)
 	local top = blockTop + titleHeight + gap + (1 - reveal) * SLIDE_RISE
+	-- Swatches share one column, left of the widest coloured label, so they
+	-- stay put when a label's width changes.
+	local swatchLeft = math.huge
+	for _, item in ipairs(opts.items) do
+		if item.color then
+			swatchLeft = math.min(swatchLeft, (SCREEN_WIDTH - itemFont:getWidth(item.label)) / 2)
+		end
+	end
 	for i, item in ipairs(opts.items) do
 		if reveal <= 0 then
 			break
@@ -101,7 +109,7 @@ function Menu.draw(opts)
 			local size = compact and compact.swatch or 24
 			local c = item.color
 			love.graphics.setColor(c[1], c[2], c[3], alpha)
-			love.graphics.rectangle("fill", x - BRACKET_PAD - size - 16, y + (itemFont:getHeight() - size) / 2, size, size)
+			love.graphics.rectangle("fill", swatchLeft - BRACKET_PAD - size - 16, y + (itemFont:getHeight() - size) / 2, size, size)
 		end
 		if item.flag then
 			love.graphics.setColor(1, 0.3, 0.3, alpha)
