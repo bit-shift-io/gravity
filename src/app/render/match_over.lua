@@ -37,7 +37,7 @@ function MatchOver.draw(ctx)
 	local panelTop, panelHeight = ScoreCard.panelBounds(contentHeight)
 	local contentTop = panelTop + (panelHeight - contentHeight) / 2
 
-	ScoreCard.drawPanel(panelTop, panelHeight, 0.7, 1)
+	ScoreCard.drawPanel(0.7, 1)
 
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setFont(titleFont)

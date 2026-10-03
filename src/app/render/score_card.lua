@@ -10,8 +10,6 @@ local ScoreCard = {}
 
 local SCREEN_WIDTH = 1280
 local SCREEN_HEIGHT = 720
-local PANEL_WIDTH = SCREEN_WIDTH / 2
-local PANEL_LEFT = (SCREEN_WIDTH - PANEL_WIDTH) / 2
 local PANEL_MIN_HEIGHT = SCREEN_HEIGHT / 2
 local PIP_RADIUS = 8
 local PIP_SPACING = 24
@@ -112,14 +110,14 @@ function ScoreCard.panelBounds(contentHeight)
 	return (SCREEN_HEIGHT - height) / 2, height
 end
 
--- A tinted panel with a white outline so its edge reads as a panel rather
--- than a stray overlay. `alpha` fades both.
-function ScoreCard.drawPanel(top, height, tint, alpha)
+-- A full-screen tinted backdrop with a white inset outline, matching the
+-- pause overlay. `alpha` fades both.
+function ScoreCard.drawPanel(tint, alpha)
 	love.graphics.setColor(0, 0, 0, tint * alpha)
-	love.graphics.rectangle("fill", PANEL_LEFT, top, PANEL_WIDTH, height)
+	love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 	love.graphics.setColor(1, 1, 1, alpha)
 	love.graphics.setLineWidth(2)
-	love.graphics.rectangle("line", PANEL_LEFT, top, PANEL_WIDTH, height)
+	love.graphics.rectangle("line", 1, 1, SCREEN_WIDTH - 2, SCREEN_HEIGHT - 2)
 	love.graphics.setLineWidth(1)
 end
 
@@ -140,7 +138,7 @@ function ScoreCard.draw(ctx)
 	local panelTop, panelHeight = ScoreCard.panelBounds(contentHeight)
 	local contentTop = panelTop + (panelHeight - contentHeight) / 2
 
-	ScoreCard.drawPanel(panelTop, panelHeight, 0.6, intro * fade)
+	ScoreCard.drawPanel(0.6, intro * fade)
 
 	local titleAlone = (SCREEN_HEIGHT - titleFont:getHeight()) / 2
 	local titleSettled = contentTop + PANEL_PAD
