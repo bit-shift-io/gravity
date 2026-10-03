@@ -28,14 +28,14 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Roster
 - **Definition:** The ordered list of slots for a match, each with a colour and a binding.
-- **Boundary:** 2–6 slots. Persisted between launches. Setup edits it; the match only reads it.
+- **Boundary:** Setup always edits six rows (one per palette colour, empty ones allowed) and persists them. The match roster is the non-empty rows, compacted: 2–6 slots, none empty, at least one human (the rest may be AI).
 
 ## Slot
 - **Definition:** One seat in the roster: a colour index and a binding.
-- **Boundary:** Colours are unique across slots. Its index is the player number.
+- **Boundary:** Colours are unique across slots; in setup, cycling a colour swaps it with the row that holds it. A setup row may be empty; in a match its index is the player number.
 
 ## Binding
-- **Definition:** What drives a slot: a keyboard layout, a gamepad, or an AI level.
+- **Definition:** What drives a slot: a keyboard layout, a gamepad, an AI level, or none (an empty setup row).
 - **Boundary:** Keyboard layouts and gamepads cannot bind two slots. AI bindings may repeat.
 
 ## Keyboard layout

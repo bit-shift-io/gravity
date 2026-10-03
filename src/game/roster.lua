@@ -8,7 +8,7 @@ local Config = require("src.game.config")
 local Roster = {}
 
 -- Cycle order of the choosable bindings: keyboard layouts, then connected
--- gamepads (ascending ordinal), then AI levels.
+-- gamepads (ascending ordinal), AI levels, then none (empty).
 Roster.LAYOUTS = { "wasd", "arrows", "ijkl" }
 Roster.AI_LEVELS = { "easy", "medium", "hard" }
 
@@ -18,6 +18,18 @@ function Roster.default()
 		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
 		{ color = 2, binding = { kind = "keyboard", layout = "arrows" } },
 	}
+end
+
+-- What setup edits: six rows (one per palette colour), wasd and arrows bound,
+-- the rest empty ({ kind = "none" }).
+function Roster.defaultSetup()
+	local roster = {}
+	for row = 1, Config.players.max do
+		roster[row] = { color = row, binding = { kind = "none" } }
+	end
+	roster[1].binding = { kind = "keyboard", layout = "wasd" }
+	roster[2].binding = { kind = "keyboard", layout = "arrows" }
+	return roster
 end
 
 -- An independent copy, so a running match never sees later setup edits.
@@ -33,13 +45,25 @@ function Roster.copy(roster)
 	return copy
 end
 
+-- The match roster for a setup roster: a copy without the empty rows, so the
+-- remaining slots' indexes are the player numbers.
+function Roster.active(roster)
+	local active = {}
+	for _, entry in ipairs(Roster.copy(roster)) do
+		if entry.binding.kind ~= "none" then
+			active[#active + 1] = entry
+		end
+	end
+	return active
+end
+
 function Roster.count(roster)
 	return #roster
 end
 
 function Roster.isHuman(roster, slot)
 	local binding = roster[slot] and roster[slot].binding
-	return binding ~= nil and binding.kind ~= "ai"
+	return binding ~= nil and binding.kind ~= "ai" and binding.kind ~= "none"
 end
 
 -- Slot indexes bound to a keyboard layout or gamepad, in slot order.
@@ -65,6 +89,7 @@ local function options(gamepads)
 	for _, level in ipairs(Roster.AI_LEVELS) do
 		list[#list + 1] = { kind = "ai", level = level }
 	end
+	list[#list + 1] = { kind = "none" }
 	return list
 end
 
@@ -76,6 +101,10 @@ local function sameDevice(a, b)
 		return a.layout == b.layout
 	end
 	return a.kind == "gamepad" and a.id == b.id
+end
+
+local function sameBinding(a, b)
+	return a.kind == b.kind and (a.kind == "none" or (a.kind == "ai" and a.level == b.level) or sameDevice(a, b))
 end
 
 local function humanCountExcluding(roster, slot)
@@ -91,7 +120,7 @@ end
 -- Why `binding` cannot go on `slot` (nil when it can). Keyboard layouts and
 -- gamepads bind one slot; AI may repeat; at most maxHumans humans.
 local function refusal(roster, slot, binding)
-	if binding.kind == "ai" then
+	if binding.kind == "ai" or binding.kind == "none" then
 		return nil
 	end
 	if humanCountExcluding(roster, slot) >= Config.players.maxHumans then
@@ -105,51 +134,18 @@ local function refusal(roster, slot, binding)
 	return nil
 end
 
-local function firstFreeColor(roster)
-	local taken = {}
-	for _, slot in ipairs(roster) do
-		taken[slot.color] = true
-	end
-	for color = 1, #Config.players.palette do
-		if not taken[color] then
-			return color
-		end
-	end
-end
-
--- Appends a slot: first free colour, first free binding. `gamepads` lists the
--- connected ordinals. Returns true, or false and a reason.
-function Roster.add(roster, gamepads)
-	if #roster >= Config.players.max then
-		return false, "MAX " .. Config.players.max .. " SLOTS"
-	end
-	local slot = #roster + 1
-	for _, binding in ipairs(options(gamepads)) do
-		if not refusal(roster, slot, binding) then
-			roster[slot] = { color = firstFreeColor(roster), binding = binding }
-			return true
-		end
-	end
-end
-
--- Steps `slot` to the next (dir 1) or previous (dir -1) palette colour no
--- other slot holds.
-function Roster.cycleColor(roster, slot, dir)
+-- Gives `row` the next (dir 1) or previous (dir -1) palette colour; the row
+-- that held it takes `row`'s old colour, so the colours stay a permutation.
+function Roster.cycleColor(roster, row, dir)
 	local size = #Config.players.palette
-	local taken = {}
-	for other, entry in ipairs(roster) do
-		if other ~= slot then
-			taken[entry.color] = true
+	local old = roster[row].color
+	local color = (old - 1 + dir) % size + 1
+	for _, other in ipairs(roster) do
+		if other.color == color then
+			other.color = old
 		end
 	end
-	local color = roster[slot].color
-	for _ = 1, size do
-		color = (color - 1 + dir) % size + 1
-		if not taken[color] then
-			roster[slot].color = color
-			return
-		end
-	end
+	roster[row].color = color
 end
 
 -- Steps `slot` to the next (dir 1) or previous (dir -1) binding it may take.
@@ -161,7 +157,7 @@ function Roster.cycleBinding(roster, slot, gamepads, dir)
 	local current = roster[slot].binding
 	local index = dir > 0 and 0 or #list + 1
 	for i, binding in ipairs(list) do
-		if sameDevice(binding, current) or (binding.kind == "ai" and current.kind == "ai" and binding.level == current.level) then
+		if sameBinding(binding, current) then
 			index = i
 		end
 	end
@@ -188,10 +184,14 @@ function Roster.validate(roster, gamepads)
 	for _, id in ipairs(gamepads or {}) do
 		connected[id] = true
 	end
-	if #roster < Config.players.min then
-		problems[#problems + 1] = { reason = "NEED AT LEAST " .. Config.players.min .. " SLOTS" }
-	elseif #roster > Config.players.max then
-		problems[#problems + 1] = { reason = "MAX " .. Config.players.max .. " SLOTS" }
+	local players = #Roster.active(roster)
+	if players < Config.players.min then
+		problems[#problems + 1] = { reason = "NEED AT LEAST " .. Config.players.min .. " PLAYERS" }
+	elseif players > Config.players.max then
+		problems[#problems + 1] = { reason = "MAX " .. Config.players.max .. " PLAYERS" }
+	end
+	if #Roster.humans(roster) < Config.players.minHumans then
+		problems[#problems + 1] = { reason = "NEED AT LEAST " .. Config.players.minHumans .. " HUMAN" }
 	end
 	if #Roster.humans(roster) > Config.players.maxHumans then
 		problems[#problems + 1] = { reason = "MAX " .. Config.players.maxHumans .. " HUMANS" }
@@ -210,15 +210,6 @@ function Roster.validate(roster, gamepads)
 		end
 	end
 	return problems
-end
-
--- Removes `slot`; later slots shift down (their index is the player number).
-function Roster.remove(roster, slot)
-	if #roster <= Config.players.min then
-		return false, "NEED AT LEAST " .. Config.players.min .. " SLOTS"
-	end
-	table.remove(roster, slot)
-	return true
 end
 
 return Roster

@@ -3,6 +3,8 @@
 -- `love` is installed per test and restored afterwards.
 local Flow = require("src.app.flow")
 local LoveMock = require("tests.support.love_mock")
+local PlayerColors = require("src.app.render.player_colors")
+local Config = require("src.game.config")
 local FakeInputModule = require("tests.support.fake_input")
 
 local function withLove(fn)
@@ -41,16 +43,15 @@ local function type_(flow, text)
 	end
 end
 
-test("keyboard alone: Play opens setup, a 3-slot roster with seed and hardcore reaches the match", function()
+test("keyboard alone: Play opens setup, a 3-player roster with seed and hardcore reaches the match", function()
 	withLove(function()
 		local flow = newFlow()
 		flow:keypressed("return") -- Play
 		assertEqual("setup", flow:topName())
 
-		goTo(flow, "ADD SLOT")
-		flow:keypressed("return")
 		goTo(flow, "SLOT 3")
-		flow:keypressed("right") -- ijkl -> AI easy (no pads connected)
+		flow:keypressed("right") -- empty -> ijkl (wasd and arrows are taken)
+		flow:keypressed("right") -- -> AI easy (no pads connected)
 		flow:keypressed("return") -- colour 3 -> 4
 
 		goTo(flow, "SEED")
@@ -139,27 +140,60 @@ test("a bound gamepad that disconnects in setup is flagged and blocks Start", fu
 	end)
 end)
 
-test("limits show a visible reason instead of silently doing nothing", function()
+test("every row is always shown and Start is blocked with a reason below two players", function()
 	withLove(function()
 		local flow = newFlow()
 		flow:keypressed("return")
 		local setup = flow.stack:top()
-		goTo(flow, "ADD SLOT")
-		for _ = 1, 4 do
-			flow:keypressed("return")
+		for row = 1, 6 do
+			assertEqual("SLOT " .. row, setup.items[row].label:sub(1, 6))
 		end
-		assertEqual(6, #setup.settings.roster)
-		assertEqual(nil, setup.notice)
-		flow:keypressed("return")
-		assertEqual("MAX 6 SLOTS", setup.notice)
+		assertEqual("SLOT 3  EMPTY", setup.items[3].label)
+		assertTrue(setup.items[3].dim, "an empty row is dimmed")
+		assertFalse(setup.items[1].dim)
+		assertTrue(setup.items[3].color ~= nil, "an empty row still shows its colour")
 
-		goTo(flow, "REMOVE SLOT")
-		for _ = 1, 4 do
-			flow:keypressed("return")
+		goTo(flow, "SLOT 2")
+		flow:keypressed("left") -- arrows -> wasd is taken -> empty
+		assertEqual("SLOT 2  EMPTY", selectedLabel(flow))
+		goTo(flow, "SLOT 1")
+		for _ = 1, 10 do -- cycle slot 1's binding on to empty
+			if selectedLabel(flow) == "SLOT 1  EMPTY" then
+				break
+			end
+			flow:keypressed("right")
 		end
+		assertEqual("SLOT 1  EMPTY", selectedLabel(flow))
+		goTo(flow, "START")
 		flow:keypressed("return")
-		assertEqual(2, #setup.settings.roster)
-		assertEqual("NEED AT LEAST 2 SLOTS", setup.notice)
+		assertEqual("setup", flow:topName(), "Start is blocked")
+		assertEqual("NEED AT LEAST 2 PLAYERS", setup.notice)
+	end)
+end)
+
+test("empty rows are dropped, players are numbered in row order and keep their row colours", function()
+	withLove(function()
+		local flow = newFlow()
+		flow:keypressed("return")
+		goTo(flow, "SLOT 4")
+		flow:keypressed("left") -- empty -> AI hard
+		goTo(flow, "SLOT 6")
+		flow:keypressed("right") -- empty -> ijkl
+		goTo(flow, "START")
+		flow:keypressed("return")
+
+		assertEqual("match", flow:topName())
+		local ctx = flow:topCtx()
+		local rows = { 1, 2, 4, 6 }
+		assertEqual(4, #ctx.pools.ships)
+		for player, row in ipairs(rows) do
+			local ship = ctx.pools.ships[player]
+			assertEqual(player, ship.player)
+			assertEqual(Config.players.palette[row], PlayerColors.get(ctx, ship.player))
+		end
+		assertEqual("hard", ctx.roster[3].binding.level)
+		assertEqual("ijkl", ctx.roster[4].binding.layout)
+		assertEqual(6, #flow.settings.roster, "setup keeps all six rows")
 	end)
 end)
 

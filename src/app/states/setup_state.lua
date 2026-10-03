@@ -1,7 +1,8 @@
 -- Roster setup: Title -> Setup -> Match. Edits flow.settings (roster, seed
 -- field text, hardcore) in place; Start validates and launches the match.
---   slot rows   left/right cycle the binding, confirm cycles the colour
---   ADD / REMOVE SLOT, SEED (keyboard digits via textinput, backspace
+--   six slot rows (a binding of EMPTY switches a row off)
+--               left/right cycle the binding, confirm cycles the colour
+--   SEED (keyboard digits via textinput, backspace
 --   deletes), RANDOMISE SEED, HARDCORE (confirm or left/right), START, BACK.
 -- Works by keyboard or any gamepad (a gamepad cannot type digits, but can
 -- randomise). Limits and validation live in src/game/roster.lua; this state
@@ -22,6 +23,8 @@ local function bindingLabel(binding)
 		return LAYOUT_NAMES[binding.layout] or binding.layout:upper()
 	elseif binding.kind == "gamepad" then
 		return "PAD " .. binding.id
+	elseif binding.kind == "none" then
+		return "EMPTY"
 	end
 	return "AI " .. binding.level:upper()
 end
@@ -42,10 +45,6 @@ function SetupState.new(flow)
 	self:refresh()
 	self.selected = #self.items - 1 -- START (second to last)
 	return self
-end
-
-function SetupState:slotCount()
-	return #self.settings.roster
 end
 
 local function randomSeedText()
@@ -71,16 +70,11 @@ function SetupState:refresh()
 			label = "SLOT " .. slot .. "  " .. bindingLabel(entry.binding),
 			color = Config.players.palette[entry.color],
 			flag = flagged[slot],
+			dim = entry.binding.kind == "none",
 			action = function() self:edit(function() Roster.cycleColor(settings.roster, slot, 1) end) end,
 			adjust = function(dir) self:cycleBinding(slot, dir == "right" and 1 or -1) end,
 		}
 	end
-	items[#items + 1] = { id = "add", label = "ADD SLOT", action = function()
-		self:edit(function() return Roster.add(settings.roster, connectedPads()) end)
-	end }
-	items[#items + 1] = { id = "remove", label = "REMOVE SLOT", action = function()
-		self:edit(function() return Roster.remove(settings.roster, #settings.roster) end)
-	end }
 	items[#items + 1] = { id = "seed", label = "SEED  " .. (settings.seedText == "" and "RANDOM" or settings.seedText), action = function() end }
 	items[#items + 1] = { id = "randomise", label = "RANDOMISE SEED", action = function()
 		self:edit(function() settings.seedText = randomSeedText() end)
@@ -90,8 +84,7 @@ function SetupState:refresh()
 	items[#items + 1] = { id = "start", label = "START", action = function() self:start() end }
 	items[#items + 1] = { id = "back", label = "BACK", action = self.onBack }
 	self.items = items
-	-- Keep the cursor on the same row when slot rows were added or removed above it.
-	self.selected = math.min(self.selected or #items, #items)
+		self.selected = math.min(self.selected or #items, #items)
 	if previous and previous.id then
 		for i, item in ipairs(items) do
 			if item.id == previous.id then

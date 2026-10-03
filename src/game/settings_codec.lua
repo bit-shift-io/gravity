@@ -2,7 +2,9 @@
 -- (pure -- no `love.*`, no file access; src/app/settings_store.lua does the I/O).
 --   gravity-settings 1
 --   hardcore 1
---   slot <color> keyboard <layout> | gamepad <ordinal> | ai <level>
+--   slot <color> keyboard <layout> | gamepad <ordinal> | ai <level> | none
+-- Setup has six rows (one per palette colour); older files saved fewer slots
+-- and are padded with empty rows on load.
 -- The seed is never encoded. decode never errors: garbage gives defaults.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
@@ -17,6 +19,8 @@ local function bindingText(binding)
 		return "keyboard " .. binding.layout
 	elseif binding.kind == "gamepad" then
 		return string.format("gamepad %d", binding.id)
+	elseif binding.kind == "none" then
+		return "none"
 	end
 	return "ai " .. binding.level
 end
@@ -29,19 +33,33 @@ function SettingsCodec.encode(settings)
 	return table.concat(lines, "\n") .. "\n"
 end
 
--- Makes a decoded roster valid: slot count and colours clamped or reassigned,
--- unknown or unavailable bindings rebound (see below).
+-- Makes a decoded roster valid: always six rows holding the six palette
+-- colours once each (short rosters padded with empty rows), unknown or
+-- unavailable bindings rebound (see below). Fewer than two active rows load
+-- the default setup roster.
 function SettingsCodec.repair(roster, gamepads)
-	if #roster < Config.players.min then
-		return Roster.default()
-	end
 	for slot = #roster, Config.players.max + 1, -1 do
 		roster[slot] = nil
+	end
+	local active, humans = 0, 0
+	for _, slot in ipairs(roster) do
+		if slot.binding.kind ~= "none" then
+			active = active + 1
+		end
+		if slot.binding.kind == "keyboard" or slot.binding.kind == "gamepad" then
+			humans = humans + 1
+		end
+	end
+	if active < Config.players.min or humans < Config.players.minHumans then
+		return Roster.defaultSetup()
+	end
+	for slot = #roster + 1, Config.players.max do
+		roster[slot] = { binding = { kind = "none" } }
 	end
 	local taken = {}
 	for _, slot in ipairs(roster) do
 		local color = slot.color
-		if color < 1 or color > #Config.players.palette or taken[color] then
+		if not color or color < 1 or color > #Config.players.palette or taken[color] then
 			slot.color = nil
 		else
 			taken[color] = true
@@ -103,7 +121,9 @@ function SettingsCodec.repair(roster, gamepads)
 	-- AI slots stay (an unknown level becomes easy); humans are resolved in slot order.
 	for _, slot in ipairs(roster) do
 		local binding = slot.binding
-		if binding.kind == "ai" then
+		if binding.kind == "none" then
+			slot.binding = binding
+		elseif binding.kind == "ai" then
 			if not validLevel[binding.level] then
 				slot.binding = { kind = "ai", level = "easy" }
 			end
@@ -126,15 +146,21 @@ end
 -- `gamepads` is the list of connected ordinals the roster is repaired against.
 function SettingsCodec.decode(text, gamepads)
 	if type(text) ~= "string" or text:match("^[^\n]*") ~= HEADER .. " " .. VERSION then
-		return { roster = Roster.default(), hardcore = false }
+		return { roster = Roster.defaultSetup(), hardcore = false }
 	end
 	local roster = {}
 	local hardcore = false
 	for line in text:gmatch("[^\n]+") do
 		local color, kind, arg = line:match("^slot (%d+) (%a+) (%w+)$")
+		if not color then
+			color = line:match("^slot (%d+) none$")
+			kind = color and "none"
+		end
 		if color then
 			local binding
-			if kind == "gamepad" then
+			if kind == "none" then
+				binding = { kind = kind }
+			elseif kind == "gamepad" then
 				binding = { kind = kind, id = tonumber(arg) }
 			elseif kind == "keyboard" then
 				binding = { kind = kind, layout = arg }

@@ -20,7 +20,7 @@ local COMPACT = { titleSize = 48, titleY = 24, itemSize = 26, spacing = 41, top 
 -- opts.title (string), opts.items ({ { label, color = {r,g,b,a}|nil, flag = bool|nil } }),
 -- opts.selected (1-based), opts.dim (backdrop alpha, for overlays drawn over a
 -- frozen match). Setup passes opts.compact, items with a `color` (a swatch
--- before the label; `flag` draws it red) and opts.notice (a line at the foot,
+-- before the label; `flag` draws it red, `dim` fades the row) and opts.notice (a line at the foot,
 -- red when opts.alert).
 function Menu.draw(opts)
 	local compact = opts.compact and COMPACT
@@ -46,6 +46,9 @@ function Menu.draw(opts)
 		local y = top + (i - 1) * spacing
 		local selected = i == opts.selected
 		local alpha = selected and 1 or 0.5
+		if item.dim then
+			alpha = alpha * 0.5
+		end
 		if item.color then
 			local size = compact and compact.swatch or 24
 			local c = item.color

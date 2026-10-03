@@ -49,10 +49,9 @@ test("the roster and hardcore setting saved at match start are what setup shows 
 	withLove(files, function()
 		local flow = launch()
 		flow:keypressed("return") -- Play
-		goTo(flow, "ADD SLOT")
-		flow:keypressed("return")
 		goTo(flow, "SLOT 3")
-		flow:keypressed("right") -- ijkl -> AI easy
+		flow:keypressed("right") -- empty -> ijkl
+		flow:keypressed("right") -- -> AI easy
 		flow:keypressed("return") -- colour 3 -> 4
 		goTo(flow, "HARDCORE")
 		flow:keypressed("return")
@@ -66,10 +65,12 @@ test("the roster and hardcore setting saved at match start are what setup shows 
 		flow:keypressed("return")
 		local settings = flow.stack:top().settings
 		assertTrue(settings.hardcore)
-		assertEqual(3, #settings.roster)
+		assertEqual(6, #settings.roster)
 		assertEqual("wasd", settings.roster[1].binding.layout)
 		assertEqual("ai", settings.roster[3].binding.kind)
 		assertEqual(4, settings.roster[3].color)
+		assertEqual("none", settings.roster[4].binding.kind)
+		assertEqual(3, settings.roster[4].color) -- swapped with row 3
 		assertEqual(0, #Roster.validate(settings.roster, {}))
 	end)
 end)
@@ -119,7 +120,8 @@ test("a corrupt save file loads the defaults", function()
 	local files = { ["settings.txt"] = "\0\1garbage{{{" }
 	withLove(files, function()
 		local flow = launch()
-		assertEqual(2, #flow.settings.roster)
+		assertEqual(6, #flow.settings.roster)
+		assertEqual("none", flow.settings.roster[3].binding.kind)
 		assertFalse(flow.settings.hardcore)
 	end)
 end)

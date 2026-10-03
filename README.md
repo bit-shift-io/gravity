@@ -1,6 +1,6 @@
 # GRAV//TY
 
-Two-player local vector-style space duel with polygon worlds and gravity. Built with LÖVE (11.5 and 12) and LuaJIT.
+Local vector-style space duel for 2–6 players (1–4 human, the rest AI) with polygon worlds and gravity. Built with LÖVE (11.5 and 12) and LuaJIT.
 
 See `docs/ARCHITECTURE.md` for the architecture and `docs/CONTEXT.md` for the glossary.
 

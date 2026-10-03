@@ -20,11 +20,11 @@ function Flow.new(opts)
 	local self = setmetatable({}, Flow)
 	-- What the setup screen edits and the match reads: the roster, the seed
 	-- field text ("" is random) and hardcore. It outlives matches, so setup
-	-- reopens as it was left. opts.roster seeds the roster (default otherwise);
+	-- reopens as it was left. opts.roster seeds the six setup rows (default otherwise);
 	-- opts.onSettingsChanged(settings) fires after every setup edit;
 -- opts.onStart(settings) fires when Start launches a match (not on rematch).
 	self.settings = {
-		roster = opts.roster or Roster.default(),
+		roster = opts.roster or Roster.defaultSetup(),
 		seedText = opts.seed and string.format("%d", opts.seed) or "",
 		hardcore = opts.hardcore or false,
 	}
@@ -60,7 +60,7 @@ function Flow:settingsChanged()
 	end
 end
 
--- Setup -> Match with the current settings; a blank seed picks a fresh one.
+-- Setup -> Match with the current settings (empty rows dropped); a blank seed picks a fresh one.
 function Flow:start()
 	local settings = self.settings
 	if self.onStart then
@@ -68,7 +68,7 @@ function Flow:start()
 	end
 	local seed = tonumber(settings.seedText) or (os.time() + math.floor(os.clock() * 1000))
 	print(string.format("seed=%d", seed))
-	self.stack:replace(MatchState.new(self, seed, Roster.copy(settings.roster), settings.hardcore))
+	self.stack:replace(MatchState.new(self, seed, Roster.active(settings.roster), settings.hardcore))
 end
 
 -- Same level and seed, same roster.

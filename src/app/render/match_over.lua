@@ -12,6 +12,8 @@ local SCREEN_WIDTH = 1280
 local SCREEN_HEIGHT = 720
 local TITLE_SIZE = 56
 local PROMPT_SIZE = 28
+local TITLE_BLOCK = 100 -- panel top to the first score row
+local PROMPT_BLOCK = 70 -- room for the prompt under the list
 
 function MatchOver.title(winner)
 	return "P" .. winner .. " WINS THE MATCH"
@@ -31,19 +33,23 @@ function MatchOver.draw(ctx)
 	local title = MatchOver.title(ctx.round.winner)
 	local titleWidth = titleFont:getWidth(title)
 
+	local listHeight = ScoreCard.listHeight(#ctx.round.score)
+	local panelHeight = TITLE_BLOCK + listHeight + PROMPT_BLOCK
+	local panelTop = (SCREEN_HEIGHT - panelHeight) / 2
+
 	love.graphics.setColor(0, 0, 0, 0.7)
-	love.graphics.rectangle("fill", 0, SCREEN_HEIGHT / 2 - 110, SCREEN_WIDTH, 240)
+	love.graphics.rectangle("fill", 0, panelTop, SCREEN_WIDTH, panelHeight)
 
 	love.graphics.setColor(PlayerColors.get(ctx, ctx.round.winner))
 	love.graphics.setFont(titleFont)
-	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, SCREEN_HEIGHT / 2 - 80)
+	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, panelTop + 25)
 
-	ScoreCard.drawScores(ctx, SCREEN_HEIGHT / 2 + 20)
+	ScoreCard.drawScores(ctx, panelTop + TITLE_BLOCK)
 
 	local prompt = MatchOver.prompt()
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.setFont(promptFont)
-	love.graphics.print(prompt, (SCREEN_WIDTH - promptFont:getWidth(prompt)) / 2, SCREEN_HEIGHT / 2 + 70)
+	love.graphics.print(prompt, (SCREEN_WIDTH - promptFont:getWidth(prompt)) / 2, panelTop + TITLE_BLOCK + listHeight + 15)
 end
 
 return MatchOver

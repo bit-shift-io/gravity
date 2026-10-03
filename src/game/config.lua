@@ -230,6 +230,7 @@ local Config = {
 		-- Stick magnitude below this reads as centred (src/app/bindings.lua).
 		gamepadDeadzone = 0.3,
 		min = 2,
+		minHumans = 1,
 		max = 6,
 		maxHumans = 4,
 		palette = {
