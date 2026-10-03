@@ -2,6 +2,7 @@
 -- a column of items, and a line bracket around the selected one. Screen space
 -- over the 1280x720 virtual resolution. Only `draw` touches `love.*`.
 local Fonts = require("src.app.render.fonts")
+local Starfield = require("src.app.render.starfield")
 
 local Menu = {}
 
@@ -60,6 +61,10 @@ function Menu.draw(opts)
 	local itemFont = Fonts.get(compact and compact.itemSize or ITEM_SIZE)
 	local spacing = compact and compact.spacing or ITEM_SPACING
 
+	-- A dimmed menu is an overlay over a match, which already has its stars.
+	if not opts.dim then
+		Starfield.draw()
+	end
 	if opts.dim then
 		love.graphics.setColor(0, 0, 0, opts.dim)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)

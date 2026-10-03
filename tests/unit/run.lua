@@ -37,6 +37,7 @@ local defaultTestFiles = {
 	"tests/unit/swept_collide_test.lua",
 	"tests/unit/weapon_test.lua",
 	"tests/unit/boundary_render_test.lua",
+	"tests/unit/starfield_test.lua",
 	"tests/unit/asteroid_shape_test.lua",
 	"tests/unit/asteroid_spawn_test.lua",
 	"tests/unit/blast_test.lua",

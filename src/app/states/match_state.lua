@@ -6,6 +6,7 @@
 -- fails loudly here rather than corrupting gravity/rendering later.
 local Level = require("src.game.level")
 local Match = require("src.game.match")
+local Starfield = require("src.app.render.starfield")
 local WorldsRender = require("src.app.render.worlds")
 local BoundaryRender = require("src.app.render.boundary")
 local ShipsRender = require("src.app.render.ships")
@@ -48,6 +49,8 @@ function MatchState.update(ctx, dt)
 end
 
 function MatchState.draw(ctx)
+	Starfield.draw(ctx.camera.x, ctx.camera.y, ctx.time)
+
 	-- Apply camera transform (position + zoom) to all world-space rendering.
 	-- Camera is centered at (0, 0); translate by negative camera position to
 	-- move the view, then scale by zoom level.
