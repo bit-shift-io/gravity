@@ -48,7 +48,9 @@ function MatchState.update(ctx, dt)
 	Match.step(ctx)
 end
 
-function MatchState.draw(ctx)
+-- `showResults` false hides the score card / win screen (the pause menu is
+-- over the match, so they would be two windows at once).
+function MatchState.draw(ctx, showResults)
 	Starfield.draw(ctx.camera.x, ctx.camera.y, ctx.time)
 
 	-- Apply camera transform (position + zoom) to all world-space rendering.
@@ -74,8 +76,10 @@ function MatchState.draw(ctx)
 
 	-- HUD is drawn in screen space (not affected by camera)
 	Hud.draw(ctx)
-	ScoreCard.draw(ctx)
-	MatchOver.draw(ctx)
+	if showResults ~= false then
+		ScoreCard.draw(ctx)
+		MatchOver.draw(ctx)
+	end
 end
 
 -- Stack state around one match. The level is generated from `seed`, so a
@@ -95,7 +99,7 @@ function State:update(dt)
 end
 
 function State:draw()
-	MatchState.draw(self.ctx)
+	MatchState.draw(self.ctx, self.flow.stack:top() == self)
 end
 
 function State:keypressed(key)
