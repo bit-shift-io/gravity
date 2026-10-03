@@ -296,6 +296,9 @@ local Config = {
 	-- The static gravity field grid (src/sim/field.lua).
 	field = {
 		cellSize = 16,
+		-- Peak boundary anti-gravity (px/s^2) at the hard boundary; it ramps
+		-- linearly from 0 at the play-area edge. Was a fixed 30.
+		boundaryStrength = 60,
 	},
 	-- Post-processing (src/app/post). defaultMode is the launch mode: "off",
 	-- "glow" or "glowCrt". `P` cycles it for the session.

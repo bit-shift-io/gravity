@@ -117,6 +117,7 @@ function Field.bake(level, config)
 		playAreaMinY = -360,
 		playAreaMaxY = 360,
 		hardBoundary = hardBoundary,
+		strength = config.field.boundaryStrength,
 	}
 
 	return field, boundaryField
@@ -159,7 +160,7 @@ function Field.sample(field, x, y)
 			if distFromPlayArea < field.hardBoundary then
 				-- Repulsion increases toward the hard boundary
 				local repulsionFactor = distFromPlayArea / field.hardBoundary
-				local repulsionStrength = 30 * repulsionFactor
+				local repulsionStrength = field.strength * repulsionFactor
 				-- Repel toward the center
 				if x < field.playAreaMinX then
 					ax = repulsionStrength  -- Repel rightward
