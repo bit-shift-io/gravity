@@ -82,6 +82,7 @@ function love.load(args)
 		roster = saved.roster,
 		onStart = SettingsStore.save,
 		quit = love.event.quit,
+		intro = true,
 	})
 end
 

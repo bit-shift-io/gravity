@@ -15,13 +15,45 @@ local BRACKET_ARM = 14
 
 -- Compact layout for the roster setup screen: a smaller title and a tighter
 -- column so a full roster plus its settings fit on screen.
-local COMPACT = { titleSize = 48, titleY = 24, itemSize = 26, spacing = 41, top = 100, swatch = 20, noticeY = 676 }
+local COMPACT = { titleSize = 48, titleGap = 28, itemSize = 26, spacing = 41, swatch = 20, noticeY = 676 }
+local TITLE_GAP = 90
+local SLIDE_RISE = 60
+
+local function easeOut(t)
+	return 1 - (1 - t) ^ 3
+end
+
+-- Prints `title` centred at y. With `colors` ({ c1, c2 }) the two slashes of
+-- GRAV//TY take those colours; the rest stays white.
+local function printTitle(font, title, y, colors, alpha)
+	local a, c = title:match("^(.-)//(.*)$")
+	if not (colors and a) then
+		love.graphics.setColor(1, 1, 1, alpha)
+		love.graphics.print(title, (SCREEN_WIDTH - font:getWidth(title)) / 2, y)
+		return
+	end
+	local parts = { { a, nil }, { "/", colors[1] }, { "/", colors[2] }, { c, nil } }
+	local width = 0
+	for _, part in ipairs(parts) do
+		width = width + font:getWidth(part[1])
+	end
+	local x = (SCREEN_WIDTH - width) / 2
+	for _, part in ipairs(parts) do
+		local col = part[2] or { 1, 1, 1 }
+		love.graphics.setColor(col[1], col[2], col[3], alpha)
+		love.graphics.print(part[1], x, y)
+		x = x + font:getWidth(part[1])
+	end
+end
 
 -- opts.title (string), opts.items ({ { label, color = {r,g,b,a}|nil, flag = bool|nil } }),
 -- opts.selected (1-based), opts.dim (backdrop alpha, for overlays drawn over a
 -- frozen match). Setup passes opts.compact, items with a `color` (a swatch
 -- before the label; `flag` draws it red, `dim` fades the row) and opts.notice (a line at the foot,
--- red when opts.alert).
+-- red when opts.alert). The title and items are centred vertically as one
+-- block. opts.titleColors colours the title's slashes; opts.reveal (0..1, nil =
+-- settled) plays the intro: the title starts alone at screen centre and slides up
+-- into place while the items rise and fade in.
 function Menu.draw(opts)
 	local compact = opts.compact and COMPACT
 	local titleFont = Fonts.get(compact and compact.titleSize or TITLE_SIZE)
@@ -33,19 +65,30 @@ function Menu.draw(opts)
 		love.graphics.rectangle("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
 	end
 
+	local titleHeight = titleFont:getHeight()
+	local itemsHeight = (#opts.items - 1) * spacing + itemFont:getHeight()
+	local gap = compact and compact.titleGap or TITLE_GAP
+	local blockTop = (SCREEN_HEIGHT - (titleHeight + gap + itemsHeight)) / 2
+	local reveal = opts.reveal and easeOut(opts.reveal) or 1
+	local titleSettled = blockTop
+	local titleAlone = (SCREEN_HEIGHT - titleHeight) / 2
+	local titleY = titleAlone + (titleSettled - titleAlone) * reveal
+
 	love.graphics.setFont(titleFont)
-	love.graphics.setColor(1, 1, 1, 1)
-	love.graphics.print(opts.title, (SCREEN_WIDTH - titleFont:getWidth(opts.title)) / 2, compact and compact.titleY or 150)
+	printTitle(titleFont, opts.title, titleY, opts.titleColors, 1)
 
 	love.graphics.setFont(itemFont)
 	love.graphics.setLineWidth(2)
-	local top = compact and compact.top or 320
+	local top = blockTop + titleHeight + gap + (1 - reveal) * SLIDE_RISE
 	for i, item in ipairs(opts.items) do
+		if reveal <= 0 then
+			break
+		end
 		local width = itemFont:getWidth(item.label)
 		local x = (SCREEN_WIDTH - width) / 2
 		local y = top + (i - 1) * spacing
 		local selected = i == opts.selected
-		local alpha = selected and 1 or 0.5
+		local alpha = (selected and 1 or 0.5) * reveal
 		if item.dim then
 			alpha = alpha * 0.5
 		end

@@ -3,7 +3,7 @@
 -- here; headless tests drive the same object without a window.
 -- opts.seed fixes the match seed (`seed=N` launch arg), otherwise each Play
 -- picks a fresh one (the setup seed field starts with it). opts.hardcore (`hardcore=1` launch arg) makes rotating
--- burn fuel in every match, rematches included. opts.quit is called when the player quits from the title.
+-- burn fuel in every match, rematches included. opts.intro plays the title intro animation on launch. opts.quit is called when the player quits from the title.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
 local StateStack = require("src.app.states.state_stack")
@@ -34,7 +34,7 @@ function Flow.new(opts)
 	-- Session-only settings (P cycles the post mode).
 	self.session = { postMode = Config.post.defaultMode }
 	self.stack = StateStack.new()
-	self.stack:push(TitleState.new(self))
+	self.stack:push(TitleState.new(self, { intro = opts.intro }))
 	return self
 end
 
