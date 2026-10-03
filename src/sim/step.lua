@@ -35,7 +35,7 @@ local ZERO = { x = 0, y = 0 }
 function Sim.integrate(sim, dt, config)
 	local G = config.gravity.G
 	local eps = config.gravity.softening
-	local pairwiseAccel = Gravity.pairwise(sim.bodies.slots, G, eps)
+	local pairwiseAccel = Gravity.pairwise(sim.bodies.slots, G, eps, config.gravity.falloff)
 
 	for _, body in pairs(sim.bodies.slots) do
 		if not body.dead then

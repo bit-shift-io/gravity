@@ -34,3 +34,13 @@ test("Gravity.pointMass stays finite at very small softened distances", function
 	assertTrue(ax == ax, "expected a real number, got NaN") -- NaN ~= NaN
 	assertTrue(ax > -math.huge and ax < math.huge, "expected a finite number")
 end)
+
+test("Gravity.pointMass with falloff = 1 decays linearly (1/r), slower than inverse-square", function()
+	-- eps = 0 so magnitude is exactly G*m / r^falloff.
+	local near = Gravity.pointMass(10, 0, 1, 1, 0, 1)
+	local far = Gravity.pointMass(40, 0, 1, 1, 0, 1)
+	assert(math.abs(near / far - 4) < 1e-9, "1/r: 4x the distance gives 1/4 the pull")
+	local nearSq = Gravity.pointMass(10, 0, 1, 1, 0)
+	local farSq = Gravity.pointMass(40, 0, 1, 1, 0)
+	assert(math.abs(nearSq / farSq - 16) < 1e-9, "default stays inverse-square")
+end)

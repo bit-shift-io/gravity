@@ -25,6 +25,7 @@ function Field.bake(level, config)
 	local cellSize = config.field.cellSize
 	local G = config.gravity.G
 	local eps = config.gravity.softening
+	local falloff = config.gravity.falloff
 
 	-- Hard boundary: play area edge (at distance 640 from origin) + boundary distance (640)
 	-- Total hard boundary radius = 640 + 640 = 1280
@@ -90,7 +91,7 @@ function Field.bake(level, config)
 				local massCell = field.cells[massIdx]
 				local dx = cell.x - massCell.x
 				local dy = cell.y - massCell.y
-				local fx, fy = Gravity.pointMass(dx, dy, massCell.mass, G, eps)
+				local fx, fy = Gravity.pointMass(dx, dy, massCell.mass, G, eps, falloff)
 				ax = ax + fx
 				ay = ay + fy
 			end

@@ -1,4 +1,5 @@
--- Softened inverse-square gravity: the one law both the baked static field
+-- Softened power-law gravity (inverse-square by default; `falloff` = 1 gives
+-- the gentler 1/r law): the one law both the baked static field
 -- (src/sim/field.lua) and the later pairwise dynamic gravity build on
 -- (docs/adr/0002-hybrid-gravity-field.md). Pure math -- no `love.*`
 -- (docs/ARCHITECTURE.md "Layers").
@@ -8,14 +9,23 @@ local Gravity = {}
 -- (dx, dy) = sample - mass (the vector FROM the mass TO the sample point).
 -- Returns ax, ay pointing back toward the mass (attraction). `eps` softens
 -- the denominator so a sample near the mass's own location doesn't divide
--- by (near) zero. At dx = dy = 0 the numerator vector is also zero, so this
+-- by (near) zero. `falloff` is the exponent on distance: acceleration
+-- magnitude ~ 1 / r^falloff (2 = inverse-square, the default; 1 = linear
+-- falloff, which keeps far-field pull much stronger). At dx = dy = 0 the numerator vector is also zero, so this
 -- returns 0, 0 regardless of softening -- nothing needs to special-case a
 -- mass sampling its own cell (see field.lua's self-exclusion gotcha; this
 -- is the belt to that braces).
-function Gravity.pointMass(dx, dy, m, G, eps)
+function Gravity.pointMass(dx, dy, m, G, eps, falloff)
 	local r2 = dx * dx + dy * dy + eps * eps
-	local invR3 = 1 / (r2 * math.sqrt(r2))
-	local scale = -G * m * invR3
+	local invRn
+	if falloff == nil or falloff == 2 then
+		invRn = 1 / (r2 * math.sqrt(r2))
+	elseif falloff == 1 then
+		invRn = 1 / r2
+	else
+		invRn = r2 ^ (-(falloff + 1) / 2)
+	end
+	local scale = -G * m * invRn
 	return dx * scale, dy * scale
 end
 
@@ -41,7 +51,7 @@ end
 -- exerts nor receives, and has no entry in the result.
 -- A negative `mass` repels rather than attracts -- `Gravity.pointMass`
 -- already flips the sign, so no separate branch is needed here.
-function Gravity.pairwise(bodies, G, eps)
+function Gravity.pairwise(bodies, G, eps, falloff)
 	local accel = {}
 	-- Passive bodies (cosmetic, e.g. exhaust particles) are filtered out here,
 	-- once, so the O(n^2) loops below only ever see active bodies.
@@ -63,7 +73,7 @@ function Gravity.pairwise(bodies, G, eps)
 			if keyB ~= keyA then
 				local dx = receiver.x - bodyB.x
 				local dy = receiver.y - bodyB.y
-				local ax, ay = Gravity.pointMass(dx, dy, bodyB.mass, G, eps)
+				local ax, ay = Gravity.pointMass(dx, dy, bodyB.mass, G, eps, falloff)
 				entry.x = entry.x + ax
 				entry.y = entry.y + ay
 			end

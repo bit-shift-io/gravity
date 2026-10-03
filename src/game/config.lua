@@ -281,11 +281,16 @@ local Config = {
 		bufferRadius = 30,
 		zoomSpeed = 2.0,
 	},
-	-- Softened inverse-square law shared by the baked static field
+	-- Softened power-law gravity shared by the baked static field
 	-- (src/sim/field.lua) and later pairwise dynamic gravity (src/sim/gravity.lua,
 	-- docs/adr/0002-hybrid-gravity-field.md).
 	gravity = {
-		G = 100,
+		-- falloff is the distance exponent: 2 = inverse-square, 1 = linear
+		-- (1/r) so pull stays meaningful far from a world. G is tuned so the
+		-- pull equals the old inverse-square value (G=100) at ~100px; it is
+		-- weaker close in and stronger far out. Tune by playtest.
+		falloff = 1,
+		G = 1,
 		softening = 20,
 	},
 	-- The static gravity field grid (src/sim/field.lua).

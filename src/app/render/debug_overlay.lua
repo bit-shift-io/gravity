@@ -50,13 +50,13 @@ end
 -- inverse-square math. Pinned bodies still exert here, same as in
 -- `Sim.step`/`Gravity.pairwise` -- only the "receives acceleration" side of
 -- gravity ever excludes a pinned body, and a field cell isn't a body.
-local function combinedAccel(cell, bodies, G, eps)
+local function combinedAccel(cell, bodies, G, eps, falloff)
 	local ax, ay = cell.ax, cell.ay
 	for _, body in pairs(bodies) do
 		if not body.dead then
 			local dx = cell.x - body.x
 			local dy = cell.y - body.y
-			local fx, fy = Gravity.pointMass(dx, dy, body.mass, G, eps)
+			local fx, fy = Gravity.pointMass(dx, dy, body.mass, G, eps, falloff)
 			ax = ax + fx
 			ay = ay + fy
 		end
@@ -102,11 +102,11 @@ end
 -- that cell's centre) -- `bodies`/`G`/`eps` are optional so callers that
 -- only care about the static field (e.g. earlier tests) still work with the
 -- static value alone.
-function DebugOverlay.drawFieldArrows(field, bodies, G, eps)
+function DebugOverlay.drawFieldArrows(field, bodies, G, eps, falloff)
 	for _, cell in ipairs(field.cells) do
 		if not isInsideWorld(cell) then
 			if bodies then
-				local ax, ay = combinedAccel(cell, bodies, G, eps)
+				local ax, ay = combinedAccel(cell, bodies, G, eps, falloff)
 				drawArrow(cell.x, cell.y, ax, ay)
 			else
 				drawArrow(cell.x, cell.y, cell.ax, cell.ay)
@@ -168,7 +168,7 @@ function DebugOverlay.draw(ctx)
 		local bodies = ctx.sim.bodies and ctx.sim.bodies.slots
 		local gravity = ctx.config and ctx.config.gravity
 		if bodies and gravity then
-			DebugOverlay.drawFieldArrows(field, bodies, gravity.G, gravity.softening)
+			DebugOverlay.drawFieldArrows(field, bodies, gravity.G, gravity.softening, gravity.falloff)
 		else
 			DebugOverlay.drawFieldArrows(field)
 		end
