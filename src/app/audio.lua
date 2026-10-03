@@ -1,4 +1,4 @@
--- Sound effects. Reads ctx.events (fire, blast, asteroidDeath) and ship thrust
+-- Sound effects. Reads ctx.events (fire, blast, crash, asteroidDeath, asteroidSplit) and ship thrust
 -- intent after each Match.step and plays the matching sound; game code only
 -- emits events and never touches audio (docs/ARCHITECTURE.md "Layers").
 -- Every call is guarded so a machine with no audio device (CI, headless
@@ -85,11 +85,22 @@ function Audio.update(ctx)
 		load()
 	end
 
+	-- Event kind -> sound. A ship killed by a blast raises both "blast" and
+	-- "crash"; they share a sound, so it plays once per update.
+	local blastPlayed = false
 	for _, event in ipairs(ctx.events) do
 		if not played[event] then
 			played[event] = true
-			if event.kind == "fire" or event.kind == "blast" or event.kind == "asteroidDeath" or event.kind == "asteroidSplit" then
-				playOnce(event.kind == "asteroidSplit" and "asteroidDeath" or event.kind)
+			local kind = event.kind
+			if kind == "blast" or kind == "crash" then
+				if not blastPlayed then
+					blastPlayed = true
+					playOnce("blast")
+				end
+			elseif kind == "asteroidDeath" or kind == "asteroidSplit" then
+				playOnce("asteroidDeath")
+			elseif kind == "fire" then
+				playOnce("fire")
 			end
 		end
 	end
