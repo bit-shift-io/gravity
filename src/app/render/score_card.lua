@@ -17,12 +17,29 @@ local TITLE_SIZE = 64
 local LABEL_SIZE = 32
 local PANEL_PAD = 20
 local TITLE_BLOCK = 100 -- panel top to the first score row
+local HOLD = 1 -- seconds the result sits alone, centred
+local SLIDE = 0.7 -- seconds the title moves up as the scores rise in
+local FADE_OUT = 0.5 -- seconds the card fades before the next round
+local SCORE_RISE = 60 -- px the score rows travel while revealing
 
 function ScoreCard.resultText(result)
 	if result.draw then
 		return "DRAW"
 	end
 	return "P" .. result.winner .. " WINS"
+end
+
+local function easeOut(t)
+	return 1 - (1 - t) ^ 3
+end
+
+-- Card timeline `elapsed` seconds after it appears, out of `duration`.
+-- Returns reveal (0 while the result holds centred, eased to 1 as it slides
+-- up and the scores come in) and alpha (1, then fading to 0 at the end). Pure.
+function ScoreCard.animation(elapsed, duration)
+	local reveal = easeOut(math.max(0, math.min(1, (elapsed - HOLD) / SLIDE)))
+	local alpha = math.max(0, math.min(1, (duration - elapsed) / FADE_OUT))
+	return reveal, alpha
 end
 
 -- One boolean per pip: filled for each win, empty for the rest.
@@ -62,7 +79,9 @@ end
 -- "P3 ●●○" one row per slot, stacked from `top` and sorted by wins (most at
 -- the top). Rows share one left edge so the pips line up, and the block is
 -- centred on the screen. Shared by the score card and the match-over screen.
-function ScoreCard.drawScores(ctx, top)
+-- `alpha` (default 1) fades the rows.
+function ScoreCard.drawScores(ctx, top, alpha)
+	alpha = alpha or 1
 	local total = ctx.config.round.winsToWin
 	local labelFont = Fonts.get(LABEL_SIZE)
 	local labelWidth = labelFont:getWidth("P6 ")
@@ -70,7 +89,8 @@ function ScoreCard.drawScores(ctx, top)
 	love.graphics.setFont(labelFont)
 	for row, player in ipairs(ScoreCard.sortedSlots(ctx.round.score)) do
 		local y = top + (row - 0.5) * ROW_HEIGHT
-		love.graphics.setColor(PlayerColors.get(ctx, player))
+		local c = PlayerColors.get(ctx, player)
+		love.graphics.setColor(c[1], c[2], c[3], (c[4] or 1) * alpha)
 		love.graphics.print("P" .. player, left, y - labelFont:getHeight() / 2)
 		local pipX = left + labelWidth + PIP_RADIUS
 		for i, filled in ipairs(ScoreCard.pips(ctx.round.score[player], total)) do
@@ -80,9 +100,13 @@ function ScoreCard.drawScores(ctx, top)
 end
 
 function ScoreCard.draw(ctx)
-	if not RoundSystem.cardVisible(ctx.round, ctx.config.round) then
+	local roundConfig = ctx.config.round
+	if not RoundSystem.cardVisible(ctx.round, roundConfig) then
 		return
 	end
+
+	local elapsed = ctx.round.timer - roundConfig.endDelay
+	local reveal, fade = ScoreCard.animation(elapsed, roundConfig.cardDuration)
 
 	local titleFont = Fonts.get(TITLE_SIZE)
 	local title = ScoreCard.resultText(ctx.round.result)
@@ -91,14 +115,16 @@ function ScoreCard.draw(ctx)
 	local panelHeight = TITLE_BLOCK + listHeight + PANEL_PAD
 	local panelTop = (SCREEN_HEIGHT - panelHeight) / 2
 
-	love.graphics.setColor(0, 0, 0, 0.6)
+	love.graphics.setColor(0, 0, 0, 0.6 * reveal * fade)
 	love.graphics.rectangle("fill", 0, panelTop, SCREEN_WIDTH, panelHeight)
 
-	love.graphics.setColor(1, 1, 1, 1)
+	local titleAlone = (SCREEN_HEIGHT - titleFont:getHeight()) / 2
+	local titleSettled = panelTop + PANEL_PAD
+	love.graphics.setColor(1, 1, 1, fade)
 	love.graphics.setFont(titleFont)
-	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, panelTop + PANEL_PAD)
+	love.graphics.print(title, (SCREEN_WIDTH - titleWidth) / 2, titleAlone + (titleSettled - titleAlone) * reveal)
 
-	ScoreCard.drawScores(ctx, panelTop + TITLE_BLOCK)
+	ScoreCard.drawScores(ctx, panelTop + TITLE_BLOCK + (1 - reveal) * SCORE_RISE, reveal * fade)
 
 	love.graphics.setColor(1, 1, 1, 1)
 end
