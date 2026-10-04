@@ -37,7 +37,9 @@ end
 local function findE2ETestFile(args)
 	local path = findArg(args, "^e2e=(.+)$")
 	return path
+end
 
+function love.load(args)
 	local e2eTestFile = findE2ETestFile(args)
 	if e2eTestFile then
 		-- requiring tests.e2e.run defines its own love.update/love.draw/
