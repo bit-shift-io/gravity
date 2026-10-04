@@ -37,35 +37,6 @@ local NOSE_LENGTH = 10
 
 local INCOMING = { shell = true, asteroid = true }
 
--- The soonest threat of one of `kinds` within `horizon` seconds, or nil.
-local function firstOf(threats, kinds, horizon)
-	for _, threat in ipairs(threats) do
-		if threat.time > horizon then
-			return nil
-		elseif kinds[threat.kind] then
-			return threat
-		end
-	end
-	return nil
-end
-
-local function fly(ctx, ship, body, level, goal, config)
-	return (Flight.flyTo(ctx.sim, ctx.level.worlds, body, goal, config or ctx.config, {
-		fuel = ship.fuel,
-		hold = level.reactionDelay,
-		dt = ctx.dt,
-		horizon = level.flightHorizon,
-	}))
-end
-
-local function lowFuel(ctx, ship)
-	local reserve = ctx.config.ai.refuelFuel
-	if ctx.hardcore then
-		reserve = reserve + ctx.config.ai.hardcoreReserve
-	end
-	return ship.fuel.amount < reserve
-end
-
 -- Config as Flight.flyTo would be with cruiseSpeed capped at
 -- config.ai.kamikazeSpeed: closing in slowly, the ship still drifts
 -- little while it turns to aim with the thrust off.
@@ -194,17 +165,17 @@ local function think(ctx, ship, body, level, state)
 	end
 
 	local threats = Danger.scan(ctx.sim, ctx.level.worlds, body, config, { dt = ctx.dt, horizon = level.dangerHorizon })
-	if state.mode == "refuel" or lowFuel(ctx, ship) then
+	if state.mode == "refuel" or Basic.lowFuel(ctx, ship) then
 		state.mode = "refuel"
 		state.charging, state.tapping = false, false
 		return Flight.land(ctx.sim, body, threats, config, { fuel = ship.fuel, hold = level.reactionDelay })
 	end
 
-	local threat = firstOf(threats, INCOMING, level.dangerHorizon)
+	local threat = Danger.firstOf(threats, INCOMING, level.dangerHorizon)
 	if threat and not state.tapping then
 		state.mode = "evade"
 		state.charging = false
-		return fly(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config))
+		return Flight.flyWith(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config))
 	end
 
 	local enemy, dist = nearestBody(ctx, ship, body)
@@ -229,7 +200,7 @@ local function think(ctx, ship, body, level, state)
 
 	state.mode = "pursue"
 	local goal = overhead(ctx, enemy)
-	return fly(ctx, ship, body, level, goal, dist <= config.ai.kamikazeApproach and slowConfig(config) or nil)
+	return Flight.flyWith(ctx, ship, body, level, goal, dist <= config.ai.kamikazeApproach and slowConfig(config) or nil)
 end
 
 -- Writes ctx.intents[slot]. Re-thinks once ctx.time reaches state.nextThink;

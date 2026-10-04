@@ -156,7 +156,6 @@ local Config = {
 		splitAreaThreshold = 3000,
 		splitNudgeSpeed = 60,
 	},
-	gravityField = {},
 	world = {
 		-- Default mass-per-area for a world that doesn't set its own
 		-- density or an explicit mass (src/game/level.lua Level.validate).
@@ -221,11 +220,6 @@ local Config = {
 	match = {},
 	-- Player limits and the one shared colour palette (src/game/roster.lua,
 	-- src/app/render/player_colors.lua). A slot's `color` indexes the palette.
-	-- Hardcore match setting (src/game/components/thruster.lua): rotating a
-	-- flying ship burns rotationBurnRate fuel units per second.
-	hardcore = {
-		rotationBurnRate = 1,
-	},
 	players = {
 		-- Stick magnitude below this reads as centred (src/app/bindings.lua).
 		gamepadDeadzone = 0.3,
@@ -276,8 +270,7 @@ local Config = {
 	-- Hunter (src/game/ai/hunter.lua): flies to standoff (px) from its
 	-- target and attacks within attackRange (px) while no impact is nearer
 	-- than attackClearance seconds; evades evadeDistance (px) across a
-	-- threat's path; lands to refuel below refuelFuel (plus hardcoreReserve
-	-- in a hardcore match) and lifts off again at takeoffFuel.
+	-- threat's path; lands to refuel below refuelFuel and lifts off again at takeoffFuel.
 	ai = {
 		fireTolerance = 0.08,
 		fullChargeDistance = 700,
@@ -302,7 +295,6 @@ local Config = {
 		attackClearance = 1,
 		evadeDistance = 200,
 		refuelFuel = 3,
-		hardcoreReserve = 2,
 		takeoffFuel = 9,
 		-- Airburst (src/game/ai/skills/airburst.lua): an armed own shell
 		-- that has drifted missMargin px past its closest approach to the

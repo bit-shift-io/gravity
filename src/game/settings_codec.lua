@@ -1,8 +1,7 @@
--- Settings codec: the roster, hardcore setting, sound, postMode, and fullscreen
+-- Settings codec: the roster, sound, postMode, and fullscreen
 -- as a small line-based text (pure -- no `love.*`, no file access;
 -- src/app/settings_store.lua does the I/O).
 --   gravity-settings 1
---   hardcore 0|1
 --   slot <color> keyboard <layout> | gamepad <ordinal> | ai <level> | none
 --   sound 0|1
 --   postMode off|glow|glowCrt
@@ -34,7 +33,7 @@ local function bindingText(binding)
 end
 
 function SettingsCodec.encode(settings)
-	local lines = { HEADER .. " " .. VERSION, "hardcore " .. (settings.hardcore and "1" or "0") }
+	local lines = { HEADER .. " " .. VERSION }
 	for _, slot in ipairs(settings.roster) do
 		lines[#lines + 1] = string.format("slot %d %s", slot.color, bindingText(slot.binding))
 	end
@@ -169,14 +168,12 @@ function SettingsCodec.decode(text, gamepads)
 	if type(text) ~= "string" or text:match("^[^\n]*") ~= HEADER .. " " .. VERSION then
 		return {
 			roster = Roster.defaultSetup(),
-			hardcore = false,
 			sound = true,
 			postMode = Config.post.defaultMode,
 			fullscreen = false
 		}
 	end
 	local roster = {}
-	local hardcore = false
 	local sound = true
 	local postMode = Config.post.defaultMode
 	local fullscreen = false
@@ -199,8 +196,6 @@ function SettingsCodec.decode(text, gamepads)
 				binding = { kind = kind, level = arg }
 			end
 			roster[#roster + 1] = { color = tonumber(color), binding = binding }
-		elseif line == "hardcore 1" then
-			hardcore = true
 		else
 			local soundValue = line:match("^sound (%d)$")
 			if soundValue then
@@ -222,7 +217,6 @@ function SettingsCodec.decode(text, gamepads)
 	end
 	return {
 		roster = SettingsCodec.repair(roster, gamepads),
-		hardcore = hardcore,
 		sound = sound,
 		postMode = postMode,
 		fullscreen = fullscreen

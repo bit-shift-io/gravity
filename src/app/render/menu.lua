@@ -1,6 +1,7 @@
 -- Shared menu drawing in the vector/line style of the other overlays: a title,
 -- a column of items, and a line bracket around the selected one. Screen space
 -- over the 1280x720 virtual resolution. Only `draw` touches `love.*`.
+local Ease = require("src.core.ease")
 local Fonts = require("src.app.render.fonts")
 local Starfield = require("src.app.render.starfield")
 
@@ -19,10 +20,6 @@ local BRACKET_ARM = 14
 local COMPACT = { titleSize = 48, titleGap = 28, itemSize = 26, spacing = 41, swatch = 20, noticeY = 676 }
 local TITLE_GAP = 90
 local SLIDE_RISE = 60
-
-local function easeOut(t)
-	return 1 - (1 - t) ^ 3
-end
 
 -- Prints `title` centred at y. With `colors` ({ c1, c2 }) the two slashes of
 -- GRAV//TY take those colours; the rest stays white.
@@ -78,7 +75,7 @@ function Menu.draw(opts)
 	local itemsHeight = (#opts.items - 1) * spacing + itemFont:getHeight()
 	local gap = compact and compact.titleGap or TITLE_GAP
 	local blockTop = (SCREEN_HEIGHT - (titleHeight + gap + itemsHeight)) / 2
-	local reveal = opts.reveal and easeOut(opts.reveal) or 1
+	local reveal = opts.reveal and Ease.easeOut(opts.reveal) or 1
 	local titleSettled = blockTop
 	local titleAlone = (SCREEN_HEIGHT - titleHeight) / 2
 	local titleY = titleAlone + (titleSettled - titleAlone) * reveal

@@ -43,7 +43,7 @@ local function type_(flow, text)
 	end
 end
 
-test("keyboard alone: Play opens setup, a 3-player roster with seed and hardcore reaches the match", function()
+test("keyboard alone: Play opens setup, a 3-player roster with seed reaches the match", function()
 	withLove(function()
 		local flow = newFlow()
 		flow:keypressed("return") -- Play
@@ -56,8 +56,6 @@ test("keyboard alone: Play opens setup, a 3-player roster with seed and hardcore
 
 		goTo(flow, "SEED")
 		type_(flow, "4242")
-		goTo(flow, "HARDCORE")
-		flow:keypressed("return")
 		goTo(flow, "START")
 		flow:keypressed("return")
 
@@ -70,7 +68,6 @@ test("keyboard alone: Play opens setup, a 3-player roster with seed and hardcore
 		assertEqual("easy", ctx.roster[3].binding.level)
 		assertEqual(4, ctx.roster[3].color)
 		assertEqual(4242, flow.stack:top().seed)
-		assertTrue(ctx.hardcore)
 	end)
 end)
 
@@ -212,14 +209,12 @@ test("seed digits are capped so the seed stays a safe integer", function()
 	end)
 end)
 
-test("rematch keeps roster, seed and hardcore; setup re-reads them on the next start", function()
+test("rematch keeps roster and seed; setup re-reads them on the next start", function()
 	withLove(function()
 		local flow = newFlow()
 		flow:keypressed("return")
 		goTo(flow, "SEED")
 		type_(flow, "77")
-		goTo(flow, "HARDCORE")
-		flow:keypressed("return")
 		goTo(flow, "SLOT 2")
 		flow:keypressed("right") -- ijkl
 		goTo(flow, "START")
@@ -230,7 +225,6 @@ test("rematch keeps roster, seed and hardcore; setup re-reads them on the next s
 		local again = flow:topCtx()
 		assertTrue(again ~= first)
 		assertEqual(77, flow.stack:top().seed)
-		assertTrue(again.hardcore)
 		assertEqual("ijkl", again.roster[2].binding.layout)
 
 		-- Quit to title, reopen setup: the same values show, and edits reach the next match.
@@ -241,11 +235,8 @@ test("rematch keeps roster, seed and hardcore; setup re-reads them on the next s
 		flow:keypressed("return") -- Play -> setup
 		local setup = flow.stack:top()
 		assertEqual("77", setup.settings.seedText)
-		goTo(flow, "HARDCORE")
-		flow:keypressed("return")
 		goTo(flow, "START")
 		flow:keypressed("return")
-		assertFalse(flow:topCtx().hardcore)
 		assertEqual("ijkl", flow:topCtx().roster[2].binding.layout)
 	end)
 end)
@@ -266,7 +257,7 @@ test("the settings-changed hook fires after each setup edit", function()
 		local seen = 0
 		local flow = Flow.new({ onSettingsChanged = function(settings) seen = seen + 1; assertTrue(settings.roster ~= nil) end })
 		flow:keypressed("return")
-		goTo(flow, "HARDCORE")
+		goTo(flow, "RANDOMISE SEED")
 		flow:keypressed("return")
 		assertEqual(1, seen)
 	end)

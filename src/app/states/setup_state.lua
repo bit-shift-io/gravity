@@ -1,9 +1,9 @@
 -- Roster setup: Title -> Setup -> Match. Edits flow.settings (roster, seed
--- field text, hardcore) in place; Start validates and launches the match.
+-- field text) in place; Start validates and launches the match.
 --   six slot rows (a binding of EMPTY switches a row off)
 --               left/right cycle the binding, confirm cycles the colour
 --   SEED (keyboard digits via textinput, backspace
---   deletes), RANDOMISE SEED, HARDCORE (confirm or left/right), START, BACK.
+--   deletes), RANDOMISE SEED, START, BACK.
 -- Works by keyboard or any gamepad (a gamepad cannot type digits, but can
 -- randomise). Limits and validation live in src/game/roster.lua; this state
 -- only shows their reasons.
@@ -29,16 +29,6 @@ local function bindingLabel(binding)
 	return "AI " .. binding.level:upper()
 end
 
--- Connected gamepad ordinals, ascending.
-local function connectedPads()
-	local ids = {}
-	for ordinal in pairs(Compat.getJoysticks()) do
-		ids[#ids + 1] = ordinal
-	end
-	table.sort(ids)
-	return ids
-end
-
 function SetupState.new(flow)
 	local self = setmetatable({ name = "setup", flow = flow, settings = flow.settings, stick = MenuNav.newStick() }, SetupState)
 	self.onBack = function() flow:toTitle() end
@@ -56,7 +46,7 @@ end
 function SetupState:refresh()
 	local settings = self.settings
 	local previous = self.items and self.items[self.selected]
-	self.problems = Roster.validate(settings.roster, connectedPads())
+	self.problems = Roster.validate(settings.roster, Compat.connectedPadIds())
 	local flagged = {}
 	for _, problem in ipairs(self.problems) do
 		if problem.slot then
@@ -79,8 +69,6 @@ function SetupState:refresh()
 	items[#items + 1] = { id = "randomise", label = "RANDOMISE SEED", action = function()
 		self:edit(function() settings.seedText = randomSeedText() end)
 	end }
-	local toggle = function() self:edit(function() settings.hardcore = not settings.hardcore end) end
-	items[#items + 1] = { id = "hardcore", label = "HARDCORE  " .. (settings.hardcore and "ON" or "OFF"), action = toggle, adjust = toggle }
 	items[#items + 1] = { id = "start", label = "START", sound = "forward", action = function() self:start() end }
 	items[#items + 1] = { id = "back", label = "BACK", sound = "back", action = self.onBack }
 	self.items = items
@@ -107,7 +95,7 @@ end
 
 function SetupState:cycleBinding(slot, dir)
 	self:edit(function()
-		local ok, note = Roster.cycleBinding(self.settings.roster, slot, connectedPads(), dir)
+		local ok, note = Roster.cycleBinding(self.settings.roster, slot, Compat.connectedPadIds(), dir)
 		if ok then
 			self.notice = note
 			return true

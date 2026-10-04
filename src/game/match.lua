@@ -40,7 +40,6 @@ local Match = {}
 --
 -- `opts.roster` (optional) is the ordered slot list (src/game/roster.lua);
 -- it defaults to two human slots. Ships, scores and respawns scale to it.
--- `opts.hardcore` (optional) makes rotating burn fuel (docs/CONTEXT.md "Hardcore").
 function Match.new(level, config, seed, opts)
 	local roster = (opts and opts.roster) or Roster.default()
 	seed = seed or os.time()
@@ -62,7 +61,6 @@ function Match.new(level, config, seed, opts)
 		events = {},
 		camera = Camera.new(),
 		roster = roster,
-		hardcore = (opts and opts.hardcore) or false,
 		round = RoundSystem.new(Roster.count(roster)),
 	}
 	-- Personalities draw from their own rng derived from the seed, never

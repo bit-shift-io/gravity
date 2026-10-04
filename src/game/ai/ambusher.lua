@@ -23,6 +23,7 @@
 local Bodies = require("src.sim.bodies")
 local Lander = require("src.game.components.lander")
 local Basic = require("src.game.ai.basic")
+local Danger = require("src.game.ai.skills.danger")
 local Flight = require("src.game.ai.skills.flight")
 local Stuck = require("src.game.ai.skills.stuck")
 local Vantage = require("src.game.ai.skills.vantage")
@@ -33,32 +34,11 @@ local Ambusher = {}
 
 local IMPACT = { world = true, boundary = true }
 
--- The soonest threat of one of `kinds` within `horizon` seconds, or nil.
-local function firstOf(threats, kinds, horizon)
-	for _, threat in ipairs(threats) do
-		if threat.time > horizon then
-			return nil
-		elseif kinds[threat.kind] then
-			return threat
-		end
-	end
-	return nil
-end
-
 -- A concealed position about config.ai.ambushHideRange px from an enemy,
 -- well outside ambushRange.
 local function concealedPick(ctx, ship, level)
 	local far = setmetatable({ vantageRange = ctx.config.ai.ambushHideRange }, { __index = level })
 	return Sniper.pick(ctx, ship, far, true)
-end
-
-local function fly(ctx, ship, body, level, goal)
-	return (Flight.flyTo(ctx.sim, ctx.level.worlds, body, goal, ctx.config, {
-		fuel = ship.fuel,
-		hold = level.reactionDelay,
-		dt = ctx.dt,
-		horizon = level.flightHorizon,
-	}))
 end
 
 local function liftOff(ctx, level, state, mode)
@@ -68,18 +48,13 @@ local function liftOff(ctx, level, state, mode)
 	return Flight.liftOff()
 end
 
-local function near(body, point, reach)
-	local dx, dy = point.x - body.x, point.y - body.y
-	return dx * dx + dy * dy <= reach * reach
-end
-
 local function hide(ctx, ship, body, level, state, target)
 	local config = ctx.config
 	if not state.hideTried and target and Vantage.inSight(ctx.level.worlds, body, target)
 		and ship.fuel.amount >= config.ai.takeoffFuel then
 		state.hideTried = true
 		local pick = concealedPick(ctx, ship, level)
-		if pick and not near(body, pick, config.ai.vantageArrive) then
+		if pick and not Basic.near(body, pick, config.ai.vantageArrive) then
 			state.vantage, state.descending = pick, false
 			return liftOff(ctx, level, state, "return")
 		end
@@ -94,7 +69,7 @@ end
 -- shot when stuck), else circling it.
 local function strike(ctx, ship, body, level, state, target, threats)
 	state.mode = "strike"
-	local clear = not firstOf(threats, IMPACT, ctx.config.ai.attackClearance)
+	local clear = not Danger.firstOf(threats, IMPACT, ctx.config.ai.attackClearance)
 	local shellAlive = ship.weapon and ship.weapon.shell and Bodies.get(ctx.sim.bodies, ship.weapon.shell)
 	if clear and (state.charging or not shellAlive) then
 		local intent = Basic.shoot(ctx, ship, body, level, state)
@@ -103,7 +78,7 @@ local function strike(ctx, ship, body, level, state, target, threats)
 		end
 	end
 	state.charging = false
-	return fly(ctx, ship, body, level, Hunter.standoffGoal(ctx, body, target))
+	return Flight.flyWith(ctx, ship, body, level, Hunter.standoffGoal(ctx, body, target))
 end
 
 local function think(ctx, ship, body, level, state)

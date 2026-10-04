@@ -29,26 +29,7 @@ local Stuck = require("src.game.ai.skills.stuck")
 
 local Sniper = {}
 
--- The soonest shell or asteroid threat within `horizon` seconds, or nil.
-local function incoming(threats, horizon)
-	for _, threat in ipairs(threats) do
-		if threat.time > horizon then
-			return nil
-		elseif threat.kind == "shell" or threat.kind == "asteroid" then
-			return threat
-		end
-	end
-	return nil
-end
-
-local function fly(ctx, ship, body, level, goal)
-	return (Flight.flyTo(ctx.sim, ctx.level.worlds, body, goal, ctx.config, {
-		fuel = ship.fuel,
-		hold = level.reactionDelay,
-		dt = ctx.dt,
-		horizon = level.flightHorizon,
-	}))
-end
+local INCOMING = { shell = true, asteroid = true }
 
 -- A vantage point for a shot at any living enemy, or false. `concealed`
 -- asks for a concealed position instead (Vantage.pick's option).
@@ -125,7 +106,7 @@ function Sniper.relocate(ctx, ship, body, level, state, threats, pick)
 	local dx, dy = above.x - body.x, above.y - body.y
 	local slow = body.vx * body.vx + body.vy * body.vy <= config.ai.vantageSpeed * config.ai.vantageSpeed
 	if not state.descending and (not slow or dx * dx + dy * dy > config.ai.vantageArrive * config.ai.vantageArrive) then
-		return fly(ctx, ship, body, level, above)
+		return Flight.flyWith(ctx, ship, body, level, above)
 	end
 	state.descending = true
 	return Flight.approach(ctx.sim, body, v, config, { fuel = ship.fuel, hold = level.reactionDelay })
@@ -141,7 +122,7 @@ function Sniper.dodge(ctx, ship, body, level, state)
 	-- into a world unseen.
 	local horizon = grounded and level.dangerHorizon or math.max(level.dangerHorizon, config.ai.attackClearance)
 	local threats = Danger.scan(ctx.sim, ctx.level.worlds, body, config, { dt = ctx.dt, horizon = horizon })
-	local threat = incoming(threats, level.dangerHorizon)
+	local threat = Danger.firstOf(threats, INCOMING, level.dangerHorizon)
 	if threat and (not grounded or ship.fuel.amount >= config.ai.hopFuel) then
 		state.mode = "dodge"
 		state.vantage = nil
@@ -149,7 +130,7 @@ function Sniper.dodge(ctx, ship, body, level, state)
 		if grounded then
 			return Flight.liftOff()
 		end
-		return fly(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config)), threats
+		return Flight.flyWith(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config)), threats
 	end
 	return nil, threats
 end

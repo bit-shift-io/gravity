@@ -2,6 +2,7 @@
 -- space over the 1280x720 virtual resolution (unaffected by camera zoom)
 -- while RoundSystem.cardVisible says so. The text/pip helpers are pure; only
 -- `draw` touches `love.*` (docs/ARCHITECTURE.md "Layers").
+local Ease = require("src.core.ease")
 local RoundSystem = require("src.game.systems.round_system")
 local Fonts = require("src.app.render.fonts")
 local PlayerColors = require("src.app.render.player_colors")
@@ -32,16 +33,12 @@ function ScoreCard.resultText(result)
 	return "P" .. result.winner .. " WINS"
 end
 
-local function easeOut(t)
-	return 1 - (1 - t) ^ 3
-end
-
 -- Card timeline `elapsed` seconds after it appears, out of `duration`.
 -- Returns reveal (0 while the result holds centred, eased to 1 as it slides
 -- up and the scores come in), alpha (1, then fading to 0 at the end) and
 -- intro (0 to 1 as the title and panel fade in at the start). Pure.
 function ScoreCard.animation(elapsed, duration)
-	local reveal = easeOut(math.max(0, math.min(1, (elapsed - HOLD) / SLIDE)))
+	local reveal = Ease.easeOut(math.max(0, math.min(1, (elapsed - HOLD) / SLIDE)))
 	local alpha = math.max(0, math.min(1, (duration - elapsed) / FADE_OUT))
 	local intro = math.max(0, math.min(1, elapsed / FADE_IN))
 	return reveal, alpha, intro

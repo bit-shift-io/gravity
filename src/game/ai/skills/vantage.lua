@@ -11,6 +11,7 @@
 -- pre-check by the aim search's spread (config.ai.aimSpread), since a lob
 -- leaves well off the direct line. Pure and deterministic -- no rng, no
 -- `love.*` (docs/ARCHITECTURE.md "Layers").
+local Angle = require("src.core.angle")
 local Aim = require("src.game.ai.skills.aim")
 local Collide = require("src.sim.collide")
 local SpawnPoints = require("src.game.spawn_points")
@@ -19,10 +20,6 @@ local Vantage = {}
 
 local atan2 = math.atan2 or function(y, x)
 	return math.atan(y, x)
-end
-
-local function wrap(angle)
-	return (angle + math.pi) % (2 * math.pi) - math.pi
 end
 
 -- A landed hull stands flush on the surface, so its centre sits as far up
@@ -64,7 +61,7 @@ function Vantage.pick(sim, worlds, targets, config, opts)
 		for j, target in ipairs(targets) do
 			local dx, dy = target.x - sx, target.y - sy
 			local hidden = not opts.concealed or not Vantage.inSight(worlds, { x = sx, y = sy }, target)
-			if hidden and math.abs(wrap(atan2(dx, -dy) - facing)) <= reach then
+			if hidden and math.abs(Angle.wrap(atan2(dx, -dy) - facing)) <= reach then
 				local dist = math.sqrt(dx * dx + dy * dy)
 				pairs_[#pairs_ + 1] = {
 					point = p, target = target, facing = facing, x = sx, y = sy,
@@ -86,7 +83,7 @@ function Vantage.pick(sim, worlds, targets, config, opts)
 		local pair = pairs_[k]
 		local shooter = { x = pair.x, y = pair.y, vx = 0, vy = 0, muzzle = muzzle }
 		local solution = Aim.solve(sim, worlds, shooter, pair.target, config, { dt = opts.dt, horizon = opts.horizon })
-		if solution and math.abs(wrap(solution.angle - pair.facing)) <= limit then
+		if solution and math.abs(Angle.wrap(solution.angle - pair.facing)) <= limit then
 			return pair.point, pair.target
 		end
 	end

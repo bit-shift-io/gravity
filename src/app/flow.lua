@@ -2,8 +2,7 @@
 -- Setup -> Match, Match -> Pause, Pause -> Title). main.lua only routes LÖVE callbacks
 -- here; headless tests drive the same object without a window.
 -- opts.seed fixes the match seed (`seed=N` launch arg), otherwise each Play
--- picks a fresh one (the setup seed field starts with it). opts.hardcore (`hardcore=1` launch arg) makes rotating
--- burn fuel in every match, rematches included. opts.intro plays the title intro animation on launch. opts.quit is called when the player quits from the title.
+-- picks a fresh one (the setup seed field starts with it). opts.intro plays the title intro animation on launch. opts.quit is called when the player quits from the title.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
 local StateStack = require("src.app.states.state_stack")
@@ -21,7 +20,7 @@ function Flow.new(opts)
 	opts = opts or {}
 	local self = setmetatable({}, Flow)
 	-- What the setup screen edits and the match reads: the roster, the seed
-	-- field text ("" is random) and hardcore. It outlives matches, so setup
+	-- field text ("" is random). It outlives matches, so setup
 	-- reopens as it was left. opts.roster seeds the six setup rows (default otherwise);
 	-- opts.onSettingsChanged(settings) fires after every setup edit;
 -- opts.sound / opts.postMode / opts.fullscreen seed the saved display and audio
@@ -30,7 +29,6 @@ function Flow.new(opts)
 	self.settings = {
 		roster = opts.roster or Roster.defaultSetup(),
 		seedText = opts.seed and string.format("%d", opts.seed) or "",
-		hardcore = opts.hardcore or false,
 		sound = opts.sound ~= false,
 		postMode = opts.postMode or Config.post.defaultMode,
 		fullscreen = opts.fullscreen or false,
@@ -87,7 +85,7 @@ function Flow:start()
 	local seed = tonumber(settings.seedText) or freshSeed()
 	print(string.format("seed=%d", seed))
 	Audio.stopAll()
-	self.stack:replace(MatchState.new(self, seed, Roster.active(settings.roster), settings.hardcore))
+	self.stack:replace(MatchState.new(self, seed, Roster.active(settings.roster)))
 end
 
 -- Same roster. Keeps the level and seed (the R dev key replays it); newLayout
@@ -98,7 +96,7 @@ function Flow:rematch(match, newLayout)
 		seed = freshSeed()
 		print(string.format("seed=%d", seed))
 	end
-	self.stack:replace(MatchState.new(self, seed, match.roster, match.hardcore))
+	self.stack:replace(MatchState.new(self, seed, match.roster))
 end
 
 function Flow:pause()

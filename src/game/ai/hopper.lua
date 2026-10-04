@@ -14,6 +14,7 @@
 -- hopTime, longer while a threat remains and fuel allows) -> "land" ->
 -- "landed". Thinks every `reactionDelay` seconds and holds the intent in
 -- between; levels differ only by config numbers (dangerHorizon, hopTime).
+local Angle = require("src.core.angle")
 local Bodies = require("src.sim.bodies")
 local Lander = require("src.game.components.lander")
 local Basic = require("src.game.ai.basic")
@@ -23,22 +24,11 @@ local Stuck = require("src.game.ai.skills.stuck")
 
 local Hopper = {}
 
-local function wrap(angle)
-	return (angle + math.pi) % (2 * math.pi) - math.pi
-end
-
 local function clamp(value, limit)
 	return math.max(-limit, math.min(limit, value))
 end
 
-local function incoming(threats)
-	for _, threat in ipairs(threats) do
-		if threat.kind == "shell" or threat.kind == "asteroid" then
-			return threat
-		end
-	end
-	return nil
-end
+local INCOMING = { shell = true, asteroid = true }
 
 -- Across the threat's path, on the side away from the surface, at most
 -- `tilt` off the surface normal (the landed body's angle).
@@ -48,7 +38,7 @@ local function dodgeAngle(body, threat, tilt)
 	if px * nx + py * ny < 0 then
 		px, py = -px, -py
 	end
-	return body.angle + clamp(wrap(Flight.angleOf(px, py) - body.angle), tilt)
+	return body.angle + clamp(Angle.wrap(Flight.angleOf(px, py) - body.angle), tilt)
 end
 
 local function startHop(ctx, level, state, angle)
@@ -63,7 +53,7 @@ end
 -- kept the level's aim error inside the limit so the aim stays reachable.
 local function limitShot(ctx, ship, body, level, state)
 	local limit = ctx.config.tank.turretLimit - level.aimError
-	state.aim.angle = body.angle + clamp(wrap(state.aim.angle - body.angle), limit)
+	state.aim.angle = body.angle + clamp(Angle.wrap(state.aim.angle - body.angle), limit)
 	state.aim.solved = false
 	return Basic.shoot(ctx, ship, body, level, state)
 end
@@ -72,7 +62,7 @@ local function think(ctx, ship, body, level, state)
 	local config = ctx.config
 	local grounded = Lander.isGrounded(ship)
 	local threats = Danger.scan(ctx.sim, ctx.level.worlds, body, config, { dt = ctx.dt, horizon = level.dangerHorizon })
-	local threat = incoming(threats)
+	local threat = Danger.firstOf(threats, INCOMING, math.huge)
 
 	if state.mode == "hop" then
 		if grounded and ctx.time >= state.hopUntil then
@@ -105,7 +95,7 @@ local function think(ctx, ship, body, level, state)
 			return limitShot(ctx, ship, body, level, state)
 		end
 		if canHop then
-			local side = wrap(state.aim.angle - body.angle) < 0 and -1 or 1
+			local side = Angle.wrap(state.aim.angle - body.angle) < 0 and -1 or 1
 			return startHop(ctx, level, state, body.angle + side * config.ai.dodgeTilt)
 		end
 		intent.thrust = false

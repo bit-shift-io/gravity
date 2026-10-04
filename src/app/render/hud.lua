@@ -3,7 +3,6 @@
 -- a charge bar under each ship while charging. Reads record data only,
 -- never mutates it (docs/ARCHITECTURE.md "Rendering"). `love.*` only --
 -- this lives in src/app/ (docs/ARCHITECTURE.md "Layers").
-local Bodies = require("src.sim.bodies")
 local Fonts = require("src.app.render.fonts")
 local PlayerColors = require("src.app.render.player_colors")
 local Roster = require("src.game.roster")

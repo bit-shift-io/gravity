@@ -40,6 +40,16 @@ function Compat.getJoysticks()
 	return joysticks
 end
 
+-- Connected gamepad ordinals, ascending.
+function Compat.connectedPadIds()
+	local ids = {}
+	for ordinal in pairs(Compat.getJoysticks()) do
+		ids[#ids + 1] = ordinal
+	end
+	table.sort(ids)
+	return ids
+end
+
 -- Loads the SDL controller mapping database if present; same call on 11.5 and 12.
 function Compat.loadGamepadMappings(path)
 	if love.filesystem.getInfo(path) then

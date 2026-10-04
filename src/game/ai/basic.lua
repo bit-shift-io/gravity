@@ -12,6 +12,7 @@
 -- neither a charge nor a shell is in flight; the solve itself also waits
 -- until shooter or target has moved, so it stays off most thinks. All
 -- randomness comes from ctx.rng.
+local Angle = require("src.core.angle")
 local Bodies = require("src.sim.bodies")
 local Lander = require("src.game.components.lander")
 local Aim = require("src.game.ai.skills.aim")
@@ -20,10 +21,6 @@ local Basic = {}
 
 local atan2 = math.atan2 or function(y, x)
 	return math.atan(y, x)
-end
-
-local function wrap(angle)
-	return (angle + math.pi) % (2 * math.pi) - math.pi
 end
 
 -- The nearest living enemy ship to `body`: `{ x, y, radius, dx, dy, dist }`
@@ -89,6 +86,17 @@ local function stale(aim, body, target)
 	return moved(aim.fromX, aim.fromY, body.x, body.y) or moved(aim.atX, aim.atY, target.x, target.y)
 end
 
+-- True when the ship's fuel is below config.ai.refuelFuel.
+function Basic.lowFuel(ctx, ship)
+	return ship.fuel.amount < ctx.config.ai.refuelFuel
+end
+
+-- True when `point` lies within `reach` px of `body`.
+function Basic.near(body, point, reach)
+	local dx, dy = point.x - body.x, point.y - body.y
+	return dx * dx + dy * dy <= reach * reach
+end
+
 -- The shared aim-and-fire step (Hopper's landed turret uses it too): plans
 -- a shot at the nearest enemy on `state` (aim, aimOffset, charging;
 -- `aim.solved` is true only for a gravity-aware solution), turns
@@ -115,7 +123,7 @@ function Basic.shoot(ctx, ship, body, level, state)
 	local err, rate
 	if Lander.isGrounded(ship) then
 		-- The turret angle is relative to the body (the surface normal).
-		local want = wrap(worldAngle - body.angle)
+		local want = Angle.wrap(worldAngle - body.angle)
 		if math.abs(want) > config.tank.turretLimit then
 			intent.thrust = true
 			state.charging = false
@@ -123,7 +131,7 @@ function Basic.shoot(ctx, ship, body, level, state)
 		end
 		err, rate = want - ship.turret.angle, config.tank.turretSpeed
 	else
-		err, rate = wrap(worldAngle - body.angle), config.ship.rotationSpeed
+		err, rate = Angle.wrap(worldAngle - body.angle), config.ship.rotationSpeed
 	end
 
 	-- Keep turning (charging too) until within half a held step, so it

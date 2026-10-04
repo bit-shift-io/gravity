@@ -13,10 +13,9 @@ local function mixedRoster()
 	}
 end
 
-test("a roster and the hardcore setting round-trip through encode and decode", function()
-	local text = SettingsCodec.encode({ roster = mixedRoster(), hardcore = true })
+test("a roster round-trips through encode and decode", function()
+	local text = SettingsCodec.encode({ roster = mixedRoster() })
 	local settings = SettingsCodec.decode(text, { 1, 2 })
-	assertTrue(settings.hardcore)
 	assertEqual(6, #settings.roster)
 	assertEqual("ijkl", settings.roster[1].binding.layout)
 	assertEqual(3, settings.roster[1].color)
@@ -27,7 +26,7 @@ test("a roster and the hardcore setting round-trip through encode and decode", f
 end)
 
 test("empty rows and the colours they hold survive a round trip", function()
-	local settings = SettingsCodec.decode(SettingsCodec.encode({ roster = mixedRoster(), hardcore = false }), { 1, 2 })
+	local settings = SettingsCodec.decode(SettingsCodec.encode({ roster = mixedRoster() }), { 1, 2 })
 	assertEqual("none", settings.roster[4].binding.kind)
 	assertEqual(5, settings.roster[4].color)
 	assertEqual("none", settings.roster[5].binding.kind)
@@ -38,7 +37,6 @@ end)
 local Roster = require("src.game.roster")
 
 local function assertDefaults(settings)
-	assertFalse(settings.hardcore)
 	assertEqual(6, #settings.roster)
 	assertEqual("wasd", settings.roster[1].binding.layout)
 	assertEqual("arrows", settings.roster[2].binding.layout)
@@ -53,12 +51,12 @@ test("empty, garbage and non-string input load defaults", function()
 end)
 
 test("an unknown version loads defaults even when the body looks valid", function()
-	local text = SettingsCodec.encode({ roster = mixedRoster(), hardcore = true }):gsub("gravity%-settings 1", "gravity-settings 2")
+	local text = SettingsCodec.encode({ roster = mixedRoster() }):gsub("gravity%-settings 1", "gravity-settings 2")
 	assertDefaults(SettingsCodec.decode(text, { 1, 2 }))
 end)
 
 local function encodeSlots(...)
-	return "gravity-settings 1\nhardcore 0\n" .. table.concat({ ... }, "\n") .. "\n"
+	return "gravity-settings 1\n" .. table.concat({ ... }, "\n") .. "\n"
 end
 
 local function assertValid(settings, gamepads)
@@ -87,9 +85,8 @@ test("a saved pad stays bound when it is still connected, by ordinal", function(
 	assertEqual(2, settings.roster[2].binding.id)
 end)
 
-test("a valid header with no usable slots loads the default roster but keeps hardcore", function()
+test("a valid header with no usable slots loads the default roster even with a legacy hardcore line", function()
 	local settings = SettingsCodec.decode("gravity-settings 1\nhardcore 1\nslot x y z\n", {})
-	assertTrue(settings.hardcore)
 	assertEqual(6, #settings.roster)
 	assertEqual("wasd", settings.roster[1].binding.layout)
 	assertValid(settings, {})
@@ -187,10 +184,9 @@ test("an older file with fewer than six slots is padded with empty rows on unuse
 	assertEqual(3, settings.roster[4].color) -- first unused palette colour
 end)
 
-test("a file with fewer than two active rows loads the default setup but keeps hardcore", function()
+test("a file with fewer than two active rows loads the default setup even with a legacy hardcore line", function()
 	local text = "gravity-settings 1\nhardcore 1\nslot 1 keyboard wasd\nslot 2 none\nslot 3 none\nslot 4 none\nslot 5 none\nslot 6 none\n"
 	local settings = SettingsCodec.decode(text, {})
-	assertTrue(settings.hardcore)
 	assertEqual("arrows", settings.roster[2].binding.layout)
 	assertPermutation(settings.roster)
 end)
@@ -204,7 +200,6 @@ end)
 test("sound, postMode, and fullscreen round-trip with non-default values", function()
 	local text = SettingsCodec.encode({
 		roster = mixedRoster(),
-		hardcore = false,
 		sound = false,
 		postMode = "off",
 		fullscreen = true
@@ -216,7 +211,7 @@ test("sound, postMode, and fullscreen round-trip with non-default values", funct
 end)
 
 test("old files without new lines decode to defaults (sound on, postMode from config, windowed)", function()
-	local text = SettingsCodec.encode({ roster = mixedRoster(), hardcore = false })
+	local text = SettingsCodec.encode({ roster = mixedRoster() })
 	local settings = SettingsCodec.decode(text, { 1, 2 })
 	assertTrue(settings.sound)
 	assertEqual(Config.post.defaultMode, settings.postMode)
@@ -224,7 +219,7 @@ test("old files without new lines decode to defaults (sound on, postMode from co
 end)
 
 test("garbage values in sound, postMode, fullscreen fall back to defaults", function()
-	local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nsound banana\npostMode xyz\nfullscreen maybe\n"
+	local text = "gravity-settings 1\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nsound banana\npostMode xyz\nfullscreen maybe\n"
 	local settings = SettingsCodec.decode(text, {})
 	assertTrue(settings.sound)
 	assertEqual(Config.post.defaultMode, settings.postMode)
@@ -232,7 +227,7 @@ test("garbage values in sound, postMode, fullscreen fall back to defaults", func
 end)
 
 test("invalid postMode falls back to the config default", function()
-	local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\npostMode banana\n"
+	local text = "gravity-settings 1\nslot 1 keyboard wasd\nslot 2 keyboard arrows\npostMode banana\n"
 	local settings = SettingsCodec.decode(text, {})
 	assertEqual(Config.post.defaultMode, settings.postMode)
 end)
@@ -243,14 +238,14 @@ test("every PostMode name is accepted by the codec", function()
 	local validModes = { PostMode.OFF, PostMode.GLOW, PostMode.GLOW_CRT }
 
 	for _, mode in ipairs(validModes) do
-		local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\npostMode " .. mode .. "\n"
+		local text = "gravity-settings 1\nslot 1 keyboard wasd\nslot 2 keyboard arrows\npostMode " .. mode .. "\n"
 		local settings = SettingsCodec.decode(text, {})
 		assertEqual(mode, settings.postMode, "postMode " .. mode .. " should be accepted")
 	end
 end)
 
 test("sound and fullscreen accept 0 and 1 values", function()
-	local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nsound 0\nfullscreen 1\n"
+	local text = "gravity-settings 1\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nsound 0\nfullscreen 1\n"
 	local settings = SettingsCodec.decode(text, {})
 	assertFalse(settings.sound)
 	assertTrue(settings.fullscreen)

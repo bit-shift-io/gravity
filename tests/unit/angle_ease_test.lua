@@ -1,0 +1,15 @@
+local Angle = require("src.core.angle")
+local Ease = require("src.core.ease")
+
+test("Angle.wrap folds angles into [-pi, pi)", function()
+	assertNear(0, Angle.wrap(0))
+	assertNear(-math.pi + 0.5, Angle.wrap(math.pi + 0.5))
+	assertNear(0.5, Angle.wrap(0.5 + 4 * math.pi))
+	assertNear(-0.5, Angle.wrap(-0.5 - 2 * math.pi))
+end)
+
+test("Ease.easeOut runs 0 to 1 and leads a linear ramp", function()
+	assertNear(0, Ease.easeOut(0))
+	assertNear(1, Ease.easeOut(1))
+	assertNear(0.875, Ease.easeOut(0.5))
+end)

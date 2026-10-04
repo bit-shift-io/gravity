@@ -165,7 +165,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Rematch
 - **Definition:** A fresh match with the score zeroed. The match-over rematch (Enter / Space / pad A) rolls a new seed and so a new level.
-- **Boundary:** Keeps the roster and hardcore setting. The R dev key replays the same level and seed.
+- **Boundary:** Keeps the roster. The R dev key replays the same level and seed.
 
 ## Seed
 - **Definition:** The number that determines a match's generated level and asteroid spawns.
@@ -182,9 +182,6 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 ## Spawn point
 - **Definition:** A surface point with an outward normal where a ship starts in tank mode, drawn at random (distinct) from the cleared candidates every round.
 - **Boundary:** Needs clear space above it. A point with no normal means a floating start.
-
-## Hardcore
-- **Definition:** A match setting where rotating burns fuel.
 
 ## Contact
 - **Definition:** A collision event emitted by the sim for one step, consumed by pool systems.
@@ -216,4 +213,4 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Settings screen
 - **Definition:** Menu state with the SOUND, POST FX and FULLSCREEN rows, opened from the title and pause menus. Values persist in `settings.txt`.
-- **Boundary:** Not the setup screen, which edits the roster, seed and hardcore.
+- **Boundary:** Not the setup screen, which edits the roster and seed.

@@ -6,16 +6,13 @@
 -- the direct angle, then aimRefine halvings around the closest miss, for each
 -- of aimCharges) and by the horizon's step count. Pure and deterministic --
 -- no rng, no `love.*` (docs/ARCHITECTURE.md "Layers").
+local Angle = require("src.core.angle")
 local Trajectory = require("src.game.ai.skills.trajectory")
 
 local Aim = {}
 
 local atan2 = math.atan2 or function(y, x)
 	return math.atan(y, x)
-end
-
-local function wrap(angle)
-	return (angle + math.pi) % (2 * math.pi) - math.pi
 end
 
 -- Closest approach of the flight to the target, and the step it happens at.
@@ -96,7 +93,7 @@ function Aim.solve(sim, worlds, shooter, target, config, opts)
 		end
 
 		if d <= hitRadius then
-			return { angle = wrap(angle), charge = fraction * weapon.chargeTime, steps = at }
+			return { angle = Angle.wrap(angle), charge = fraction * weapon.chargeTime, steps = at }
 		end
 	end
 	return nil

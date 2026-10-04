@@ -1,4 +1,4 @@
--- Roster and hardcore persistence through the real flow and settings store on
+-- Roster persistence through the real flow and settings store on
 -- the headless love mock. A relaunch is a second LoveMock sharing the first
 -- one's in-memory save directory (`files`).
 local Flow = require("src.app.flow")
@@ -23,7 +23,6 @@ local function launch(args)
 	local saved = SettingsStore.load()
 	return Flow.new({
 		roster = saved.roster,
-		hardcore = args.hardcore or saved.hardcore,
 		sound = saved.sound,
 		postMode = saved.postMode,
 		fullscreen = saved.fullscreen,
@@ -48,7 +47,7 @@ local function goTo(flow, prefix)
 	error("no setup row starting with " .. prefix)
 end
 
-test("the roster and hardcore setting saved at match start are what setup shows after a relaunch", function()
+test("the roster saved at match start are what setup shows after a relaunch", function()
 	local files = {}
 	withLove(files, function()
 		local flow = launch()
@@ -57,8 +56,6 @@ test("the roster and hardcore setting saved at match start are what setup shows 
 		flow:keypressed("right") -- empty -> ijkl
 		flow:keypressed("right") -- -> AI easy
 		flow:keypressed("return") -- colour 3 -> 4
-		goTo(flow, "HARDCORE")
-		flow:keypressed("return")
 		goTo(flow, "START")
 		flow:keypressed("return")
 		assertEqual("match", flow:topName())
@@ -68,7 +65,6 @@ test("the roster and hardcore setting saved at match start are what setup shows 
 		local flow = launch()
 		flow:keypressed("return")
 		local settings = flow.stack:top().settings
-		assertTrue(settings.hardcore)
 		assertEqual(6, #settings.roster)
 		assertEqual("wasd", settings.roster[1].binding.layout)
 		assertEqual("ai", settings.roster[3].binding.kind)
@@ -126,7 +122,6 @@ test("a corrupt save file loads the defaults", function()
 		local flow = launch()
 		assertEqual(6, #flow.settings.roster)
 		assertEqual("none", flow.settings.roster[3].binding.kind)
-		assertFalse(flow.settings.hardcore)
 	end)
 end)
 
@@ -136,11 +131,10 @@ test("launch arguments win over saved values for that launch", function()
 		local flow = launch()
 		flow:keypressed("return")
 		goTo(flow, "START")
-		flow:keypressed("return") -- saves hardcore off
+		flow:keypressed("return") -- saves the roster
 	end)
 	withLove(files, function()
-		local flow = launch({ hardcore = true, seed = 9 })
-		assertTrue(flow.settings.hardcore)
+		local flow = launch({ seed = 9 })
 		assertEqual("9", flow.settings.seedText)
 	end)
 end)

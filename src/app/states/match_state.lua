@@ -26,13 +26,13 @@ local Audio = require("src.app.audio")
 
 local MatchState = {}
 
-function MatchState.enter(level, config, seed, roster, hardcore)
+function MatchState.enter(level, config, seed, roster)
 	local ok, err = Level.validate(level)
 	if not ok then
 		error("invalid level: " .. tostring(err))
 	end
 
-	local ctx = Match.new(level, config, seed, { roster = roster, hardcore = hardcore })
+	local ctx = Match.new(level, config, seed, { roster = roster })
 	-- Debug-only UI state (1/2 overlay toggles), not sim data -- lives on
 	-- ctx so draw can read it, but is set up here in the app layer rather
 	-- than in src/game/match.lua, which may never touch `love.*`.
@@ -89,10 +89,10 @@ end
 local State = {}
 State.__index = State
 
-function MatchState.new(flow, seed, roster, hardcore)
+function MatchState.new(flow, seed, roster)
 	local level = LevelGen.generate(seed, Config)
-	local self = { name = "match", flow = flow, seed = seed, roster = roster, hardcore = hardcore }
-	self.ctx = MatchState.enter(level, Config, seed, roster, hardcore)
+	local self = { name = "match", flow = flow, seed = seed, roster = roster }
+	self.ctx = MatchState.enter(level, Config, seed, roster)
 	return setmetatable(self, State)
 end
 

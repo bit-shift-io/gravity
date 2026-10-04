@@ -5,6 +5,7 @@
 -- would be faster than config.ai.landSpeed, and thrusts toward a world when
 -- none is in sight. Pure -- reads the sim, returns intents,
 -- never writes bodies. No `love.*` (docs/ARCHITECTURE.md "Layers").
+local Angle = require("src.core.angle")
 local Field = require("src.sim.field")
 local Fuel = require("src.game.components.fuel")
 local Trajectory = require("src.game.ai.skills.trajectory")
@@ -13,10 +14,6 @@ local Flight = {}
 
 local atan2 = math.atan2 or function(y, x)
 	return math.atan(y, x)
-end
-
-local function wrap(angle)
-	return (angle + math.pi) % (2 * math.pi) - math.pi
 end
 
 -- A tank's thrust lifts it straight up its surface normal (the body faces
@@ -34,7 +31,7 @@ end
 -- within half of what `hold` seconds of turning covers, so a held intent
 -- never overshoots by more than that. Returns rotate and the remaining error.
 function Flight.steer(body, want, config, hold)
-	local err = wrap(want - body.angle)
+	local err = Angle.wrap(want - body.angle)
 	local halfStep = config.ship.rotationSpeed * hold / 2
 	if err > halfStep then
 		return 1, err
@@ -167,7 +164,7 @@ local function predict(sim, worlds, body, target, offset, config, fuel, dt, step
 	local function push(flown, accel)
 		local angle, dist = bearing(flown.x, flown.y, target)
 		local ax, ay = wantedThrust(config, flown.vx, flown.vy, accel, angle + offset, dist)
-		local err = wrap(Flight.angleOf(ax, ay) - nose)
+		local err = Angle.wrap(Flight.angleOf(ax, ay) - nose)
 		nose = nose + math.max(-turn, math.min(turn, err))
 		if burnable > 0 and ax * ax + ay * ay >= minThrust * minThrust and math.abs(err) <= ai.thrustTolerance then
 			burnable = burnable - dt
@@ -240,7 +237,19 @@ function Flight.flyTo(sim, worlds, body, target, config, opts)
 		end
 	end
 
-	return travel(body, pull, angle + offset, dist, config, opts), { angle = wrap(angle + offset), clear = clear }
+	return travel(body, pull, angle + offset, dist, config, opts), { angle = Angle.wrap(angle + offset), clear = clear }
+end
+
+-- Flight.flyTo's intent for an AI ship at `level`'s reaction delay and
+-- flight horizon, with `ctx.dt` as the prediction step; `config` (default
+-- ctx.config) lets a caller fly with tuned ai values.
+function Flight.flyWith(ctx, ship, body, level, goal, config)
+	return (Flight.flyTo(ctx.sim, ctx.level.worlds, body, goal, config or ctx.config, {
+		fuel = ship.fuel,
+		hold = level.reactionDelay,
+		dt = ctx.dt,
+		horizon = level.flightHorizon,
+	}))
 end
 
 -- Intent flying a flying `body` straight at the point `target`, arriving

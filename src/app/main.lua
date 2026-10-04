@@ -38,25 +38,6 @@ local function findE2ETestFile(args)
 	local path = findArg(args, "^e2e=(.+)$")
 	return path
 
-	-- for _, a in ipairs(args or {}) do
-	-- 	local path = a:match("^e2e=(.+)$")
-	-- 	if path then
-	-- 		return path
-	-- 	end
-	-- end
-	-- return nil
-end
-
-function love.load(args)
-	-- if findArg(args, "debug") then
-	-- 	local ok, debugger = pcall(require, "lldebugger")
-	-- 	if ok then
-	-- 		debugger.start()
-	-- 	else
-	-- 		print("✗ lldebugger not found; continuing without debugger")
-	-- 	end
-	-- end
-
 	local e2eTestFile = findE2ETestFile(args)
 	if e2eTestFile then
 		-- requiring tests.e2e.run defines its own love.update/love.draw/
@@ -73,13 +54,11 @@ function love.load(args)
 
 	-- seed=N fixes the generated level for every Play; otherwise each Play
 	-- picks a fresh seed, logged so a good layout can be replayed.
-	-- hardcore=1 makes rotating burn fuel.
-	-- The last roster and hardcore setting reload here and save when a match
+	-- The last roster reloads here and save when a match
 	-- starts; the seed is never saved. The launch args win for this launch.
 	local saved = SettingsStore.load()
 	App.flow = Flow.new({
 		seed = tonumber(findArg(args, "^seed=(.+)$")),
-		hardcore = findArg(args, "^hardcore=(.+)$") == "1" or saved.hardcore,
 		roster = saved.roster,
 		sound = saved.sound,
 		postMode = saved.postMode,

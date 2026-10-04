@@ -28,13 +28,13 @@ end
 -- Slot 1 is a keyboard target that never moves, on the ledge; slot 2 is an
 -- AI hunter at `level` on the floor. Rounds never end, so a kill doesn't
 -- respawn anyone mid-scenario. `config` may override Config.
-local function newHunt(level, config, opts)
+local function newHunt(level, config)
 	config = setmetatable({ round = setmetatable({ endDelay = math.huge }, { __index = Config.round }) }, { __index = config or Config })
 	local roster = {
 		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
 		{ color = 2, binding = { kind = "ai", level = level, behavior = "hunter" } },
 	}
-	local ctx = Match.new(huntLevel(), config, 1, { roster = roster, hardcore = opts and opts.hardcore })
+	local ctx = Match.new(huntLevel(), config, 1, { roster = roster })
 	ctx.dt = DT
 	-- Spawn points are drawn at random: make slot 1 the one on the ledge.
 	local a = Bodies.get(ctx.sim.bodies, ctx.pools.ships[1].body)
@@ -269,22 +269,3 @@ test("a flying hunter evades a shell fired at it", function()
 	assertFalse(hunter.dead)
 	assertTrue(seen(modes, "evade"))
 end)
-
--- Rotating burns fuel in hardcore too, so a hunter must head down to refuel
--- sooner: it keeps fuel to brake with (at least half of the landFuel a
--- hopper keeps for braking) at every moment in flight.
-for _, level in ipairs({ "easy", "hard" }) do
-	test("a hardcore " .. level .. " hunter survives a round and never flies near empty", function()
-		local ctx = newHunt(level, nil, { hardcore = true })
-		local lowest = math.huge
-
-		local hunter = run(ctx, 40 * 60, function(h)
-			if not Lander.isGrounded(h) then
-				lowest = math.min(lowest, h.fuel.amount)
-			end
-		end)
-
-		assertFalse(hunter.dead)
-		assertTrue(lowest >= Config.ai.landFuel / 2, "lowest fuel in flight: " .. lowest)
-	end)
-end

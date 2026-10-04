@@ -37,18 +37,6 @@ local function clamp(value, low, high)
 	return math.max(low, math.min(high, value))
 end
 
--- The soonest threat of one of `kinds` within `horizon` seconds, or nil.
-local function firstOf(threats, kinds, horizon)
-	for _, threat in ipairs(threats) do
-		if threat.time > horizon then
-			return nil
-		elseif kinds[threat.kind] then
-			return threat
-		end
-	end
-	return nil
-end
-
 local INCOMING = { shell = true, asteroid = true }
 local IMPACT = { world = true, boundary = true }
 
@@ -126,23 +114,6 @@ local function quarry(ctx, body, state)
 		state.quarry = held
 	end
 	return held and Bodies.get(ctx.sim.bodies, held.body)
-end
-
-local function fly(ctx, ship, body, level, goal)
-	return (Flight.flyTo(ctx.sim, ctx.level.worlds, body, goal, ctx.config, {
-		fuel = ship.fuel,
-		hold = level.reactionDelay,
-		dt = ctx.dt,
-		horizon = level.flightHorizon,
-	}))
-end
-
-local function lowFuel(ctx, ship)
-	local reserve = ctx.config.ai.refuelFuel
-	if ctx.hardcore then
-		reserve = reserve + ctx.config.ai.hardcoreReserve
-	end
-	return ship.fuel.amount < reserve
 end
 
 -- Config as the weapon would be with a skirmishCharge-second charge cap:
@@ -245,17 +216,17 @@ local function think(ctx, ship, body, level, state)
 	-- reaches attackClearance too, so an attack never coasts into a world.
 	local horizon = math.max(level.dangerHorizon, config.ai.attackClearance)
 	local threats = Danger.scan(ctx.sim, ctx.level.worlds, body, config, { dt = ctx.dt, horizon = horizon })
-	if state.mode == "refuel" or lowFuel(ctx, ship) then
+	if state.mode == "refuel" or Basic.lowFuel(ctx, ship) then
 		state.mode = "refuel"
 		state.charging = false
 		return Flight.land(ctx.sim, body, threats, config, { fuel = ship.fuel, hold = level.reactionDelay })
 	end
 
-	local threat = firstOf(threats, INCOMING, level.dangerHorizon)
+	local threat = Danger.firstOf(threats, INCOMING, level.dangerHorizon)
 	if threat then
 		state.mode = "evade"
 		state.charging = false
-		return fly(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config))
+		return Flight.flyWith(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config))
 	end
 
 	local target = Basic.nearestEnemy(ctx, ship, body)
@@ -264,7 +235,7 @@ local function think(ctx, ship, body, level, state)
 		return Flight.land(ctx.sim, body, threats, config, { fuel = ship.fuel, hold = level.reactionDelay })
 	end
 
-	local clear = not firstOf(threats, IMPACT, config.ai.attackClearance)
+	local clear = not Danger.firstOf(threats, IMPACT, config.ai.attackClearance)
 	local shellAlive = ship.weapon and ship.weapon.shell and Bodies.get(ctx.sim.bodies, ship.weapon.shell)
 	local inBand = target.dist >= 2 * config.projectile.blastRadius and target.dist <= config.ai.orbitMax
 	if clear and inBand and (state.charging or not shellAlive) then
@@ -277,7 +248,7 @@ local function think(ctx, ship, body, level, state)
 
 	state.mode = "orbit"
 	state.charging = false
-	return fly(ctx, ship, body, level, Skirmisher.orbitGoal(ctx, body, quarry(ctx, body, state) or target, state))
+	return Flight.flyWith(ctx, ship, body, level, Skirmisher.orbitGoal(ctx, body, quarry(ctx, body, state) or target, state))
 end
 
 -- Writes ctx.intents[slot]. Re-thinks once ctx.time reaches state.nextThink;

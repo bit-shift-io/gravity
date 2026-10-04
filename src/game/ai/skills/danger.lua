@@ -47,7 +47,20 @@ local function bodyPath(sim, worlds, body, dt, steps)
 	return Trajectory.simulate(sim, worlds, start, dt, steps), start
 end
 
--- `body` is the AI's own ship body (`radius` is its contact circle);
+-- The soonest threat of one of `kinds` (a set of kind names) within
+-- `horizon` seconds in a Danger.scan list, or nil.
+function Danger.firstOf(threats, kinds, horizon)
+	for _, threat in ipairs(threats) do
+		if threat.time > horizon then
+			return nil
+		elseif kinds[threat.kind] then
+			return threat
+		end
+	end
+	return nil
+end
+
+-- `body` is the AI's own ship body (`radius' is its contact circle);
 -- `opts` is `{ dt, horizon }` (horizon in seconds). Returns a list of
 -- `{ kind = "shell" | "asteroid" | "world" | "boundary", time, x, y, vx, vy,
 -- speed }`, soonest first: time to impact in seconds, and the threat's
