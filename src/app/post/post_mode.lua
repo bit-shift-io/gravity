@@ -1,12 +1,12 @@
 -- Post mode: which post effects are active. Pure -- no `love.*` -- so it is
--- unit-testable. Session-only, rendering only, never the sim.
+-- unit-testable. Rendering only, never the sim.
 local PostMode = {}
 
 PostMode.OFF = "off"
 PostMode.GLOW = "glow"
 PostMode.GLOW_CRT = "glowCrt"
 
--- Cycle order for the `P` key.
+-- Cycle order for the settings POST FX row.
 local ORDER = { PostMode.OFF, PostMode.GLOW, PostMode.GLOW_CRT }
 
 local EFFECTS = {

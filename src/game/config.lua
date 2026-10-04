@@ -380,7 +380,7 @@ local Config = {
 		boundaryStrength = 60,
 	},
 	-- Post-processing (src/app/post). defaultMode is the launch mode: "off",
-	-- "glow" or "glowCrt". `P` cycles it for the session.
+	-- "glow" or "glowCrt". Changed on the settings screen.
 	post = {
 		defaultMode = "glowCrt",
 		-- Glow: pixels with a channel above threshold (0..1) are blurred at

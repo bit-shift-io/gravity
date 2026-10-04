@@ -1,4 +1,4 @@
--- Pause overlay pushed over the match: Resume or Quit to menu. Being on top,
+-- Pause overlay pushed over the match: Resume, Settings or Quit to menu. Being on top,
 -- it is the only state that updates, so the match underneath is frozen.
 local MenuNav = require("src.app.menu.menu_nav")
 local MenuRender = require("src.app.render.menu")
@@ -10,6 +10,7 @@ function PauseState.new(flow)
 	local self = setmetatable({ name = "pause", overlay = true, selected = 1, stick = MenuNav.newStick() }, PauseState)
 	self.items = {
 		{ label = "RESUME", sound = "back", action = function() flow.stack:pop() end },
+		{ label = "SETTINGS", sound = "forward", action = function() flow:openSettings() end },
 		{ label = "QUIT TO MENU", sound = "back", action = function() flow:toTitle() end },
 	}
 	self.onBack = self.items[1].action

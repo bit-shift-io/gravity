@@ -7,6 +7,7 @@ local Flow = require("src.app.flow")
 local Pipeline = require("src.app.post.pipeline")
 local Compat = require("src.app.compat")
 local SettingsStore = require("src.app.settings_store")
+local Audio = require("src.app.audio")
 
 -- Fixed timestep of 1/60 s (docs/ARCHITECTURE.md "Rules"): the simulation
 -- must be deterministic for a given seed and input sequence, which a
@@ -80,10 +81,18 @@ function love.load(args)
 		seed = tonumber(findArg(args, "^seed=(.+)$")),
 		hardcore = findArg(args, "^hardcore=(.+)$") == "1" or saved.hardcore,
 		roster = saved.roster,
+		sound = saved.sound,
+		postMode = saved.postMode,
+		fullscreen = saved.fullscreen,
+		setFullscreen = Compat.setFullscreen,
+		isFullscreen = Compat.isFullscreen,
 		onStart = SettingsStore.save,
+		onSettingsChanged = SettingsStore.save,
 		quit = love.event.quit,
 		intro = true,
 	})
+	Audio.setEnabled(App.flow.settings.sound)
+	Compat.setFullscreen(App.flow.settings.fullscreen)
 end
 
 -- Every input callback goes through the state stack; the match state keeps the
@@ -141,7 +150,7 @@ function love.draw()
 	-- Bars stay plain black: clear the window, then the pipeline draws the
 	-- game rectangle only.
 	love.graphics.clear(0, 0, 0, 1)
-	Pipeline.draw(fit, App.flow.session.postMode, function()
+	Pipeline.draw(fit, App.flow.settings.postMode, function()
 		App.flow:draw()
 	end)
 end

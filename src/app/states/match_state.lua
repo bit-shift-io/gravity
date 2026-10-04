@@ -22,7 +22,6 @@ local Input = require("src.app.input")
 local LevelGen = require("src.game.level_gen")
 local Config = require("src.game.config")
 local RoundSystem = require("src.game.systems.round_system")
-local PostMode = require("src.app.post.post_mode")
 local Audio = require("src.app.audio")
 
 local MatchState = {}
@@ -111,8 +110,6 @@ function State:keypressed(key)
 		self.flow:rematch(self)
 	elseif (key == "return" or key == "kpenter" or key == "space") and RoundSystem.matchOver(self.ctx.round) then
 		self.flow:rematch(self, true)
-	elseif key == "p" then
-		self.flow.session.postMode = PostMode.next(self.flow.session.postMode)
 	end
 end
 

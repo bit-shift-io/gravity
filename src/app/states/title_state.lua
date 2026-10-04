@@ -1,4 +1,4 @@
--- Title screen: Play and Quit. Play asks the flow to start a match with the
+-- Title screen: Play, Settings and Quit. Play asks the flow to start a match with the
 -- default roster; a later setup state slots in between (Title -> Setup -> Match).
 local MenuNav = require("src.app.menu.menu_nav")
 local MenuRender = require("src.app.render.menu")
@@ -18,6 +18,7 @@ function TitleState.new(flow, opts)
 	self.clock = (opts and opts.intro) and 0 or HOLD + SLIDE
 	self.items = {
 		{ label = "PLAY", sound = "forward", action = function() flow:play() end },
+		{ label = "SETTINGS", sound = "forward", action = function() flow:openSettings() end },
 		{ label = "QUIT", action = function() flow:quit() end },
 	}
 	return self

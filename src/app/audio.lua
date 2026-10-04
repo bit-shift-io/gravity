@@ -22,6 +22,7 @@ local sources = nil -- name -> template Source, loaded lazily
 -- Events already played, so the 2s retention window doesn't replay them.
 local played = setmetatable({}, { __mode = "k" })
 local thrusting = false
+local enabled = true
 
 local function load()
 	sources = {}
@@ -67,7 +68,7 @@ function Audio.menu(direction)
 	if direction ~= "forward" and direction ~= "back" then
 		return
 	end
-	if not (love and love.audio) then
+	if not enabled or not (love and love.audio) then
 		return
 	end
 	if not sources then
@@ -83,6 +84,13 @@ function Audio.update(ctx)
 	end
 	if not sources then
 		load()
+	end
+	if not enabled then
+		-- Muted: mark the events played so they stay silent after unmuting.
+		for _, event in ipairs(ctx.events) do
+			played[event] = true
+		end
+		return
 	end
 
 	-- Event kind -> sound. A ship killed by a blast raises both "blast" and
@@ -113,6 +121,15 @@ function Audio.update(ctx)
 		end
 	end
 	setThrusting(any)
+end
+
+-- Mutes (false) or unmutes (true) all sound. Muting stops the thruster loop at
+-- once; menu sounds and match sounds are skipped while muted.
+function Audio.setEnabled(on)
+	enabled = on and true or false
+	if not enabled then
+		Audio.stopAll()
+	end
 end
 
 -- Silences the looping thruster, for leaving a match.

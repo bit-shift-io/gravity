@@ -47,4 +47,14 @@ function Compat.loadGamepadMappings(path)
 	end
 end
 
+-- Desktop fullscreen (borderless at the desktop resolution; LÖVE restores the
+-- windowed size on exit). setFullscreen(true, "desktop") is valid on 11.5 and 12.
+function Compat.setFullscreen(on)
+	love.window.setFullscreen(on, "desktop")
+end
+
+function Compat.isFullscreen()
+	return love.window.getFullscreen()
+end
+
 return Compat

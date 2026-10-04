@@ -11,6 +11,7 @@ local TitleState = require("src.app.states.title_state")
 local MatchState = require("src.app.states.match_state")
 local PauseState = require("src.app.states.pause_state")
 local SetupState = require("src.app.states.setup_state")
+local SettingsState = require("src.app.states.settings_state")
 local Audio = require("src.app.audio")
 
 local Flow = {}
@@ -23,17 +24,24 @@ function Flow.new(opts)
 	-- field text ("" is random) and hardcore. It outlives matches, so setup
 	-- reopens as it was left. opts.roster seeds the six setup rows (default otherwise);
 	-- opts.onSettingsChanged(settings) fires after every setup edit;
+-- opts.sound / opts.postMode / opts.fullscreen seed the saved display and audio
+-- fields (sound defaults on); the settings screen edits them.
 -- opts.onStart(settings) fires when Start launches a match (not on rematch).
 	self.settings = {
 		roster = opts.roster or Roster.defaultSetup(),
 		seedText = opts.seed and string.format("%d", opts.seed) or "",
 		hardcore = opts.hardcore or false,
+		sound = opts.sound ~= false,
+		postMode = opts.postMode or Config.post.defaultMode,
+		fullscreen = opts.fullscreen or false,
 	}
+	-- opts.setFullscreen(on) switches the real window; opts.isFullscreen() reports it.
+	-- Both are absent headless, so tests and e2e never touch a window.
+	self.setFullscreen = opts.setFullscreen
+	self.isFullscreen = opts.isFullscreen
 	self.onSettingsChanged = opts.onSettingsChanged
 	self.onStart = opts.onStart
 	self.onQuit = opts.quit
-	-- Session-only settings (P cycles the post mode).
-	self.session = { postMode = Config.post.defaultMode }
 	self.stack = StateStack.new()
 	self.stack:push(TitleState.new(self, { intro = opts.intro }))
 	return self
@@ -53,6 +61,11 @@ end
 -- Title -> Setup.
 function Flow:play()
 	self.stack:replace(SetupState.new(self))
+end
+
+-- Title -> Settings (pushed, so Back pops to the title).
+function Flow:openSettings()
+	self.stack:push(SettingsState.new(self))
 end
 
 function Flow:settingsChanged()

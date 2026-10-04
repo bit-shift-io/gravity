@@ -1,10 +1,6 @@
 # High Priority
 
-* settings - sound on/off, post fx, fullscreen
-
 # Medium Priority
-
-* fix failing tests
 
 * artillery ai personailty, others?
 
@@ -17,6 +13,8 @@
 # Low Priority
 
 * gamepad to control menu
+
+* round timer kicks in once all humans are dead?
 
 * unify/dedup shared code - improve code re-use. look for unused code. code clean up opportunities.
 

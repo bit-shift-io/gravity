@@ -200,3 +200,58 @@ test("duplicate colours across six saved rows are repaired to a permutation", fu
 	assertPermutation(settings.roster)
 	assertEqual(2, settings.roster[1].color)
 end)
+
+test("sound, postMode, and fullscreen round-trip with non-default values", function()
+	local text = SettingsCodec.encode({
+		roster = mixedRoster(),
+		hardcore = false,
+		sound = false,
+		postMode = "off",
+		fullscreen = true
+	})
+	local settings = SettingsCodec.decode(text, { 1, 2 })
+	assertFalse(settings.sound)
+	assertEqual("off", settings.postMode)
+	assertTrue(settings.fullscreen)
+end)
+
+test("old files without new lines decode to defaults (sound on, postMode from config, windowed)", function()
+	local text = SettingsCodec.encode({ roster = mixedRoster(), hardcore = false })
+	local settings = SettingsCodec.decode(text, { 1, 2 })
+	assertTrue(settings.sound)
+	assertEqual(Config.post.defaultMode, settings.postMode)
+	assertFalse(settings.fullscreen)
+end)
+
+test("garbage values in sound, postMode, fullscreen fall back to defaults", function()
+	local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nsound banana\npostMode xyz\nfullscreen maybe\n"
+	local settings = SettingsCodec.decode(text, {})
+	assertTrue(settings.sound)
+	assertEqual(Config.post.defaultMode, settings.postMode)
+	assertFalse(settings.fullscreen)
+end)
+
+test("invalid postMode falls back to the config default", function()
+	local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\npostMode banana\n"
+	local settings = SettingsCodec.decode(text, {})
+	assertEqual(Config.post.defaultMode, settings.postMode)
+end)
+
+test("every PostMode name is accepted by the codec", function()
+	local PostMode = require("src.app.post.post_mode")
+	-- Build a list of valid postMode names from PostMode constants
+	local validModes = { PostMode.OFF, PostMode.GLOW, PostMode.GLOW_CRT }
+
+	for _, mode in ipairs(validModes) do
+		local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\npostMode " .. mode .. "\n"
+		local settings = SettingsCodec.decode(text, {})
+		assertEqual(mode, settings.postMode, "postMode " .. mode .. " should be accepted")
+	end
+end)
+
+test("sound and fullscreen accept 0 and 1 values", function()
+	local text = "gravity-settings 1\nhardcore 0\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nsound 0\nfullscreen 1\n"
+	local settings = SettingsCodec.decode(text, {})
+	assertFalse(settings.sound)
+	assertTrue(settings.fullscreen)
+end)

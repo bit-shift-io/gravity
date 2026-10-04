@@ -9,6 +9,7 @@ local defaultTestFiles = {
 	"tests/unit/camera_test.lua",
 	"tests/unit/bindings_test.lua",
 	"tests/unit/menu_nav_test.lua",
+	"tests/unit/audio_test.lua",
 	"tests/unit/roster_test.lua",
 	"tests/unit/settings_codec_test.lua",
 	"tests/unit/match_test.lua",

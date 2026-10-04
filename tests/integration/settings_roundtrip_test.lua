@@ -24,8 +24,12 @@ local function launch(args)
 	return Flow.new({
 		roster = saved.roster,
 		hardcore = args.hardcore or saved.hardcore,
+		sound = saved.sound,
+		postMode = saved.postMode,
+		fullscreen = saved.fullscreen,
 		seed = args.seed,
 		onStart = SettingsStore.save,
+		onSettingsChanged = SettingsStore.save,
 	})
 end
 
@@ -138,5 +142,34 @@ test("launch arguments win over saved values for that launch", function()
 		local flow = launch({ hardcore = true, seed = 9 })
 		assertTrue(flow.settings.hardcore)
 		assertEqual("9", flow.settings.seedText)
+	end)
+end)
+
+test("SOUND turned off on the settings screen is still off after a relaunch", function()
+	local files = {}
+	withLove(files, function()
+		local flow = launch()
+		flow:keypressed("down") -- PLAY -> SETTINGS
+		flow:keypressed("return")
+		assertEqual("settings", flow:topName())
+		flow:keypressed("return") -- SOUND off
+	end)
+	withLove(files, function()
+		assertFalse(launch().settings.sound)
+	end)
+end)
+
+test("a POST FX mode changed on the settings screen is restored after a relaunch", function()
+	local files = {}
+	withLove(files, function()
+		local flow = launch()
+		assertEqual("glowCrt", flow.settings.postMode)
+		flow:keypressed("down") -- PLAY -> SETTINGS
+		flow:keypressed("return")
+		flow:keypressed("down") -- SOUND -> POST FX
+		flow:keypressed("return") -- glowCrt -> off
+	end)
+	withLove(files, function()
+		assertEqual("off", launch().settings.postMode)
 	end)
 end)

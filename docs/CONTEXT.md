@@ -191,9 +191,13 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Only exhaust particles in v2.
 
 ## Post mode
-- **Definition:** Which post effects are active: off, glow, or glow + CRT. `P` cycles them.
-- **Boundary:** Session-only. Not saved. Affects rendering only, never the sim.
+- **Definition:** Which post effects are active: off, glow, or glow + CRT. Chosen on the settings screen.
+- **Boundary:** Saved in `settings.txt`. Affects rendering only, never the sim.
 
 ## Game rectangle
 - **Definition:** The letterboxed virtual-resolution area of the window that the match draws into.
 - **Boundary:** Post effects act on it alone. Letterbox bars outside it stay black.
+
+## Settings screen
+- **Definition:** Menu state with the SOUND, POST FX and FULLSCREEN rows, opened from the title and pause menus. Values persist in `settings.txt`.
+- **Boundary:** Not the setup screen, which edits the roster, seed and hardcore.

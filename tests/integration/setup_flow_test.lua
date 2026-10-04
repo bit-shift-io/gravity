@@ -236,6 +236,7 @@ test("rematch keeps roster, seed and hardcore; setup re-reads them on the next s
 		-- Quit to title, reopen setup: the same values show, and edits reach the next match.
 		flow:keypressed("escape")
 		flow:keypressed("down")
+		flow:keypressed("down")
 		flow:keypressed("return")
 		flow:keypressed("return") -- Play -> setup
 		local setup = flow.stack:top()

@@ -1,11 +1,16 @@
--- Settings codec: the roster and hardcore setting as a small line-based text
--- (pure -- no `love.*`, no file access; src/app/settings_store.lua does the I/O).
+-- Settings codec: the roster, hardcore setting, sound, postMode, and fullscreen
+-- as a small line-based text (pure -- no `love.*`, no file access;
+-- src/app/settings_store.lua does the I/O).
 --   gravity-settings 1
---   hardcore 1
+--   hardcore 0|1
 --   slot <color> keyboard <layout> | gamepad <ordinal> | ai <level> | none
+--   sound 0|1
+--   postMode off|glow|glowCrt
+--   fullscreen 0|1
 -- Setup has six rows (one per palette colour); older files saved fewer slots
--- and are padded with empty rows on load.
--- The seed is never encoded. decode never errors: garbage gives defaults.
+-- and are padded with empty rows on load. Missing sound, postMode, or
+-- fullscreen lines load their defaults. The seed is never encoded.
+-- decode never errors: garbage gives defaults.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
 
@@ -13,6 +18,9 @@ local SettingsCodec = {}
 
 local HEADER = "gravity-settings"
 local VERSION = 1
+
+-- Valid post-processing modes (kept in sync with PostMode in src/app/post/post_mode.lua)
+local VALID_POST_MODES = { "off", "glow", "glowCrt" }
 
 local function bindingText(binding)
 	if binding.kind == "keyboard" then
@@ -30,6 +38,9 @@ function SettingsCodec.encode(settings)
 	for _, slot in ipairs(settings.roster) do
 		lines[#lines + 1] = string.format("slot %d %s", slot.color, bindingText(slot.binding))
 	end
+	lines[#lines + 1] = "sound " .. ((settings.sound ~= false) and "1" or "0")
+	lines[#lines + 1] = "postMode " .. (settings.postMode or Config.post.defaultMode)
+	lines[#lines + 1] = "fullscreen " .. ((settings.fullscreen == true) and "1" or "0")
 	return table.concat(lines, "\n") .. "\n"
 end
 
@@ -143,13 +154,33 @@ function SettingsCodec.repair(roster, gamepads)
 	return roster
 end
 
+-- Helper function to check if a postMode is valid
+local function isValidPostMode(mode)
+	for _, validMode in ipairs(VALID_POST_MODES) do
+		if mode == validMode then
+			return true
+		end
+	end
+	return false
+end
+
 -- `gamepads` is the list of connected ordinals the roster is repaired against.
 function SettingsCodec.decode(text, gamepads)
 	if type(text) ~= "string" or text:match("^[^\n]*") ~= HEADER .. " " .. VERSION then
-		return { roster = Roster.defaultSetup(), hardcore = false }
+		return {
+			roster = Roster.defaultSetup(),
+			hardcore = false,
+			sound = true,
+			postMode = Config.post.defaultMode,
+			fullscreen = false
+		}
 	end
 	local roster = {}
 	local hardcore = false
+	local sound = true
+	local postMode = Config.post.defaultMode
+	local fullscreen = false
+
 	for line in text:gmatch("[^\n]+") do
 		local color, kind, arg = line:match("^slot (%d+) (%a+) (%w+)$")
 		if not color then
@@ -170,9 +201,32 @@ function SettingsCodec.decode(text, gamepads)
 			roster[#roster + 1] = { color = tonumber(color), binding = binding }
 		elseif line == "hardcore 1" then
 			hardcore = true
+		else
+			local soundValue = line:match("^sound (%d)$")
+			if soundValue then
+				sound = soundValue == "1"
+			end
+
+			local postModeValue = line:match("^postMode (%w+)$")
+			if postModeValue then
+				if isValidPostMode(postModeValue) then
+					postMode = postModeValue
+				end
+			end
+
+			local fullscreenValue = line:match("^fullscreen (%d)$")
+			if fullscreenValue then
+				fullscreen = fullscreenValue == "1"
+			end
 		end
 	end
-	return { roster = SettingsCodec.repair(roster, gamepads), hardcore = hardcore }
+	return {
+		roster = SettingsCodec.repair(roster, gamepads),
+		hardcore = hardcore,
+		sound = sound,
+		postMode = postMode,
+		fullscreen = fullscreen
+	}
 end
 
 return SettingsCodec
