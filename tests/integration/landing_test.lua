@@ -23,10 +23,10 @@ local function flatWorldLevel(spawnPoints)
 		worlds = {
 			{
 				vertices = {
-					{ x = -1000, y = 310 },
-					{ x = 2000, y = 310 },
-					{ x = 2000, y = 1000 },
-					{ x = -1000, y = 1000 },
+					{ x = -100, y = 310 },
+					{ x = 1400, y = 310 },
+					{ x = 1400, y = 400 },
+					{ x = -100, y = 400 },
 				},
 				mass = 1,
 			},

@@ -57,6 +57,8 @@ local defaultTestFiles = {
 	"tests/unit/ai_sniper_test.lua",
 }
 
+require("tests.support.bake_cache")
+
 local tests = {}
 local failures = {}
 

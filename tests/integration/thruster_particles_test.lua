@@ -69,10 +69,10 @@ test("a particle near a world accelerates toward it", function()
 		worlds = {
 			{
 				vertices = {
-					{ x = -1000, y = 310 },
-					{ x = 2000, y = 310 },
-					{ x = 2000, y = 1000 },
-					{ x = -1000, y = 1000 },
+					{ x = -100, y = 310 },
+					{ x = 1400, y = 310 },
+					{ x = 1400, y = 400 },
+					{ x = -100, y = 400 },
 				},
 				mass = 1,
 			},
@@ -139,10 +139,10 @@ end)
 local function worldBelow()
 	return {
 		vertices = {
-			{ x = -1000, y = 310 },
-			{ x = 2000, y = 310 },
-			{ x = 2000, y = 1000 },
-			{ x = -1000, y = 1000 },
+			{ x = -100, y = 310 },
+			{ x = 1400, y = 310 },
+			{ x = 1400, y = 400 },
+			{ x = -100, y = 400 },
 		},
 		mass = 1,
 	}
