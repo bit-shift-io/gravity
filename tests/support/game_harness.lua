@@ -21,10 +21,45 @@ local Input = require("src.app.input")
 
 local GameHarness = {}
 
+local DEFAULT_SEED = 1
+
+-- Field.bake dominates Match.new on a big world (a 5000x1000 floor costs ~5 s)
+-- and tests build the same level many times. The baked fields are never
+-- written after the bake, so identical worlds + field/gravity config share one.
+local Field = require("src.sim.field")
+local realBake = Field.bake
+local bakeCache = {}
+
+local function bakeKey(level, config)
+	local parts = {
+		config.field.cellSize, config.field.boundaryStrength,
+		config.gravity.G, config.gravity.softening, config.gravity.falloff,
+	}
+	for _, world in ipairs(level.worlds) do
+		parts[#parts + 1] = "m" .. world.mass
+		for _, v in ipairs(world.vertices) do
+			parts[#parts + 1] = v.x .. "," .. v.y
+		end
+	end
+	return table.concat(parts, "|")
+end
+
+function Field.bake(level, config)
+	local key = bakeKey(level, config)
+	local hit = bakeCache[key]
+	if not hit then
+		local world, boundary = realBake(level, config)
+		hit = { world, boundary }
+		bakeCache[key] = hit
+	end
+	return hit[1], hit[2]
+end
+
 -- opts.config overrides the tuning table (defaults to src/game/config.lua).
 -- opts.seed (optional) fixes the match's RNG seed (docs/CONTEXT.md "Seed")
 -- -- a test that needs a reproducible asteroid sequence passes an explicit
--- one; omitted, Match.new falls back to its own per-run default.
+-- one; omitted, it is DEFAULT_SEED so a run is reproducible (Match.new's own
+-- os.time() fallback made spawn picks, and so the tests, depend on the clock).
 -- opts.roster (optional) is the slot list (src/game/roster.lua); defaults to two humans.
 -- opts.real = true additionally announces the started game to the e2e
 -- runner via _G.E2E_ON_GAME_STARTED, mirroring the real app's fixed-timestep
@@ -37,7 +72,7 @@ function GameHarness.startMatch(level, opts)
 		error("invalid level: " .. tostring(err))
 	end
 
-	local ctx = Match.new(level, opts.config or Config, opts.seed, { roster = opts.roster })
+	local ctx = Match.new(level, opts.config or Config, opts.seed or DEFAULT_SEED, { roster = opts.roster })
 	-- Same debug-toggle wiring as src/app/states/match_state.lua, so e2e
 	-- scenarios can press 1/2 (tests/support/fake_input.lua) against a
 	-- harnessed match exactly as they would against the real app.

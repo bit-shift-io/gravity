@@ -10,6 +10,7 @@ Local vector-style space duel for 2–6 players (1–4 human, the rest AI) with 
 ## Testing
 - Unit tests: `sh test-unit.sh`. Run them freely.
 - Integration and e2e tiers take a few minutes. Run them only when the change needs the real harness, and once at the end of a piece of work, not per step.
+- Balance tier (`sh test-balance.sh`, ~90s): long seeded AI matches. Run it only when changing AI behaviour or tuning; never as part of the normal run.
 - Put new tests in the unit tier unless the behaviour needs the real harness. `src/game` runs under plain LuaJIT, so `Match.new` and `Match.step` work there.
 
 ## Planning

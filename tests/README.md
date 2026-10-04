@@ -6,6 +6,7 @@ The suite is split into three tiers, each with its own command:
 ./test-unit.sh          # fast headless Lua tests: src/core, src/sim, src/game only, no `love` global at all
 ./test-integration.sh   # headless harness tests: GameHarness.startMatch drives a match via FrameStepper
 ./test-e2e.sh           # headed tests: real LÖVE, real window, real rendering, frame capture
+./test-balance.sh       # slow AI balance runs (~90s): full seeded matches played to a winner; not in test-all.sh
 ./test-all.sh           # runs all three in sequence and reports each tier's outcome
 ```
 
@@ -21,6 +22,7 @@ Every command is dependency-free and exits non-zero if any test fails. Pass a sp
 
 - **`tests/unit/`** — pure logic: `src/core`, `src/sim`, `src/game`, and app-layer pure functions like `Screen.fit`. No `love` global at all (see `docs/ARCHITECTURE.md` "Layers").
 - **`tests/integration/`** — boots a match with `tests/support/game_harness.lua` from a literal level table (never a file path) and drives it with `tests/support/frame_stepper.lua` at the fixed 1/60s timestep. No real rendering.
+- **`tests/balance/`** — same harness as integration, but long seeded matches that check AI balance (e.g. hard beats easy). Run on demand with `./test-balance.sh` when tuning the AI; excluded from `test-all.sh` to keep it fast.
 - **`tests/e2e/`** — the same kind of scripted, deterministic scenario as the integration tier, but launched as a real LÖVE process with a real window and real rendering. The only tier where frame capture (`tests/support/capture.lua`) works.
 
 ## Shared infrastructure

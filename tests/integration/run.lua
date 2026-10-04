@@ -18,7 +18,6 @@ local defaultTestFiles = {
 	"tests/integration/match_flow_test.lua",
 	"tests/integration/gamepad_flight_test.lua",
 	"tests/integration/ai_match_test.lua",
-	"tests/integration/ai_personalities_test.lua",
 	"tests/integration/menu_flow_test.lua",
 	"tests/integration/setup_flow_test.lua",
 	"tests/integration/settings_roundtrip_test.lua",

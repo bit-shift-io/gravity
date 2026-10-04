@@ -155,10 +155,12 @@ test("R rebuilds the match with the same seed and P cycles the post mode", funct
 		startMatch(flow)
 		step(flow, 10)
 		local first = flow:topCtx()
+		local firstSeed = flow.stack:top().seed
 		flow:keypressed("r")
 		assertTrue(flow:topCtx() ~= first)
 		assertEqual(0, flow:topCtx().time)
-		assertEqual(first.seed, flow:topCtx().seed)
+		assertEqual(12345, firstSeed)
+		assertEqual(firstSeed, flow.stack:top().seed)
 
 		local mode = flow.session.postMode
 		flow:keypressed("p")
@@ -183,10 +185,10 @@ test("match-over rematch still works by Enter and by pad A", function()
 			error("test setup: could not mark the match over")
 		end
 		local first = flow:topCtx()
-		local firstSeed = first.seed
+		local firstSeed = flow.stack:top().seed
 		flow:keypressed("return")
 		assertTrue(flow:topCtx() ~= first)
-		assertTrue(flow:topCtx().seed ~= firstSeed, "rematch should roll a new seed")
+		assertTrue(flow.stack:top().seed ~= firstSeed, "rematch should roll a new seed")
 		assertFalse(RoundSystem.matchOver(flow:topCtx().round))
 
 		endMatch()
