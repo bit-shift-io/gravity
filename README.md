@@ -4,6 +4,15 @@ Local vector-style space duel for 2–6 players (1–4 human, the rest AI) with 
 
 See `docs/ARCHITECTURE.md` for the architecture and `docs/CONTEXT.md` for the glossary.
 
+## Steam assets
+
+Store and library images are generated from the real renderer; `tools/steam_assets/manifest.lua` lists every asset. The tooling is dev-only.
+
+- `love . steam=build` renders every manifest asset into `steam-assets/` (gitignored) and exits. A bad manifest entry aborts the run and names the entry.
+- `love . steam=scout seed=N` plays a seeded match to pick moments for screenshots. It never writes files. Keys: `space` pause, `.` step, `1`-`4` speed, `wasd`/arrows pan, `-`/`=` zoom, `c` follow camera, `p` print the manifest entry, `h` hide help, `r` restart, `esc` quit.
+
+The community icon must be converted to JPG outside the tool. Verify the required sizes in Steamworks before uploading.
+
 ## Credits
 
 ### Fonts

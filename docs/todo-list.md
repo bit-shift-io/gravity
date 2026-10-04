@@ -4,8 +4,6 @@
 
 # Low Priority
 
-* steam assets - tooling
-
 * build + steam upload scripts (handle multiple platforms)
 
 * bitshift webpage

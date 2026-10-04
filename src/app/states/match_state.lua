@@ -50,17 +50,14 @@ function MatchState.update(ctx, dt)
 	Audio.update(ctx, steps > 1)
 end
 
--- `showResults` false hides the score card / win screen (the pause menu is
--- over the match, so they would be two windows at once).
-function MatchState.draw(ctx, showResults)
-	Starfield.draw(ctx.camera.x, ctx.camera.y, ctx.time)
-
-	-- Apply camera transform (position + zoom) to all world-space rendering.
-	-- Camera is centered at (0, 0); translate by negative camera position to
-	-- move the view, then scale by zoom level.
+-- The camera-transformed world: everything in world coordinates, with the
+-- camera's position at (centreX, centreY) on the target and `scale` pixels per
+-- world unit. Shared by the match screen (viewport centre, camera zoom) and the
+-- Steam asset capture (output centre).
+function MatchState.drawWorld(ctx, centreX, centreY, scale)
 	love.graphics.push()
-	love.graphics.translate(640, 360)  -- Move viewport center to screen center
-	love.graphics.scale(ctx.camera.zoom)
+	love.graphics.translate(centreX, centreY)  -- Move the camera centre to the target centre
+	love.graphics.scale(scale)
 	love.graphics.translate(-ctx.camera.x, -ctx.camera.y)  -- Apply camera position
 
 	WorldsRender.draw(ctx.level)
@@ -75,6 +72,16 @@ function MatchState.draw(ctx, showResults)
 	DebugOverlay.draw(ctx)
 
 	love.graphics.pop()
+end
+
+-- `showResults` false hides the score card / win screen (the pause menu is
+-- over the match, so they would be two windows at once).
+function MatchState.draw(ctx, showResults)
+	Starfield.draw(ctx.camera.x, ctx.camera.y, ctx.time)
+
+	-- Camera is centered at (0, 0); the world is translated by the negative
+	-- camera position, then scaled by zoom, around the screen centre.
+	MatchState.drawWorld(ctx, 640, 360, ctx.camera.zoom)
 
 	-- HUD is drawn in screen space (not affected by camera)
 	Hud.draw(ctx)

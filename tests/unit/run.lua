@@ -63,6 +63,11 @@ local defaultTestFiles = {
 	"tests/unit/ai_skirmisher_test.lua",
 	"tests/unit/ai_ambusher_test.lua",
 	"tests/unit/ai_kamikaze_test.lua",
+	"tests/unit/steam_manifest_test.lua",
+	"tests/unit/steam_framing_test.lua",
+	"tests/unit/steam_logo_test.lua",
+	"tests/unit/steam_icon_test.lua",
+	"tests/unit/steam_entry_format_test.lua",
 }
 
 require("tests.support.bake_cache")

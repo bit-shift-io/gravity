@@ -56,4 +56,6 @@ Scenario code can request a named capture at any point in a headed test via `Cap
 
 Calling the capture function from the unit or integration tier raises an explicit error naming the e2e tier as the requirement — it is never a silent no-op.
 
+`tests/e2e/steam_assets_test.lua` renders the Steam logo and a screenshot through the real renderer (`tools/steam_assets/capture.lua`) and checks pixel size and logo transparency; it needs no game started and writes to `tests/screenshots/steam_assets_test/`.
+
 Captures are debugging artifacts, not visual-regression baselines: they are gitignored and never diffed against a committed reference image.

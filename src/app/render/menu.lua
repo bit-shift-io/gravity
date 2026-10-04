@@ -21,16 +21,20 @@ local COMPACT = { titleSize = 48, titleGap = 28, itemSize = 26, spacing = 41, sw
 local TITLE_GAP = 90
 local SLIDE_RISE = 60
 
--- Prints `title` centred at y. With `colors` ({ c1, c2 }) the two slashes of
--- GRAV//TY take those colours; the rest stays white.
-local function printTitle(font, title, y, colors, alpha)
+-- Splits `title` into { text, colour|nil } parts. With `colors` ({ c1, c2 }) the
+-- two slashes of GRAV//TY take those colours (nil = white); a title without
+-- slashes stays one part. Shared with the Steam logo (tools/steam_assets).
+function Menu.titleParts(title, colors)
 	local a, c = title:match("^(.-)//(.*)$")
 	if not (colors and a) then
-		love.graphics.setColor(1, 1, 1, alpha)
-		love.graphics.print(title, (SCREEN_WIDTH - font:getWidth(title)) / 2, y)
-		return
+		return { { title, nil } }
 	end
-	local parts = { { a, nil }, { "/", colors[1] }, { "/", colors[2] }, { c, nil } }
+	return { { a, nil }, { "/", colors[1] }, { "/", colors[2] }, { c, nil } }
+end
+
+-- Prints `title` centred at y.
+local function printTitle(font, title, y, colors, alpha)
+	local parts = Menu.titleParts(title, colors)
 	local width = 0
 	for _, part in ipairs(parts) do
 		width = width + font:getWidth(part[1])

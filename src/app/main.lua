@@ -40,6 +40,15 @@ local function findE2ETestFile(args)
 end
 
 function love.load(args)
+	-- steam=build renders the Steam assets and exits; steam=scout picks frames
+	-- for the manifest (tools/steam_assets).
+	-- Dev-only; inert unless the argument is given.
+	local steamMode = findArg(args, "^steam=(.+)$")
+	if steamMode then
+		require("tools.steam_assets.build").run(steamMode, args)
+		return
+	end
+
 	local e2eTestFile = findE2ETestFile(args)
 	if e2eTestFile then
 		-- requiring tests.e2e.run defines its own love.update/love.draw/

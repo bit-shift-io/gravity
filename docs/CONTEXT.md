@@ -214,3 +214,15 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 ## Settings screen
 - **Definition:** Menu state with the SOUND, POST FX and FULLSCREEN rows, opened from the title and pause menus. Values persist in `settings.txt`.
 - **Boundary:** Not the setup screen, which edits the roster and seed.
+
+## Steam asset
+- **Definition:** One image in the Steam store upload set, defined by a manifest entry.
+- **Boundary:** Output only. Never read by the game.
+
+## Manifest entry
+- **Definition:** A table in `tools/steam_assets/manifest.lua` naming an asset, its pixel size, seed, roster, step, camera, flags and overlay.
+- **Boundary:** Not a level or a roster. Flags omitted inherit the saved in-game look.
+
+## Scout mode
+- **Definition:** An interactive match that prints a manifest entry for the current frame.
+- **Boundary:** Never writes images. Not part of normal play.
