@@ -57,6 +57,7 @@ function Match.new(level, config, seed, opts)
 		level = level,
 		config = config,
 		intents = {},
+		seed = seed,
 		rng = Rng.new(seed),
 		events = {},
 		camera = Camera.new(),
@@ -165,6 +166,22 @@ function Match.step(ctx)
 	-- Bodies.sweep has already freed (this slice's Gotcha).
 	Pools.sweep(ctx.pools)
 	Bodies.sweep(ctx.sim.bodies)
+end
+
+
+-- One frame: Match.step at `dt`, repeated while RoundSystem.stepsPerFrame
+-- allows (fast-forward while no human is alive), re-checked after every step
+-- so a frame stops at the step that locks the round. dt is never scaled, so
+-- the outcome is the same as one step per frame. Returns the steps run.
+function Match.advance(ctx, dt)
+	local steps = 0
+	repeat
+		ctx.dt = dt
+		ctx.time = ctx.time + dt
+		Match.step(ctx)
+		steps = steps + 1
+	until steps >= RoundSystem.stepsPerFrame(ctx)
+	return steps
 end
 
 return Match

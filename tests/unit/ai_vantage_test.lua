@@ -114,3 +114,93 @@ test("Vantage.pick solves at most config.ai.vantageSolves candidates", function(
 	assertEqual(nil, picked)
 	assertEqual(Config.ai.vantageSolves, calls)
 end)
+
+-- A 16-sided round world of radius `r` centred on (cx, cy).
+local function blob(cx, cy, r, mass)
+	local vertices = {}
+	for i = 0, 15 do
+		local a = i / 16 * 2 * math.pi
+		vertices[#vertices + 1] = { x = cx + r * math.sin(a), y = cy - r * math.cos(a) }
+	end
+	return { vertices = vertices, mass = mass }
+end
+
+-- The surface vertex of a blob from `blob` at `deg` degrees clockwise from
+-- its top, with its outward normal.
+local function onBlob(cx, cy, r, deg, world)
+	local a = math.rad(deg)
+	local nx, ny = math.sin(a), -math.cos(a)
+	return point(cx + r * nx, cy + r * ny, world, { x = nx, y = ny })
+end
+
+-- Three generated-size worlds in a row; the middle one hides much of the
+-- left one's surface from an enemy on top of the right one. From 22.5 deg
+-- round the left world the enemy is in plain sight; from 67.5 deg the
+-- middle world blocks the line but a lob curves round it. From 157.5 deg
+-- (the left world's underside) the only lob is past the turret's limit,
+-- and from the middle world's left side there is none at all.
+local function hillLevel()
+	local left, middle, right = blob(-400, 0, 100, 25000), blob(0, 0, 100, 25000), blob(400, 0, 100, 25000)
+	return {
+		worlds = { left, middle, right },
+		exposed = onBlob(-400, 0, 100, 22.5, left),
+		hidden = onBlob(-400, 0, 100, 67.5, left),
+		under = onBlob(-400, 0, 100, 157.5, left),
+		behind = onBlob(0, 0, 100, -90, middle),
+		target = { x = 400, y = -108, radius = Config.ship.collisionRadius },
+	}
+end
+
+-- Ranges below are near the exposed point's distance (~759 px) and far
+-- from the hidden one's (~703 px), so a plain pick prefers the exposed one.
+test("fixture: the hill level's exposed point is the plain vantage pick", function()
+	local hill = hillLevel()
+
+	local picked = pick(hill.worlds, { points = { hill.exposed, hill.hidden }, range = 760, target = hill.target })
+
+	assertEqual(hill.exposed, picked)
+end)
+
+test("Vantage.pick concealed skips a point with a direct line to the enemy for one with a lob", function()
+	local hill = hillLevel()
+
+	local picked = pick(hill.worlds, { points = { hill.exposed, hill.hidden }, range = 760, target = hill.target, concealed = true })
+
+	assertEqual(hill.hidden, picked)
+end)
+
+test("Vantage.pick concealed returns nil when no hidden point has a lob the turret can fire", function()
+	local hill = hillLevel()
+	local points = { hill.exposed, hill.under, hill.behind }
+
+	assertEqual(nil, pick(hill.worlds, { points = points, range = 760, target = hill.target, concealed = true }))
+end)
+
+test("Vantage.inSight is true for a clear line and false for one a world blocks", function()
+	local hill = hillLevel()
+	local function stand(p)
+		return { x = p.x + p.normal.x * 8, y = p.y + p.normal.y * 8 }
+	end
+
+	assertTrue(Vantage.inSight(hill.worlds, stand(hill.exposed), hill.target))
+	assertFalse(Vantage.inSight(hill.worlds, stand(hill.hidden), hill.target))
+end)
+
+test("Vantage.pick concealed solves at most config.ai.concealedSolves candidates", function()
+	local hill = hillLevel()
+	local points = {}
+	for deg = 30, 150, 5 do
+		points[#points + 1] = onBlob(-400, 0, 100, deg, hill.worlds[1])
+	end
+	local solve, calls = Aim.solve, 0
+	Aim.solve = function(...)
+		calls = calls + 1
+		return solve(...)
+	end
+
+	local picked = pick(hill.worlds, { points = points, range = 760, target = hill.target, horizon = 0.05, concealed = true })
+	Aim.solve = solve
+
+	assertEqual(nil, picked)
+	assertEqual(Config.ai.concealedSolves, calls)
+end)

@@ -304,6 +304,19 @@ local Config = {
 		refuelFuel = 3,
 		hardcoreReserve = 2,
 		takeoffFuel = 9,
+		-- Airburst (src/game/ai/skills/airburst.lua): an armed own shell
+		-- that has drifted missMargin px past its closest approach to the
+		-- nearest enemy is detonated as a miss.
+		missMargin = 20,
+		-- Stuck rule (src/game/ai/skills/stuck.lua): after stuckDelay
+		-- seconds without firing a personality relaxes its standards.
+		stuckDelay = 5,
+		-- Chaos (src/game/ai/chaos.lua): every chaosInterval seconds it
+		-- injects a random action with probability chaosRate, held for
+		-- chaosHold seconds.
+		chaosInterval = 1,
+		chaosRate = 0.3,
+		chaosHold = 0.4,
 		-- Sniper (src/game/ai/sniper.lua, skills/vantage.lua): at most
 		-- vantageSolves shot solves per vantage pick (each ~3 ms). It
 		-- relocates after relocateDelay seconds without a solved shot, flying
@@ -311,10 +324,41 @@ local Config = {
 		-- once within vantageArrive px of that point and slower than
 		-- vantageSpeed px/s.
 		vantageSolves = 4,
+		-- Artillery's concealed pick (src/game/ai/artillery.lua) solves up to
+		-- concealedSolves candidates: most hidden points have no lob, so
+		-- the nearest-to-range few rarely do.
+		concealedSolves = 16,
 		relocateDelay = 3,
 		vantageApproach = 60,
 		vantageArrive = 30,
 		vantageSpeed = 40,
+		-- Skirmisher (src/game/ai/skirmisher.lua): circles its quarry
+		-- between orbitMin and orbitMax px, flying for the point orbitLead
+		-- rad further round, and turns back where that point lies inside a
+		-- world or within orbitClearance px of one. It fires at an enemy
+		-- between two blast radii and orbitMax px away, charging at most
+		-- skirmishCharge seconds a shot, and never starts or lets go of one
+		-- that would strike a world within skirmishSafety seconds.
+		orbitMin = 150,
+		orbitMax = 300,
+		orbitLead = math.rad(40),
+		orbitClearance = 50,
+		skirmishCharge = 0.75,
+		skirmishSafety = 0.25,
+		-- Ambusher (src/game/ai/ambusher.lua): waits landed out of sight
+		-- and strikes at an enemy that comes within ambushRange px. It hides
+		-- on a concealed position about ambushHideRange px from an enemy.
+		ambushRange = 350,
+		ambushHideRange = 650,
+		-- Kamikaze (src/game/ai/kamikaze.lua): flies for a point
+		-- kamikazeStandoff px straight above its target, at no more than
+		-- kamikazeSpeed px/s once within kamikazeApproach px, and fires a
+		-- tapped, slowest shot once within kamikazeRange px and moving at
+		-- no more than kamikazeSpeed relative to the target.
+		kamikazeStandoff = 120,
+		kamikazeApproach = 250,
+		kamikazeSpeed = 80,
+		kamikazeRange = 160,
 		-- Tuned with seeded matches on generated levels
 		-- (tests/integration/ai_personalities_test.lua): hard wins about 60%
 		-- of rounds against easy flying the same personality, and in mixed
@@ -349,6 +393,14 @@ local Config = {
 		-- Seconds the score card shows after the end delay; respawn follows.
 		cardDuration = 4,
 		winsToWin = 3,
+		-- Sim seconds (at the normal dt) after the last human dies before the
+		-- round ends as a draw and replays, if the AIs have not finished each
+		-- other by then. Never starts in an all-AI match.
+		humansDeadTimeout = 30,
+		-- Match.steps per frame while the roster has a human and none is
+		-- alive (RoundSystem.stepsPerFrame). Each step keeps the normal dt,
+		-- so the outcome matches normal speed, just sooner in real time.
+		fastForwardSteps = 4,
 	},
 	-- Camera zoom tuning (src/app/camera.lua). bufferRadius is the additional
 	-- margin around each player that the camera ensures stays visible (px).

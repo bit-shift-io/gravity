@@ -272,3 +272,69 @@ test("an easy hopper reacts later and dodges worse than a hard one", function()
 	assertTrue(hardLift < easyLift, "hard lifts off first")
 	assertTrue(hardClosest > easyClosest, "hard keeps the shell further off")
 end)
+
+-- A duel where the enemy stands on the floor 300 px to the left, level with
+-- the hopper: its aim is about 90 degrees off the surface normal, past the
+-- turret's 80 degree limit. `fuel` is the hopper's tank; `stuckFor` seeds
+-- how long ago it last fired (in stuckDelay periods).
+local function unreachableDuel(fuel, stuckFor)
+	local ctx = newDuel("hard")
+	local enemy = bodyOf(ctx, shipOf(ctx, 1))
+	enemy.x, enemy.y, enemy.vx, enemy.vy = -300, 100 - enemy.radius, 0, 0
+	local hopper = shipOf(ctx, 2)
+	hopper.fuel.amount = fuel
+	ctx.time = Config.ai.stuckDelay * 4
+	ctx.ai = { [2] = { ship = hopper, nextThink = 0, firedAt = ctx.time - Config.ai.stuckDelay * stuckFor } }
+	return ctx, hopper
+end
+
+-- Steps until slot 2 fires or thrusts (bounded); returns "fire", "thrust" or nil.
+local function firstAction(ctx, maxSteps)
+	for _ = 1, maxSteps do
+		step(ctx)
+		if ctx.intents[2].fire then
+			return "fire"
+		elseif ctx.intents[2].thrust then
+			return "thrust"
+		end
+	end
+	return nil
+end
+
+test("a hopper that cannot reach its target and has no fuel to hop waits until stuck", function()
+	local ctx = unreachableDuel(0, 0.5)
+
+	for _ = 1, 60 do
+		step(ctx)
+		assertFalse(ctx.intents[2].fire)
+		assertFalse(ctx.intents[2].thrust)
+	end
+end)
+
+test("a stuck hopper with no fuel to hop fires an unsolved shot at its turret's limit", function()
+	local ctx, hopper = unreachableDuel(0, 1)
+
+	assertEqual("fire", firstAction(ctx, 600))
+	assertFalse(ctx.ai[2].aim.solved, "unsolved")
+	assertTrue(Lander.isGrounded(hopper))
+end)
+
+test("a hopper stuck one delay fires at the limit instead of hopping", function()
+	local ctx = unreachableDuel(Config.ai.hopFuel * 2, 1)
+
+	assertEqual("fire", firstAction(ctx, 600))
+end)
+
+test("a hopper stuck two delays with fuel hops toward the target", function()
+	local ctx = unreachableDuel(Config.ai.hopFuel * 2, 2)
+
+	assertEqual("thrust", firstAction(ctx, 600))
+end)
+
+test("a firing hopper's stuck clock restarts", function()
+	local ctx = unreachableDuel(0, 1)
+
+	firstAction(ctx, 600)
+
+	assertEqual(0, require("src.game.ai.skills.stuck").cycles(ctx, ctx.ai[2]))
+end)

@@ -8,7 +8,9 @@
 -- coming sends it across the threat's path. Below config.ai.refuelFuel
 -- (plus hardcoreReserve when rotating burns fuel too) it lands gently and
 -- sits in tank mode, still firing solved shots from the turret, until the
--- tank holds config.ai.takeoffFuel.
+-- tank holds config.ai.takeoffFuel. Stuck (src/game/ai/skills/stuck.lua:
+-- no shot for config.ai.stuckDelay) it takes Basic's best aimed shot,
+-- solved or not.
 --
 -- Modes on `state.mode`: "pursue" <-> "attack" while flying, "evade" while
 -- threatened, "refuel" from low fuel until refilled. Thinks every
@@ -20,6 +22,7 @@ local Lander = require("src.game.components.lander")
 local Basic = require("src.game.ai.basic")
 local Danger = require("src.game.ai.skills.danger")
 local Flight = require("src.game.ai.skills.flight")
+local Stuck = require("src.game.ai.skills.stuck")
 
 local Hunter = {}
 
@@ -56,8 +59,9 @@ local function fly(ctx, ship, body, level, goal)
 end
 
 -- standoff px from the target, between straight above it (against its
--- local pull) and the direction back toward the hunter.
-local function standoffGoal(ctx, body, target)
+-- local pull) and the direction back toward the hunter. Shared with the
+-- Ambusher's strike.
+function Hunter.standoffGoal(ctx, body, target)
 	local pull = Field.sample(ctx.sim.field, target.x, target.y)
 	local ux, uy = normalize(-pull.x, -pull.y)
 	if ux == 0 and uy == 0 then
@@ -80,10 +84,11 @@ local function lowFuel(ctx, ship)
 	return ship.fuel.amount < reserve
 end
 
--- Basic.shoot, with fire and charge dropped unless the aim is a solved shot.
+-- Basic.shoot, with fire and charge dropped unless the aim is a solved shot
+-- (or the hunter is stuck, which takes the best aimed shot, solved or not).
 local function shootSolved(ctx, ship, body, level, state)
 	local intent = Basic.shoot(ctx, ship, body, level, state)
-	if not (state.aim and state.aim.solved) then
+	if not (state.aim and state.aim.solved) and Stuck.cycles(ctx, state) < 1 then
 		intent.fire = false
 		state.charging = false
 	end
@@ -131,7 +136,7 @@ local function think(ctx, ship, body, level, state)
 	local shellAlive = ship.weapon and ship.weapon.shell and Bodies.get(ctx.sim.bodies, ship.weapon.shell)
 	if clear and target.dist <= config.ai.attackRange and (state.charging or not shellAlive) then
 		local intent = shootSolved(ctx, ship, body, level, state)
-		if state.aim.solved then
+		if state.aim.solved or Stuck.cycles(ctx, state) >= 1 then
 			state.mode = "attack"
 			return intent
 		end
@@ -139,7 +144,7 @@ local function think(ctx, ship, body, level, state)
 
 	state.mode = "pursue"
 	state.charging = false
-	return fly(ctx, ship, body, level, standoffGoal(ctx, body, target))
+	return fly(ctx, ship, body, level, Hunter.standoffGoal(ctx, body, target))
 end
 
 -- Writes ctx.intents[slot]. Re-thinks once ctx.time reaches state.nextThink;
@@ -151,6 +156,9 @@ function Hunter.update(ctx, slot, ship, level, state)
 	end
 	if ctx.time >= state.nextThink then
 		state.intent = think(ctx, ship, body, level, state)
+		if state.intent.fire then
+			Stuck.fired(ctx, state)
+		end
 		state.nextThink = ctx.time + level.reactionDelay
 	end
 	local held = state.intent

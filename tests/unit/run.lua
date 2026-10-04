@@ -56,6 +56,13 @@ local defaultTestFiles = {
 	"tests/unit/ai_hunter_test.lua",
 	"tests/unit/ai_vantage_test.lua",
 	"tests/unit/ai_sniper_test.lua",
+	"tests/unit/ai_airburst_test.lua",
+	"tests/unit/ai_artillery_test.lua",
+	"tests/unit/ai_chaos_test.lua",
+	"tests/unit/ai_schizo_test.lua",
+	"tests/unit/ai_skirmisher_test.lua",
+	"tests/unit/ai_ambusher_test.lua",
+	"tests/unit/ai_kamikaze_test.lua",
 }
 
 require("tests.support.bake_cache")

@@ -7,7 +7,10 @@
 -- src/game/ai/skills/vantage.lua, lifts off, flies above it with
 -- src/game/ai/skills/flight.lua, and descends onto it. A shell or asteroid
 -- that src/game/ai/skills/danger.lua senses coming makes it lift off and
--- fly across the threat's path, then relocate.
+-- fly across the threat's path, then relocate. When a vantage pick finds
+-- nothing it hands over to Artillery (src/game/ai/artillery.lua) for the
+-- rest of the ship's life (`state.handover`), which looks for a concealed
+-- position instead and falls back on the stuck rule.
 --
 -- Modes on `state.mode`: "settle" (landed, no solved shot yet) <-> "shoot"
 -- (landed, firing a solved shot); "relocate" (flying to `state.vantage`,
@@ -22,6 +25,7 @@ local Basic = require("src.game.ai.basic")
 local Danger = require("src.game.ai.skills.danger")
 local Flight = require("src.game.ai.skills.flight")
 local Vantage = require("src.game.ai.skills.vantage")
+local Stuck = require("src.game.ai.skills.stuck")
 
 local Sniper = {}
 
@@ -46,8 +50,9 @@ local function fly(ctx, ship, body, level, goal)
 	}))
 end
 
--- A vantage point for a shot at any living enemy, or false.
-local function pickVantage(ctx, ship, body, level)
+-- A vantage point for a shot at any living enemy, or false. `concealed`
+-- asks for a concealed position instead (Vantage.pick's option).
+function Sniper.pick(ctx, ship, level, concealed)
 	local targets = {}
 	for _, other in ipairs(ctx.pools.ships) do
 		local otherBody = other ~= ship and not other.dead and Bodies.get(ctx.sim.bodies, other.body)
@@ -60,7 +65,15 @@ local function pickVantage(ctx, ship, body, level)
 		horizon = level.predictionHorizon,
 		range = level.vantageRange,
 		points = ctx.level.spawnCandidates,
+		concealed = concealed,
 	}) or false
+end
+
+-- Artillery takes over this think and every later one (Sniper.update).
+local function handOver(ctx, ship, body, level, state)
+	state.handover = true
+	state.vantage = nil
+	return require("src.game.ai.artillery").think(ctx, ship, body, level, state)
 end
 
 local function landed(ctx, ship, body, level, state)
@@ -79,8 +92,12 @@ local function landed(ctx, ship, body, level, state)
 	state.charging = false
 	intent.fire, intent.thrust = false, false
 	if ctx.time - state.shotAt >= config.ai.relocateDelay and ship.fuel.amount >= config.ai.takeoffFuel then
+		local vantage = Sniper.pick(ctx, ship, level)
+		if not vantage then
+			return handOver(ctx, ship, body, level, state)
+		end
 		state.mode = "relocate"
-		state.vantage = pickVantage(ctx, ship, body, level)
+		state.vantage = vantage
 		state.descending = false
 		return Flight.liftOff()
 	end
@@ -89,13 +106,15 @@ end
 
 -- Flies to vantageApproach px up the vantage point's normal, and once
 -- there and slow, straight onto it (Flight.approach skips flyTo's world
--- clearance, which would refuse the touchdown).
-local function relocate(ctx, ship, body, level, state, threats)
+-- clearance, which would refuse the touchdown). With no point picked yet it
+-- picks one with `pick(ctx, ship, level)`; a false pick lands anywhere.
+-- Shared with Artillery.
+function Sniper.relocate(ctx, ship, body, level, state, threats, pick)
 	local config = ctx.config
 	state.mode = "relocate"
 	state.charging = false
 	if state.vantage == nil then
-		state.vantage = pickVantage(ctx, ship, body, level)
+		state.vantage = pick(ctx, ship, level)
 		state.descending = false
 	end
 	local v = state.vantage
@@ -112,7 +131,10 @@ local function relocate(ctx, ship, body, level, state, threats)
 	return Flight.approach(ctx.sim, body, v, config, { fuel = ship.fuel, hold = level.reactionDelay })
 end
 
-local function think(ctx, ship, body, level, state)
+-- The dodge every relocating personality shares: an intent when a sensed
+-- threat makes it lift off or fly clear, else nil. Also returns the
+-- scanned threats.
+function Sniper.dodge(ctx, ship, body, level, state)
 	local config = ctx.config
 	local grounded = Lander.isGrounded(ship)
 	-- Flying, the scan reaches attackClearance too, so flight never coasts
@@ -127,23 +149,44 @@ local function think(ctx, ship, body, level, state)
 		if grounded then
 			return Flight.liftOff()
 		end
-		return fly(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config))
+		return fly(ctx, ship, body, level, Flight.evadeGoal(ctx.sim, body, threat, config)), threats
 	end
-	if grounded then
+	return nil, threats
+end
+
+local function think(ctx, ship, body, level, state)
+	local evade, threats = Sniper.dodge(ctx, ship, body, level, state)
+	if evade then
+		return evade
+	end
+	if Lander.isGrounded(ship) then
 		return landed(ctx, ship, body, level, state)
 	end
-	return relocate(ctx, ship, body, level, state, threats)
+	if state.vantage == nil then
+		local vantage = Sniper.pick(ctx, ship, level)
+		if not vantage then
+			return handOver(ctx, ship, body, level, state)
+		end
+		state.vantage, state.descending = vantage, false
+	end
+	return Sniper.relocate(ctx, ship, body, level, state, threats, Sniper.pick)
 end
 
 -- Writes ctx.intents[slot]. Re-thinks once ctx.time reaches state.nextThink;
 -- otherwise the previous intent stays on ctx.intents.
 function Sniper.update(ctx, slot, ship, level, state)
+	if state.handover then
+		return require("src.game.ai.artillery").update(ctx, slot, ship, level, state)
+	end
 	local body = Bodies.get(ctx.sim.bodies, ship.body)
 	if not body then
 		return
 	end
 	if ctx.time >= state.nextThink then
 		state.intent = think(ctx, ship, body, level, state)
+		if state.intent.fire then
+			Stuck.fired(ctx, state)
+		end
 		state.nextThink = ctx.time + level.reactionDelay
 	end
 	local held = state.intent

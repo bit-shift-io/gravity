@@ -40,13 +40,14 @@ function MatchState.enter(level, config, seed, roster, hardcore)
 	return ctx
 end
 
+-- Match.advance fast-forwards (several steps, same dt) while no human is
+-- alive; audio is throttled for those frames. tests/support/game_harness.lua
+-- advances the same way.
 function MatchState.update(ctx, dt)
 	Input.update(ctx.debug)
 	Input.updateIntents(ctx, ctx.roster)
-	ctx.dt = dt
-	ctx.time = ctx.time + dt
-	Match.step(ctx)
-	Audio.update(ctx)
+	local steps = Match.advance(ctx, dt)
+	Audio.update(ctx, steps > 1)
 end
 
 -- `showResults` false hides the score card / win screen (the pause menu is

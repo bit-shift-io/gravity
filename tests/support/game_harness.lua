@@ -58,9 +58,9 @@ function GameHarness.startMatch(level, opts)
 			Input.update(ctx.debug)
 			Input.updateIntents(ctx, ctx.roster)
 		end
-		ctx.dt = dt
-		ctx.time = ctx.time + dt
-		Match.step(ctx)
+		-- Same as MatchState.update, so a harnessed match fast-forwards
+		-- exactly as the app does.
+		Match.advance(ctx, dt)
 	end
 
 	-- Draws via the real render path (src/app/render/worlds.lua) so an e2e

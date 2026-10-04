@@ -79,3 +79,15 @@ test("an AI slot's label gives its level and personality, a human's is nil", fun
 	assertTrue(ScoreCard.aiLabel(ctx, 1) == nil)
 	assertEqual("HARD BASIC", ScoreCard.aiLabel(ctx, 2))
 end)
+
+test("a schizo slot's label names the personality it is playing", function()
+	local ctx = {
+		roster = {
+			{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
+			{ color = 2, binding = { kind = "ai", level = "hard" } },
+		},
+		personalities = { [2] = "schizo" },
+		schizo = { [2] = { current = "sniper" } },
+	}
+	assertEqual("HARD SCHIZO (SNIPER)", ScoreCard.aiLabel(ctx, 2))
+end)

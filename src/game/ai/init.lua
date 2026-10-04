@@ -4,23 +4,36 @@
 -- register by name (binding.behavior picks any; "basic" is the fallback but
 -- not in the personality pool); a kind is a table with
 -- `update(ctx, slot, ship, levelConfig, state)` that writes the slot's intent.
+-- Every kind then shares the airburst skill (src/game/ai/skills/airburst.lua),
+-- which may override that intent's fire to remote-detonate its shell.
 -- Each AI slot's personality is drawn at Match.new into ctx.personalities
 -- (binding.behavior, when set, overrides it). Per-slot AI memory lives on ctx.ai[slot], never on the ship record.
 local Roster = require("src.game.roster")
 local Rng = require("src.core.rng")
+local Airburst = require("src.game.ai.skills.airburst")
 
-local AI = { kinds = {}, unpooled = {} }
+local AI = { kinds = {}, unpooled = {}, meta = {} }
 
 -- `opts.pool = false` registers a kind a binding can name (binding.behavior)
 -- but the personality draw never picks.
+-- `opts.meta = true` marks a kind that wraps or switches between other
+-- kinds (Chaos, Schizo); a kind that picks from the pool (Schizo's switch)
+-- skips AI.meta[name] entries.
 function AI.register(name, kind, opts)
 	AI.kinds[name] = kind
 	AI.unpooled[name] = (opts and opts.pool == false) or nil
+	AI.meta[name] = (opts and opts.meta) or nil
 end
 
+AI.register("ambusher", require("src.game.ai.ambusher"))
+AI.register("artillery", require("src.game.ai.artillery"))
 AI.register("basic", require("src.game.ai.basic"), { pool = false })
+AI.register("chaos", require("src.game.ai.chaos"), { meta = true })
 AI.register("hopper", require("src.game.ai.hopper"))
 AI.register("hunter", require("src.game.ai.hunter"))
+AI.register("kamikaze", require("src.game.ai.kamikaze"))
+AI.register("schizo", require("src.game.ai.schizo"), { meta = true })
+AI.register("skirmisher", require("src.game.ai.skirmisher"))
 AI.register("sniper", require("src.game.ai.sniper"))
 
 -- The personality pool: every registered kind name not registered with
@@ -87,6 +100,7 @@ function AI.fill(ctx)
 				end
 				local kind = AI.kinds[binding.behavior or ctx.personalities[slot] or "basic"]
 				kind.update(ctx, slot, ship, ctx.config.ai.levels[binding.level], state)
+				Airburst.update(ctx, slot, ship, state)
 			end
 		end
 	end

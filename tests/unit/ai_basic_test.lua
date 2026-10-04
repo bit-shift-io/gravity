@@ -196,7 +196,7 @@ test("a new behaviour kind registers without touching Match.step", function()
 		update = function(ctx, slot)
 			ctx.intents[slot] = { rotate = 0, thrust = false, fire = true }
 		end,
-	})
+	}, { pool = false }) -- unpooled: the registry is shared by later test files
 	local roster = {
 		{ color = 1, binding = { kind = "ai", level = "hard", behavior = "always-fire" } },
 		{ color = 2, binding = { kind = "ai", level = "hard" } },

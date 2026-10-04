@@ -6,7 +6,9 @@
 -- with src/game/ai/skills/flight.lua and goes back to the turret. A target
 -- the turret cannot reach gets a hop tilted toward it instead. Hops are
 -- only planned with config.ai.hopFuel in the tank (fuel refills only in
--- tank mode).
+-- tank mode). Stuck (src/game/ai/skills/stuck.lua: no shot for
+-- config.ai.stuckDelay) it stops hopping and fires an unsolved shot with the
+-- turret at its limit toward the target; stuck for two delays it hops again.
 --
 -- Modes on `state.mode`: "landed" -> "hop" (thrust for at least the level's
 -- hopTime, longer while a threat remains and fuel allows) -> "land" ->
@@ -17,6 +19,7 @@ local Lander = require("src.game.components.lander")
 local Basic = require("src.game.ai.basic")
 local Danger = require("src.game.ai.skills.danger")
 local Flight = require("src.game.ai.skills.flight")
+local Stuck = require("src.game.ai.skills.stuck")
 
 local Hopper = {}
 
@@ -56,6 +59,15 @@ local function startHop(ctx, level, state, angle)
 	return Flight.liftOff()
 end
 
+-- A shot at the turret's limit toward the aim the turret cannot reach,
+-- kept the level's aim error inside the limit so the aim stays reachable.
+local function limitShot(ctx, ship, body, level, state)
+	local limit = ctx.config.tank.turretLimit - level.aimError
+	state.aim.angle = body.angle + clamp(wrap(state.aim.angle - body.angle), limit)
+	state.aim.solved = false
+	return Basic.shoot(ctx, ship, body, level, state)
+end
+
 local function think(ctx, ship, body, level, state)
 	local config = ctx.config
 	local grounded = Lander.isGrounded(ship)
@@ -85,7 +97,13 @@ local function think(ctx, ship, body, level, state)
 	end
 	local intent = Basic.shoot(ctx, ship, body, level, state)
 	if intent.thrust then
-		-- The turret can't reach the aim: hop toward the target, or wait.
+		-- The turret can't reach the aim. Stuck: fire at the turret's limit,
+		-- unless two delays have passed and a hop is possible. Otherwise hop
+		-- toward the target, or wait.
+		local stuck = Stuck.cycles(ctx, state)
+		if stuck >= 1 and not (stuck >= 2 and canHop) then
+			return limitShot(ctx, ship, body, level, state)
+		end
 		if canHop then
 			local side = wrap(state.aim.angle - body.angle) < 0 and -1 or 1
 			return startHop(ctx, level, state, body.angle + side * config.ai.dodgeTilt)
@@ -104,6 +122,9 @@ function Hopper.update(ctx, slot, ship, level, state)
 	end
 	if ctx.time >= state.nextThink then
 		state.intent = think(ctx, ship, body, level, state)
+		if state.intent.fire then
+			Stuck.fired(ctx, state)
+		end
 		state.nextThink = ctx.time + level.reactionDelay
 	end
 	local held = state.intent

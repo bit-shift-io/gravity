@@ -77,8 +77,11 @@ function Audio.menu(direction)
 	playOnce(direction == "forward" and "menuForward" or "menuBack")
 end
 
--- Call once per Match.step.
-function Audio.update(ctx)
+-- Call once per frame, after that frame's Match.steps. `fastForward` true
+-- (several steps this frame, src/app/states/match_state.lua) throttles: at
+-- most one one-shot sound per update, the rest marked played, and no
+-- thruster loop.
+function Audio.update(ctx, fastForward)
 	if not (love and love.audio) then
 		return
 	end
@@ -96,6 +99,13 @@ function Audio.update(ctx)
 	-- Event kind -> sound. A ship killed by a blast raises both "blast" and
 	-- "crash"; they share a sound, so it plays once per update.
 	local blastPlayed = false
+	local budget = fastForward and 1 or math.huge
+	local function play(name)
+		if budget > 0 then
+			budget = budget - 1
+			playOnce(name)
+		end
+	end
 	for _, event in ipairs(ctx.events) do
 		if not played[event] then
 			played[event] = true
@@ -103,14 +113,19 @@ function Audio.update(ctx)
 			if kind == "blast" or kind == "crash" then
 				if not blastPlayed then
 					blastPlayed = true
-					playOnce("blast")
+					play("blast")
 				end
 			elseif kind == "asteroidDeath" or kind == "asteroidSplit" then
-				playOnce("asteroidDeath")
+				play("asteroidDeath")
 			elseif kind == "fire" then
-				playOnce("fire")
+				play("fire")
 			end
 		end
+	end
+
+	if fastForward then
+		setThrusting(false)
+		return
 	end
 
 	local any = false

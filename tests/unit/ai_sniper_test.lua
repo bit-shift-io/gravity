@@ -5,6 +5,7 @@ local Lander = require("src.game.components.lander")
 local ProjectileSystem = require("src.game.systems.projectile_system")
 local Aim = require("src.game.ai.skills.aim")
 local Vantage = require("src.game.ai.skills.vantage")
+local Artillery = require("src.game.ai.artillery")
 
 local DT = 1 / 60
 
@@ -160,10 +161,10 @@ local function seen(modes, mode)
 	return false
 end
 
-test("the personality pool is hopper, hunter and sniper", function()
+test("the personality pool is ambusher, artillery, chaos, hopper, hunter, kamikaze, schizo, skirmisher and sniper", function()
 	local fresh = loadfile("src/game/ai/init.lua")()
 
-	assertEqual("hopper hunter sniper", table.concat(fresh.pool(), " "))
+	assertEqual("ambusher artillery chaos hopper hunter kamikaze schizo skirmisher sniper", table.concat(fresh.pool(), " "))
 end)
 
 test("a sniper hits a stationary far target across the gravity well", function()
@@ -305,10 +306,40 @@ test("a threatened sniper dodges, then relocates and lands again", function()
 	assertEqual("relocate", modes[3])
 end)
 
-test("a sniper that can't foresee a hit never fires", function()
+test("a sniper that can't foresee a hit fires nothing before the stuck delay", function()
 	local ctx = newSnipe(twoTargetLevel(), "hard", hardWith({ predictionHorizon = 0.05 }))
 
-	run(ctx, 10 * 60, function()
+	run(ctx, (Config.ai.stuckDelay - 0.5) * 60, function()
 		assertFalse(ctx.intents[3].fire)
 	end)
+end)
+
+test("a sniper whose vantage pick finds nothing hands over to artillery", function()
+	local ctx = newSnipe(twoTargetLevel(), "hard", hardWith({ predictionHorizon = 0.05 }))
+	local update, calls = Artillery.update, 0
+	Artillery.update = function(...)
+		calls = calls + 1
+		return update(...)
+	end
+
+	local ok, err = pcall(run, ctx, (Config.ai.relocateDelay + 1) * 60)
+	Artillery.update = update
+
+	assertTrue(ok, err)
+	assertTrue(ctx.ai[3].handover, "handed over")
+	assertTrue(calls > 0, "artillery thinks for it")
+end)
+
+test("a sniper with no vantage no longer stalls: it fires once stuck", function()
+	local ctx = newSnipe(twoTargetLevel(), "hard", hardWith({ predictionHorizon = 0.05 }))
+	local firstFire
+
+	run(ctx, 10 * 60, function()
+		firstFire = firstFire or (ctx.intents[3].fire and ctx.time) or nil
+	end, function()
+		return firstFire ~= nil
+	end)
+
+	assertTrue(firstFire ~= nil, "never fired")
+	assertTrue(firstFire >= Config.ai.stuckDelay, "fired early: " .. tostring(firstFire))
 end)

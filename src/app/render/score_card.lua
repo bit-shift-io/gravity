@@ -60,13 +60,19 @@ local function groupWidth(total)
 	return (total - 1) * PIP_SPACING + PIP_RADIUS * 2
 end
 
--- "EASY BASIC" for an AI slot (level then personality), nil for a human. Pure.
+-- "EASY BASIC" for an AI slot (level then personality), nil for a human. A
+-- Schizo adds the personality it is playing: "HARD SCHIZO (SNIPER)". Pure.
 function ScoreCard.aiLabel(ctx, slot)
 	local binding = ctx.roster[slot].binding
 	if binding.kind ~= "ai" then
 		return nil
 	end
-	return string.upper(binding.level .. " " .. ((ctx.personalities and ctx.personalities[slot]) or "basic"))
+	local name = (ctx.personalities and ctx.personalities[slot]) or "basic"
+	local schizo = name == "schizo" and ctx.schizo and ctx.schizo[slot]
+	if schizo then
+		name = name .. " (" .. schizo.current .. ")"
+	end
+	return string.upper(binding.level .. " " .. name)
 end
 
 -- Slot indexes ordered by wins, most first; ties keep slot order. Pure, and

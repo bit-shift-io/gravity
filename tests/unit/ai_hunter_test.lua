@@ -147,15 +147,53 @@ test("a hunter fires only with a gravity-aware solution", function()
 	assertTrue(fires > 0, "fixture: the hunter fires at all")
 end)
 
-test("a hunter that can't foresee a hit never fires", function()
+-- A hunter whose horizon is too short to ever solve a shot, with `delay`
+-- seconds as the stuck delay.
+local function blindHunt(delay)
 	local blind = { predictionHorizon = 0.05 }
 	local config = setmetatable({
-		ai = setmetatable({ levels = { hard = setmetatable(blind, { __index = Config.ai.levels.hard }) } }, { __index = Config.ai }),
+		ai = setmetatable({
+			stuckDelay = delay,
+			levels = { hard = setmetatable(blind, { __index = Config.ai.levels.hard }) },
+		}, { __index = Config.ai }),
 	}, { __index = Config })
-	local ctx = newHunt("hard", config)
+	return newHunt("hard", config), config
+end
 
-	run(ctx, 10 * 60, function()
+test("a hunter that can't foresee a hit holds fire until it is stuck", function()
+	local ctx = blindHunt(5)
+
+	run(ctx, 4 * 60, function()
 		assertFalse(ctx.intents[2].fire)
+	end)
+end)
+
+test("a stuck hunter takes an unsolved aimed shot once stuckDelay has passed", function()
+	local ctx, config = blindHunt(5)
+	local firedAt
+
+	run(ctx, 12 * 60, function()
+		if ctx.intents[2].fire and not firedAt then
+			firedAt = ctx.time
+			assertFalse(ctx.ai[2].aim.solved, "fixture: the shot is unsolved")
+		end
+	end)
+
+	assertTrue(firedAt ~= nil, "fires at all")
+	assertTrue(firedAt >= config.ai.stuckDelay, "not before it is stuck")
+	-- Plus the time the hunter needs to reach a clear attack position and
+	-- turn onto the shot; the stuck rule itself adds no wait.
+	assertTrue(firedAt <= config.ai.stuckDelay + 3)
+end)
+
+test("a hunter that keeps firing never enters the stuck path", function()
+	local ctx = newHunt("hard")
+
+	run(ctx, 20 * 60, function()
+		local state = ctx.ai[2]
+		if ctx.intents[2].fire then
+			assertTrue(state.aim.solved, "fired unsolved")
+		end
 	end)
 end)
 

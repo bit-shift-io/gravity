@@ -51,8 +51,24 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Not different logic per level.
 
 ## Personality
-- **Definition:** A registered AI behaviour with its own state machine (Hunter, Hopper, Sniper), drawn at random per AI slot from the match seed.
+- **Definition:** A registered AI behaviour with its own state machine (Hunter, Hopper, Sniper, Artillery, Chaos, Schizo, Skirmisher, Ambusher, Kamikaze), drawn at random per AI slot from the match seed.
 - **Boundary:** Not chosen in setup. Not tied to a level: any personality runs at either level. Listed on the score card and match-over overlay.
+
+## Airburst
+- **Definition:** An AI remote detonation: an armed own shell is detonated with an enemy ship or asteroid in blast radius, or after a miss.
+- **Boundary:** Detonates even if the AI's own ship is in range, provided an enemy is.
+
+## Stuck
+- **Definition:** An AI that has not fired for `config.ai.stuckDelay` seconds.
+- **Boundary:** Each personality relaxes its standards (aimed or unsolved shot, or hand-over to Artillery) to fire.
+
+## Concealed position
+- **Definition:** A surface point with no direct line to the target but a solvable lobbed shot.
+- **Boundary:** Used by Artillery. Distinct from a vantage point, which needs a clear shot.
+
+## Fast-forward
+- **Definition:** Several sim steps per frame while no human is alive.
+- **Boundary:** Same outcome as normal speed. A real-time timeout draws the round.
 
 ## Record
 - **Definition:** A plain table in a pool, holding a body id and component sub-tables.

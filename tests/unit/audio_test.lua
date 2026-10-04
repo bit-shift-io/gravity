@@ -87,3 +87,29 @@ test("muting mid-thrust stops the loop, and it stays off while muted", function(
 		assertTrue(log.loopPlaying, "loop should resume after unmuting while still thrusting")
 	end)
 end)
+
+test("fast-forwarding, a burst of events plays at most one sound per update", function()
+	withFakeAudio(function(log)
+		local ctx = {
+			events = { { kind = "fire" }, { kind = "blast" }, { kind = "asteroidDeath" }, { kind = "fire" } },
+			pools = { ships = {} },
+			intents = {},
+		}
+		Audio.update(ctx, true)
+		assertEqual(1, log.plays)
+		-- The rest were consumed, not deferred to a later update.
+		Audio.update(ctx, true)
+		Audio.update(ctx, false)
+		assertEqual(1, log.plays)
+	end)
+end)
+
+test("fast-forwarding keeps the thruster loop off", function()
+	withFakeAudio(function(log)
+		local ctx = thrustingCtx()
+		Audio.update(ctx)
+		assertTrue(log.loopPlaying)
+		Audio.update(ctx, true)
+		assertFalse(log.loopPlaying)
+	end)
+end)

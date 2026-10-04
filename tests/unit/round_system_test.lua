@@ -2,6 +2,7 @@ local Match = require("src.game.match")
 local Config = require("src.game.config")
 local Bodies = require("src.sim.bodies")
 local ShipSystem = require("src.game.systems.ship_system")
+local RoundSystem = require("src.game.systems.round_system")
 
 local function floorWorld()
 	return {
@@ -379,4 +380,175 @@ test("a 6-slot respawn places six ships on distinct points", function()
 		end
 	end
 	assertEqual(6, #alive)
+end)
+
+-- Humans-dead timeout: slot 1 human (keyboard), slots 2-3 AI. Drives the
+-- round system directly so the AIs do not act. The timeout is shortened.
+local function timeoutCtx(roster)
+	local world = floorWorld()
+	local function point(x)
+		return { x = x, y = 0, normal = { x = 0, y = -1 }, world = world }
+	end
+	local lvl = { worlds = { world }, spawnPoints = { point(-200), point(200) } }
+	lvl.spawnCandidates = { point(-250), point(-100), point(0), point(100), point(250) }
+	local cfg = setmetatable({ round = {} }, { __index = Config })
+	for key, value in pairs(Config.round) do
+		cfg.round[key] = value
+	end
+	cfg.round.humansDeadTimeout = 2
+	local ctx = Match.new(lvl, cfg, 1, { roster = roster })
+	ctx.dt = 1 / 60
+	return ctx
+end
+
+local function humanPlusAis()
+	return {
+		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
+		{ color = 2, binding = { kind = "ai", level = "easy" } },
+		{ color = 3, binding = { kind = "ai", level = "easy" } },
+	}
+end
+
+local function allAis()
+	return {
+		{ color = 1, binding = { kind = "ai", level = "easy" } },
+		{ color = 2, binding = { kind = "ai", level = "easy" } },
+		{ color = 3, binding = { kind = "ai", level = "easy" } },
+	}
+end
+
+local function tick(ctx, seconds)
+	for _ = 1, math.ceil(seconds * 60) do
+		RoundSystem.update(ctx)
+	end
+end
+
+test("while a human lives the humans-dead timer never runs", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[2])
+	tick(ctx, 10)
+
+	assertEqual("playing", ctx.round.phase)
+	assertEqual(nil, ctx.round.humansDeadTimer)
+end)
+
+test("the humans-dead timer starts once the last human dies", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+	tick(ctx, 1)
+
+	assertEqual("playing", ctx.round.phase)
+	assertTrue(math.abs(ctx.round.humansDeadTimer - 1) < 0.05)
+end)
+
+test("the round ends as a draw when the humans-dead timeout expires", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+	tick(ctx, ctx.config.round.humansDeadTimeout + 0.1)
+
+	assertEqual("roundOver", ctx.round.phase)
+	assertTrue(ctx.round.result.draw)
+	assertEqual(0, ctx.round.score[2])
+	assertEqual(0, ctx.round.score[3])
+end)
+
+test("an AI winning before the timeout wins as usual", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+	tick(ctx, 1)
+	kill(ctx, ctx.pools.ships[3])
+	tick(ctx, 0.1)
+
+	assertEqual("roundOver", ctx.round.phase)
+	assertEqual(2, ctx.round.result.winner)
+	assertEqual(1, ctx.round.score[2])
+end)
+
+test("an all-AI match never starts the humans-dead timer", function()
+	local ctx = timeoutCtx(allAis())
+	tick(ctx, ctx.config.round.humansDeadTimeout * 3)
+
+	assertEqual("playing", ctx.round.phase)
+	assertEqual(nil, ctx.round.humansDeadTimer)
+end)
+
+test("the drawn round replays with the humans-dead timer cleared", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+	tick(ctx, ctx.config.round.humansDeadTimeout + 0.1)
+	tick(ctx, holdSeconds())
+
+	assertEqual("playing", ctx.round.phase)
+	assertEqual(nil, ctx.round.result)
+	assertEqual(nil, ctx.round.humansDeadTimer)
+end)
+
+-- Fast-forward: the app runs stepsPerFrame Match.steps per frame.
+test("while a human lives the sim runs one step per frame", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[2])
+
+	assertEqual(1, RoundSystem.stepsPerFrame(ctx))
+end)
+
+test("once every human is dead the sim fast-forwards at the configured steps", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+
+	assertEqual(ctx.config.round.fastForwardSteps, RoundSystem.stepsPerFrame(ctx))
+	assertTrue(ctx.config.round.fastForwardSteps > 1)
+end)
+
+test("an all-AI match never fast-forwards", function()
+	local ctx = timeoutCtx(allAis())
+
+	assertEqual(1, RoundSystem.stepsPerFrame(ctx))
+end)
+
+test("a level that never spawned two ships never fast-forwards", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	ctx.pools.ships = {}
+
+	assertEqual(1, RoundSystem.stepsPerFrame(ctx))
+end)
+
+test("normal speed returns once the round locks, through the card and the reset", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+	tick(ctx, ctx.config.round.humansDeadTimeout + 0.1)
+	assertEqual("roundOver", ctx.round.phase)
+	assertEqual(1, RoundSystem.stepsPerFrame(ctx))
+
+	tick(ctx, holdSeconds())
+	assertEqual("playing", ctx.round.phase)
+	assertEqual(1, RoundSystem.stepsPerFrame(ctx))
+end)
+
+-- Match.advance: one frame of the app (and the test harness).
+local DT = 1 / 60
+
+test("a frame with a human alive runs one step", function()
+	local ctx = timeoutCtx(humanPlusAis())
+
+	assertEqual(1, Match.advance(ctx, DT))
+	assertNear(DT, ctx.time, 1e-12)
+end)
+
+test("a frame with every human dead runs the fast-forward steps at the normal dt", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+
+	local steps = Match.advance(ctx, DT)
+	assertEqual(ctx.config.round.fastForwardSteps, steps)
+	assertEqual(DT, ctx.dt)
+	assertNear(steps * DT, ctx.time, 1e-12)
+end)
+
+test("a fast-forwarded frame stops at the step that locks the round", function()
+	local ctx = timeoutCtx(humanPlusAis())
+	kill(ctx, ctx.pools.ships[1])
+	kill(ctx, ctx.pools.ships[3])
+
+	assertEqual(1, Match.advance(ctx, DT))
+	assertEqual("roundOver", ctx.round.phase)
 end)

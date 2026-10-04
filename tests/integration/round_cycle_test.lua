@@ -87,3 +87,61 @@ test("a projectile in flight at reset is gone and the player can fire again at o
 	FrameStepper.step(game, 1)
 	assertEqual(1, #ctx.pools.projectiles, "expected the fresh ship to fire")
 end)
+
+-- Fast-forward: a human (slot 1) and two AIs; the human dies at once, so the
+-- AIs play out the round on their own. `steps` overrides
+-- config.round.fastForwardSteps (1 = normal speed).
+local function humanThenAisConfig(steps)
+	local cfg = setmetatable({ round = {} }, { __index = Config })
+	for key, value in pairs(Config.round) do
+		cfg.round[key] = value
+	end
+	cfg.round.fastForwardSteps = steps
+	return cfg
+end
+
+local function playOutAfterHumanDies(steps)
+	local level = roundLevel()
+	level.worlds[1].mass = 40000
+	local roster = {
+		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
+		{ color = 2, binding = { kind = "ai", level = "hard" } },
+		{ color = 3, binding = { kind = "ai", level = "hard" } },
+	}
+	local game = GameHarness.startMatch(level, { seed = 7, roster = roster, config = humanThenAisConfig(steps) })
+	local ctx = game.ctx
+	killShip(ctx, ctx.pools.ships[1])
+	local frames = 0
+	local limit = FrameStepper.secondsToFrames(Config.round.humansDeadTimeout) + 60
+	while ctx.round.phase == "playing" and frames < limit do
+		FrameStepper.step(game, 1)
+		frames = frames + 1
+	end
+	return ctx, frames, game
+end
+
+test("with every human dead the AIs reach the same result, sooner", function()
+	local normal, normalFrames = playOutAfterHumanDies(1)
+	local fast, fastFrames = playOutAfterHumanDies(4)
+
+	assertEqual("roundOver", normal.round.phase)
+	assertEqual("roundOver", fast.round.phase)
+	assertEqual(normal.round.result.winner, fast.round.result.winner)
+	assertEqual(normal.round.result.draw, fast.round.result.draw)
+	assertEqual(normal.time, fast.time)
+	for slot = 1, 3 do
+		assertEqual(normal.round.score[slot], fast.round.score[slot])
+	end
+	assertEqual(math.ceil(normalFrames / 4), fastFrames)
+end)
+
+test("after the fast-forwarded round resets, the match is back to one step a frame", function()
+	local ctx, _, game = playOutAfterHumanDies(4)
+	endRound(game)
+	assertEqual("playing", ctx.round.phase)
+	assertFalse(ctx.pools.ships[1].dead, "the human should be back")
+
+	local before = ctx.time
+	FrameStepper.step(game, 1)
+	assertNear(1 / 60, ctx.time - before, 1e-9)
+end)

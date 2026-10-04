@@ -4,6 +4,9 @@
 --     winner = nil | slot,   -- the match winner, set with matchOver
 --     result = nil | { winner = slot } | { draw = true },   -- locked once set
 --     timer = seconds since the result locked,
+--     humansDeadTimer = nil | sim seconds since the last human died (ctx.dt
+--       summed, so it matches real time at 1x speed); set only while the
+--       roster has a human and none is alive; cleared on respawn,
 --     score = { [slot] = wins, ... one per roster slot } }
 -- The result locks the first step at most one ship is alive. After
 -- config.round.endDelay + cardDuration seconds (live scene, then the score
@@ -11,10 +14,12 @@
 -- removes it, docs/memory/round-reset-through-sweep.md) and fresh tank ships
 -- spawn in the same step. A lock that gives a winner config.round.winsToWin
 -- wins goes straight to "matchOver": no card, no respawn, no further rounds
--- (the sim keeps running, ignoring round rules).
+-- (the sim keeps running, ignoring round rules). If no human is alive for
+-- config.round.humansDeadTimeout sim seconds the round locks as a draw.
 local Bodies = require("src.sim.bodies")
 local ShipSystem = require("src.game.systems.ship_system")
 local SpawnPoints = require("src.game.spawn_points")
+local Roster = require("src.game.roster")
 
 local RoundSystem = {}
 
@@ -35,6 +40,19 @@ local function aliveShips(ctx)
 		end
 	end
 	return alive
+end
+
+-- True when the roster has a human slot and no living ship belongs to one.
+local function humansAllDead(ctx, alive)
+	if #Roster.humans(ctx.roster) == 0 then
+		return false
+	end
+	for _, ship in ipairs(alive) do
+		if Roster.isHuman(ctx.roster, ship.player) then
+			return false
+		end
+	end
+	return true
 end
 
 local function killAll(ctx, pool)
@@ -92,6 +110,16 @@ function RoundSystem.matchOver(round)
 	return round.phase == "matchOver"
 end
 
+-- Match.steps the app runs per frame: config.round.fastForwardSteps while a
+-- round is playing and no human is alive (never in an all-AI roster), else 1.
+-- Pure; read once at the start of each frame.
+function RoundSystem.stepsPerFrame(ctx)
+	if ctx.round.phase == "playing" and #ctx.pools.ships >= 2 and humansAllDead(ctx, aliveShips(ctx)) then
+		return ctx.config.round.fastForwardSteps or 1
+	end
+	return 1
+end
+
 function RoundSystem.update(ctx)
 	local round = ctx.round
 	if round.phase == "matchOver" then
@@ -104,8 +132,18 @@ function RoundSystem.update(ctx)
 		end
 		local alive = aliveShips(ctx)
 		if #alive > 1 then
-			return
+			if not humansAllDead(ctx, alive) then
+				round.humansDeadTimer = nil
+				return
+			end
+			round.humansDeadTimer = (round.humansDeadTimer or 0) + ctx.dt
+			if round.humansDeadTimer < ctx.config.round.humansDeadTimeout then
+				return
+			end
+			-- Timeout: lock as a draw with the AIs still standing.
+			alive = {}
 		end
+		round.humansDeadTimer = nil
 		round.phase = "roundOver"
 		round.timer = 0
 		if #alive == 1 then

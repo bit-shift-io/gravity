@@ -5,8 +5,12 @@
 -- line sits inside the tank's turret limit is ranked cheaply by how near
 -- its distance is to the wanted range; only the best config.ai.vantageSolves
 -- pairs are then solved with src/game/ai/skills/aim.lua, in rank order, and
--- the first whose solved aim the turret can reach wins. Pure and
--- deterministic -- no rng, no `love.*` (docs/ARCHITECTURE.md "Layers").
+-- the first whose solved aim the turret can reach wins. The concealed
+-- option (Artillery's pick, docs/CONTEXT.md "Concealed position") keeps
+-- only pairs a world blocks the direct line of, and widens the turret
+-- pre-check by the aim search's spread (config.ai.aimSpread), since a lob
+-- leaves well off the direct line. Pure and deterministic -- no rng, no
+-- `love.*` (docs/ARCHITECTURE.md "Layers").
 local Aim = require("src.game.ai.skills.aim")
 local Collide = require("src.sim.collide")
 local SpawnPoints = require("src.game.spawn_points")
@@ -33,24 +37,34 @@ end
 
 local STAND = standHeight()
 
+-- True when no world crosses the straight line from `from` to `target`
+-- (each `{ x, y }`).
+function Vantage.inSight(worlds, from, target)
+	return Collide.checkProjectileWorlds(from.x, from.y, target.x, target.y, worlds) == nil
+end
+
 -- `targets` is a list of enemies `{ x, y, radius }`; `opts` is
--- `{ dt, horizon, range, points? }`: the solve's step and seconds, the
+-- `{ dt, horizon, range, points?, concealed? }`: the solve's step and seconds, the
 -- wanted distance to the enemy (px), and the candidate surface points
 -- (each `{ x, y, normal, world }`, already cleared -- a generated level's
 -- level.spawnCandidates), defaulting to SpawnPoints.cleared(worlds, config).
+-- `concealed` picks only points with no direct line to the enemy, solving
+-- up to config.ai.concealedSolves of them.
 -- Returns the picked point (one of the candidates: `{ x, y, normal, world }`)
 -- and the enemy it has the shot at, or nil when none of the solved
 -- candidates has one.
 function Vantage.pick(sim, worlds, targets, config, opts)
 	local points = opts.points or SpawnPoints.cleared(worlds, config)
 	local limit = config.tank.turretLimit
+	local reach = opts.concealed and limit + config.ai.aimSpread or limit
 	local pairs_ = {}
 	for i, p in ipairs(points) do
 		local facing = atan2(p.normal.x, -p.normal.y)
 		local sx, sy = p.x + p.normal.x * STAND, p.y + p.normal.y * STAND
 		for j, target in ipairs(targets) do
 			local dx, dy = target.x - sx, target.y - sy
-			if math.abs(wrap(atan2(dx, -dy) - facing)) <= limit then
+			local hidden = not opts.concealed or not Vantage.inSight(worlds, { x = sx, y = sy }, target)
+			if hidden and math.abs(wrap(atan2(dx, -dy) - facing)) <= reach then
 				local dist = math.sqrt(dx * dx + dy * dy)
 				pairs_[#pairs_ + 1] = {
 					point = p, target = target, facing = facing, x = sx, y = sy,
@@ -67,7 +81,8 @@ function Vantage.pick(sim, worlds, targets, config, opts)
 	end)
 
 	local muzzle = config.tank.barrelLength
-	for k = 1, math.min(#pairs_, config.ai.vantageSolves) do
+	local solves = opts.concealed and config.ai.concealedSolves or config.ai.vantageSolves
+	for k = 1, math.min(#pairs_, solves) do
 		local pair = pairs_[k]
 		local shooter = { x = pair.x, y = pair.y, vx = 0, vy = 0, muzzle = muzzle }
 		local solution = Aim.solve(sim, worlds, shooter, pair.target, config, { dt = opts.dt, horizon = opts.horizon })
