@@ -1,4 +1,4 @@
--- Settings codec: the roster, sound, postMode, and fullscreen
+-- Settings codec: the roster, sound, postMode, fullscreen, and lineThickness
 -- as a small line-based text (pure -- no `love.*`, no file access;
 -- src/app/settings_store.lua does the I/O).
 --   gravity-settings 1
@@ -6,12 +6,14 @@
 --   sound 0|1
 --   postMode off|glow|glowCrt
 --   fullscreen 0|1
+--   lineThickness <step of LineWidth.STEPS>
 -- Setup has six rows (one per palette colour); older files saved fewer slots
--- and are padded with empty rows on load. Missing sound, postMode, or
--- fullscreen lines load their defaults. The seed is never encoded.
+-- and are padded with empty rows on load. Missing sound, postMode,
+-- fullscreen, or lineThickness lines load their defaults. The seed is never encoded.
 -- decode never errors: garbage gives defaults.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
+local LineWidth = require("src.game.line_width")
 
 local SettingsCodec = {}
 
@@ -40,6 +42,8 @@ function SettingsCodec.encode(settings)
 	lines[#lines + 1] = "sound " .. ((settings.sound ~= false) and "1" or "0")
 	lines[#lines + 1] = "postMode " .. (settings.postMode or Config.post.defaultMode)
 	lines[#lines + 1] = "fullscreen " .. ((settings.fullscreen == true) and "1" or "0")
+	local thickness = LineWidth.isValid(settings.lineThickness) and settings.lineThickness or LineWidth.DEFAULT
+	lines[#lines + 1] = "lineThickness " .. thickness
 	return table.concat(lines, "\n") .. "\n"
 end
 
@@ -170,13 +174,15 @@ function SettingsCodec.decode(text, gamepads)
 			roster = Roster.defaultSetup(),
 			sound = true,
 			postMode = Config.post.defaultMode,
-			fullscreen = false
+			fullscreen = false,
+			lineThickness = LineWidth.DEFAULT,
 		}
 	end
 	local roster = {}
 	local sound = true
 	local postMode = Config.post.defaultMode
 	local fullscreen = false
+	local lineThickness = LineWidth.DEFAULT
 
 	for line in text:gmatch("[^\n]+") do
 		local color, kind, arg = line:match("^slot (%d+) (%a+) (%w+)$")
@@ -213,13 +219,19 @@ function SettingsCodec.decode(text, gamepads)
 			if fullscreenValue then
 				fullscreen = fullscreenValue == "1"
 			end
+
+			local thicknessValue = tonumber(line:match("^lineThickness ([%d%.]+)$"))
+			if LineWidth.isValid(thicknessValue) then
+				lineThickness = thicknessValue
+			end
 		end
 	end
 	return {
 		roster = SettingsCodec.repair(roster, gamepads),
 		sound = sound,
 		postMode = postMode,
-		fullscreen = fullscreen
+		fullscreen = fullscreen,
+		lineThickness = lineThickness,
 	}
 end
 

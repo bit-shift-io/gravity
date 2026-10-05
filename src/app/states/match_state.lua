@@ -23,6 +23,7 @@ local LevelGen = require("src.game.level_gen")
 local Config = require("src.game.config")
 local RoundSystem = require("src.game.systems.round_system")
 local Audio = require("src.app.audio")
+local LineWidth = require("src.game.line_width")
 
 local MatchState = {}
 
@@ -59,6 +60,9 @@ function MatchState.drawWorld(ctx, centreX, centreY, scale)
 	love.graphics.translate(centreX, centreY)  -- Move the camera centre to the target centre
 	love.graphics.scale(scale)
 	love.graphics.translate(-ctx.camera.x, -ctx.camera.y)  -- Apply camera position
+	-- One width for every outline in the world (ships, tanks, asteroids,
+	-- worlds), so they always match. Renderers inherit it.
+	love.graphics.setLineWidth(LineWidth.world(scale, ctx.lineThickness))
 
 	WorldsRender.draw(ctx.level)
 	BoundaryRender.draw(ctx)
@@ -71,6 +75,7 @@ function MatchState.drawWorld(ctx, centreX, centreY, scale)
 	-- shares the camera transform.
 	DebugOverlay.draw(ctx)
 
+	love.graphics.setLineWidth(1) -- HUD and menus expect the default
 	love.graphics.pop()
 end
 
@@ -108,6 +113,7 @@ function State:update(dt)
 end
 
 function State:draw()
+	self.ctx.lineThickness = self.flow.settings.lineThickness
 	MatchState.draw(self.ctx, self.flow.stack:top() == self)
 end
 

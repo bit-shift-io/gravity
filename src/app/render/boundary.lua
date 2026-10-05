@@ -7,7 +7,7 @@
 local BoundaryRender = {}
 
 local COLOR = { 1, 0.2, 0.2, 1 }  -- Bright red for visibility
-local LINE_WIDTH = 3
+local WIDTH_FACTOR = 3  -- times the world line width MatchState.drawWorld set
 
 -- The circle is drawn exactly where the sim kills ships: hardBoundary is the
 -- total radius from the origin (src/sim/step.lua, src/sim/collide.lua).
@@ -26,10 +26,11 @@ function BoundaryRender.draw(ctx)
 	local radius = BoundaryRender.radius(bf)
 
 	love.graphics.setColor(COLOR)
-	love.graphics.setLineWidth(LINE_WIDTH)
+	local worldWidth = love.graphics.getLineWidth()
+	love.graphics.setLineWidth(worldWidth * WIDTH_FACTOR)
 	-- Draw the boundary circle - it's large (radius 1280) so you'll see an arc
 	love.graphics.circle("line", 0, 0, radius)
-	love.graphics.setLineWidth(1)
+	love.graphics.setLineWidth(worldWidth)
 	love.graphics.setColor(1, 1, 1, 1)
 end
 

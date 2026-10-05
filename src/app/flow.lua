@@ -5,6 +5,7 @@
 -- picks a fresh one (the setup seed field starts with it). opts.intro plays the title intro animation on launch. opts.quit is called when the player quits from the title.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
+local LineWidth = require("src.game.line_width")
 local StateStack = require("src.app.states.state_stack")
 local TitleState = require("src.app.states.title_state")
 local MatchState = require("src.app.states.match_state")
@@ -23,7 +24,7 @@ function Flow.new(opts)
 	-- field text ("" is random). It outlives matches, so setup
 	-- reopens as it was left. opts.roster seeds the six setup rows (default otherwise);
 	-- opts.onSettingsChanged(settings) fires after every setup edit;
--- opts.sound / opts.postMode / opts.fullscreen seed the saved display and audio
+-- opts.sound / opts.postMode / opts.fullscreen / opts.lineThickness seed the saved display and audio
 -- fields (sound defaults on); the settings screen edits them.
 -- opts.onStart(settings) fires when Start launches a match (not on rematch).
 	self.settings = {
@@ -32,6 +33,7 @@ function Flow.new(opts)
 		sound = opts.sound ~= false,
 		postMode = opts.postMode or Config.post.defaultMode,
 		fullscreen = opts.fullscreen or false,
+		lineThickness = opts.lineThickness or LineWidth.DEFAULT,
 	}
 	-- opts.setFullscreen(on) switches the real window; opts.isFullscreen() reports it.
 	-- Both are absent headless, so tests and e2e never touch a window.

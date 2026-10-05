@@ -74,6 +74,7 @@ function love.load(args)
 		sound = saved.sound,
 		postMode = saved.postMode,
 		fullscreen = saved.fullscreen,
+		lineThickness = saved.lineThickness,
 		setFullscreen = Compat.setFullscreen,
 		isFullscreen = Compat.isFullscreen,
 		onStart = SettingsStore.save,

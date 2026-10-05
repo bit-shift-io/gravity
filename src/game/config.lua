@@ -73,7 +73,8 @@ local Config = {
 		turretSpeed = 1,
 		barrelLength = 12,
 		-- Half the barrel's thickness in px; the barrel merges into the dome outline.
-		barrelHalfWidth = 1.5,
+		-- Wide enough that its two outline edges stay apart at thick line widths.
+		barrelHalfWidth = 2.5,
 		-- Dome local-space vertices (flush base at y=8).
 		dome = {
 			{ x = -8, y = 8 },

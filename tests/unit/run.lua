@@ -12,6 +12,7 @@ local defaultTestFiles = {
 	"tests/unit/audio_test.lua",
 	"tests/unit/roster_test.lua",
 	"tests/unit/settings_codec_test.lua",
+	"tests/unit/line_width_test.lua",
 	"tests/unit/match_test.lua",
 	"tests/unit/spawn_points_test.lua",
 	"tests/unit/level_gen_test.lua",

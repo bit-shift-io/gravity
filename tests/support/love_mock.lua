@@ -86,6 +86,7 @@ function LoveMock.new(files)
 		polygon = function() end,
 		circle = function() end,
 		setLineWidth = function() end,
+		getLineWidth = function() return 1 end,
 		newFont = function()
 			return {
 				getWidth = function()

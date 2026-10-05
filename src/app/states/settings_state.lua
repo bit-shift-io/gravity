@@ -1,10 +1,11 @@
--- Settings screen: value rows (SOUND, POST FX, FULLSCREEN) and BACK, pushed over the title. A row's
+-- Settings screen: value rows (SOUND, POST FX, FULLSCREEN, LINES) and BACK, pushed over the title. A row's
 -- confirm and left/right all flip it, applying and saving at once through
 -- flow:settingsChanged(). Add a row by appending to the list in `rows`.
 local MenuNav = require("src.app.menu.menu_nav")
 local MenuRender = require("src.app.render.menu")
 local Audio = require("src.app.audio")
 local PostMode = require("src.app.post.post_mode")
+local LineWidth = require("src.game.line_width")
 
 local SettingsState = {}
 SettingsState.__index = SettingsState
@@ -51,15 +52,24 @@ function SettingsState:toggleFullscreen()
 	self.flow:settingsChanged()
 end
 
+function SettingsState:cycleLineThickness()
+	local settings = self.flow.settings
+	settings.lineThickness = LineWidth.next(settings.lineThickness)
+	self:refresh()
+	self.flow:settingsChanged()
+end
+
 -- Rebuilds the row labels from the current settings.
 function SettingsState:refresh()
 	local toggle = function() self:toggleSound() end
 	local cyclePost = function() self:cyclePostMode() end
 	local toggleFullscreen = function() self:toggleFullscreen() end
+	local cycleLines = function() self:cycleLineThickness() end
 	self.items = {
 		{ label = "SOUND  " .. onOff(self.flow.settings.sound), action = toggle, adjust = toggle },
 		{ label = "POST FX  " .. POST_LABELS[self.flow.settings.postMode], action = cyclePost, adjust = cyclePost },
 		{ label = "FULLSCREEN  " .. onOff(self.flow.settings.fullscreen), action = toggleFullscreen, adjust = toggleFullscreen },
+		{ label = "LINES  " .. string.format("%gX", self.flow.settings.lineThickness), action = cycleLines, adjust = cycleLines },
 		{ label = "BACK", sound = "back", action = self.onBack },
 	}
 end
