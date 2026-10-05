@@ -48,6 +48,22 @@ test("Logo.place supports edge-centred anchors", function()
 	assertEqual(Logo.margin(1000, 500), y)
 end)
 
+test("Logo.stack puts the subtitle centred one gap below the title", function()
+	local box = Logo.stack(400, 100, 200, 40)
+	assertEqual(400, box.width)
+	assertEqual(0, box.titleX)
+	assertEqual(100, box.subtitleX)
+	assertEqual(110, box.subtitleY)
+	assertEqual(150, box.height)
+end)
+
+test("Logo.stack widens the box and centres the title when the subtitle is wider", function()
+	local box = Logo.stack(200, 100, 400, 40)
+	assertEqual(400, box.width)
+	assertEqual(100, box.titleX)
+	assertEqual(0, box.subtitleX)
+end)
+
 local function entry(overrides)
 	local e = {
 		name = "capsule",

@@ -1,5 +1,7 @@
 # GRAV//TY
 
+Steam store title: **Gravity: Orbital Arena**. The in-game logo stays GRAV//TY; the Steam art adds "ORBITAL ARENA" as a small line beneath it.
+
 Local vector-style space duel for 2–6 players (1–4 human, the rest AI) with polygon worlds and gravity. Built with LÖVE (11.5 and 12) and LuaJIT.
 
 See `docs/ARCHITECTURE.md` for the architecture and `docs/CONTEXT.md` for the glossary.
