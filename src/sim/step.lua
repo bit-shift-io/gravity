@@ -26,6 +26,7 @@ local Collide = require("src.sim.collide")
 local Sim = {}
 
 local ZERO = { x = 0, y = 0 }
+local EMPTY = {}
 
 -- Gravity + integrate only. Snapshots every live body's pre-integration
 -- position (body.prevX/prevY) for the swept projectile-vs-world test in
@@ -35,7 +36,10 @@ local ZERO = { x = 0, y = 0 }
 function Sim.integrate(sim, dt, config)
 	local G = config.gravity.G
 	local eps = config.gravity.softening
-	local pairwiseAccel = Gravity.pairwise(sim.bodies.slots, G, eps, config.gravity.falloff)
+	local pairwiseAccel = EMPTY
+	if config.gravity.pairwise ~= false then
+		pairwiseAccel = Gravity.pairwise(sim.bodies.slots, G, eps, config.gravity.falloff)
+	end
 
 	for _, body in pairs(sim.bodies.slots) do
 		if not body.dead then

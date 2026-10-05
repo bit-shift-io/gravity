@@ -415,6 +415,10 @@ local Config = {
 		falloff = 1,
 		G = 1,
 		softening = 20,
+		-- Experiment switch: false = only worlds (baked field) and the
+		-- boundary exert gravity; ships, asteroids and projectiles no longer
+		-- pull on each other (skips Gravity.pairwise in Sim.integrate).
+		pairwise = false,
 	},
 	-- The static gravity field grid (src/sim/field.lua).
 	field = {
