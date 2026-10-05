@@ -7,3 +7,4 @@ tests/screenshots/
 tmp/
 .scratch/
 steam-assets/
+build/
