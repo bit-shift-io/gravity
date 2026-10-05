@@ -30,25 +30,30 @@ local function write(path, text)
 	f:close()
 end
 
-local function depot_script(platform, depot_id)
-	return table.concat({
+-- One depot holds every platform folder side by side. Mapping the folders by name keeps build/cache,
+-- build/steam and the loose gravity.love off players' disks; the .love inside each platform folder stays.
+local function depot_script(depot_id)
+	local lines = {
 		'"DepotBuildConfig"',
 		"{",
 		'	"DepotID" "' .. depot_id .. '"',
-		'	"ContentRoot" "' .. BUILD .. "/" .. platform .. '"',
-		'	"FileMapping"',
-		"	{",
-		'		"LocalPath" "*"',
-		'		"DepotPath" "."',
-		'		"Recursive" "1"',
-		"	}",
-		"}",
-		"",
-	}, "\n")
+		'	"ContentRoot" "' .. BUILD .. '"',
+	}
+	for _, platform in ipairs(PLATFORMS) do
+		lines[#lines + 1] = '	"FileMapping"'
+		lines[#lines + 1] = "	{"
+		lines[#lines + 1] = '		"LocalPath" "' .. platform .. '/*"'
+		lines[#lines + 1] = '		"DepotPath" "' .. platform .. '"'
+		lines[#lines + 1] = '		"Recursive" "1"'
+		lines[#lines + 1] = "	}"
+	end
+	lines[#lines + 1] = "}"
+	lines[#lines + 1] = ""
+	return table.concat(lines, "\n")
 end
 
 local function app_script()
-	local lines = {
+	return table.concat({
 		'"AppBuild"',
 		"{",
 		'	"AppID" "' .. steam.app_id .. '"',
@@ -58,22 +63,17 @@ local function app_script()
 		'	"SetLive" "' .. steam.branch .. '"',
 		'	"Depots"',
 		"	{",
-	}
-	for _, platform in ipairs(PLATFORMS) do
-		lines[#lines + 1] = '		"' .. steam.depots[platform] .. '" "' .. SCRIPTS .. "/depot_" .. steam.depots[platform] .. '.vdf"'
-	end
-	lines[#lines + 1] = "	}"
-	lines[#lines + 1] = "}"
-	lines[#lines + 1] = ""
-	return table.concat(lines, "\n")
+		'		"' .. steam.depot .. '" "' .. SCRIPTS .. "/depot_" .. steam.depot .. '.vdf"',
+		"	}",
+		"}",
+		"",
+	}, "\n")
 end
 
 -- A dry run is for checking the generated scripts, so it tolerates placeholders.
 if not dry_run then
 	check_id("steam.app_id", steam.app_id)
-	for _, platform in ipairs(PLATFORMS) do
-		check_id("steam.depots." .. platform, steam.depots[platform])
-	end
+	check_id("steam.depot", steam.depot)
 end
 
 for _, platform in ipairs(PLATFORMS) do
@@ -83,9 +83,9 @@ for _, platform in ipairs(PLATFORMS) do
 end
 
 run("mkdir -p " .. q(SCRIPTS .. "/output"))
-for _, platform in ipairs(PLATFORMS) do
-	write(SCRIPTS .. "/depot_" .. steam.depots[platform] .. ".vdf", depot_script(platform, steam.depots[platform]))
-end
+-- Scripts from an earlier layout or app id would otherwise sit beside the new ones.
+run("rm -f " .. q(SCRIPTS) .. "/depot_*.vdf " .. q(SCRIPTS) .. "/app_build_*.vdf")
+write(SCRIPTS .. "/depot_" .. steam.depot .. ".vdf", depot_script(steam.depot))
 local app_path = SCRIPTS .. "/app_build_" .. steam.app_id .. ".vdf"
 write(app_path, app_script())
 print("wrote Steam scripts to " .. SCRIPTS)

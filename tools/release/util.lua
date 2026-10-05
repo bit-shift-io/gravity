@@ -35,6 +35,12 @@ function Util.exists(path)
 	return Util.try("test -e " .. Util.quote(path))
 end
 
+-- SHA-256 of a file as lower-case hex; shasum on macOS, sha256sum on Linux.
+function Util.sha256(path)
+	local tool = Util.try("command -v sha256sum >/dev/null 2>&1") and "sha256sum" or "shasum -a 256"
+	return (Util.capture(tool .. " " .. Util.quote(path)):match("^(%x+)"))
+end
+
 function Util.fail(message)
 	io.stderr:write("release failed: " .. message .. "\n")
 	os.exit(1)

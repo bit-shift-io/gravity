@@ -13,12 +13,18 @@ local CACHE = BUILD .. "/cache"
 local LOVE_FILE = BUILD .. "/" .. config.exe_name .. ".love"
 
 local function download(platform)
-	local url = config.runtimes[platform].url:format(config.love_version, config.love_version)
+	local runtime = config.runtimes[platform]
+	local url = runtime.url:format(config.love_version, config.love_version)
 	local path = CACHE .. "/" .. url:match("[^/]+$")
 	if not Util.exists(path) then
 		run("mkdir -p " .. q(CACHE))
 		run("curl -fL --retry 3 -o " .. q(path .. ".part") .. " " .. q(url))
 		run("mv " .. q(path .. ".part") .. " " .. q(path))
+	end
+	-- Checked on every use, so a bad cached file fails too; delete build/cache to refetch it.
+	local actual = Util.sha256(path)
+	if actual ~= runtime.sha256 then
+		Util.fail(("%s runtime does not match its pinned SHA-256\n  expected %s\n  actual   %s\n  delete %s to refetch, or update tools/release/config.lua if love_version changed"):format(platform, runtime.sha256, actual, path))
 	end
 	return path
 end
@@ -91,6 +97,18 @@ function builders.macos(out)
 		run("codesign --force --deep -s - " .. q(app))
 	else
 		print("warning: codesign not found; the macOS bundle will not launch on Apple Silicon")
+	end
+
+	-- The macOS runtime is the only one that can run on the build machine, so it gets a smoke test:
+	-- the edited, re-signed bundle must start and report the pinned LÖVE version.
+	if Util.capture("uname -s") == "Darwin" then
+		local reported = Util.capture(q(app .. "/Contents/MacOS/love") .. " --version 2>&1")
+		if not reported:find("LOVE " .. config.love_version, 1, true) then
+			Util.fail("macOS bundle did not report LOVE " .. config.love_version .. " (got: " .. reported .. ")")
+		end
+		print("macOS bundle runs: " .. reported)
+	else
+		print("skipping the macOS bundle smoke test: needs a Mac")
 	end
 end
 

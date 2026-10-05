@@ -4,7 +4,8 @@
 #   tools/release/release.sh upload [--dry-run]                 Steam upload of build/
 #   tools/release/release.sh all                                tests, build everything, then upload
 # build and all abort if any test tier fails; SKIP_TESTS=1 skips them (local packaging checks only).
-# Steam launch options to configure in Steamworks: windows gravity.exe, macOS gravity.app, linux gravity.sh
+# One Steam depot (OS: All) holds all three platforms. Launch options to configure in Steamworks:
+#   windows windows/gravity.exe, macOS macos/gravity.app, linux linux/gravity.sh
 set -e
 cd "$(dirname "$0")/../.."
 
