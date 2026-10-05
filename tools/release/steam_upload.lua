@@ -1,6 +1,6 @@
 -- Generates the Steam build scripts for build/<platform>/ and uploads them with steamcmd.
 --   luajit tools/release/steam_upload.lua [--dry-run]
--- Env: STEAMCMD (path to steamcmd; default: on PATH, else downloaded to build/cache), STEAM_USER (build account login).
+-- Env: STEAMCMD (path to steamcmd; default: on PATH, else downloaded to build/cache), STEAM_USER (build account login; asked for if unset).
 -- steamcmd asks for the password and Steam Guard code itself; they never pass through here.
 local Util = require("tools.release.util")
 local config = require("tools.release.config")
@@ -119,6 +119,11 @@ local steamcmd = os.getenv("STEAMCMD")
 if not steamcmd or steamcmd == "" then steamcmd = Util.capture("command -v steamcmd") end
 if steamcmd == "" then steamcmd = download_steamcmd() end
 local user = os.getenv("STEAM_USER")
-if not user or user == "" then Util.fail("set STEAM_USER to the Steam build account login") end
+if not user or user == "" then
+	io.write("Steam build account login: ")
+	io.flush()
+	user = (io.read("*l") or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+if user == "" then Util.fail("no Steam user given; type one at the prompt or set STEAM_USER") end
 
 run(q(steamcmd) .. " +login " .. q(user) .. " +run_app_build " .. q(app_path) .. " +quit")
