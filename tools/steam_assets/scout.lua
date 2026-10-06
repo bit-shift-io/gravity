@@ -92,6 +92,10 @@ function Scout.start(args)
 		end
 	end
 
+	-- Typing a key also fires love.textinput, which main.lua forwards to a flow
+	-- scout never builds.
+	function love.textinput() end
+
 	function love.keypressed(key)
 		if key == "escape" then
 			love.event.quit(0)
