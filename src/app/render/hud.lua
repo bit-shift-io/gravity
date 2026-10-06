@@ -28,7 +28,7 @@ Hud.BLOCK_HEIGHT = MARGIN + BAR_HEIGHT + 8 + CHARGE_BAR_HEIGHT + 12 + PIP_RADIUS
 -- Up to four blocks keep the corner layout. Five or six squeeze into one
 -- row along the top: narrower bars and a small gap so each block fits.
 local MAX_CORNER_BLOCKS = 4
-local ROW_GAP = 8
+local ROW_GAP = 20
 
 local function rowBarWidth(count)
 	local slot = (SCREEN_WIDTH - 2 * MARGIN - (count - 1) * ROW_GAP) / count
