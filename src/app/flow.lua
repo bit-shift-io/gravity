@@ -42,6 +42,8 @@ function Flow.new(opts)
 	self.onSettingsChanged = opts.onSettingsChanged
 	self.onStart = opts.onStart
 	self.onQuit = opts.quit
+	-- opts.onScreenshot() fires when a state asks for a screenshot (match, pause).
+	self.onScreenshot = opts.onScreenshot
 	self.stack = StateStack.new()
 	self.stack:push(TitleState.new(self, { intro = opts.intro }))
 	return self
@@ -115,6 +117,12 @@ end
 function Flow:quit()
 	if self.onQuit then
 		self.onQuit()
+	end
+end
+
+function Flow:screenshot()
+	if self.onScreenshot then
+		self.onScreenshot()
 	end
 end
 

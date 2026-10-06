@@ -24,7 +24,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Player
 - **Definition:** One participant in a match, human or AI, identified by its slot index (1–6).
-- **Boundary:** `ship.player` is the slot index. At most 4 humans and 6 players per match.
+- **Boundary:** `ship.player` is the slot index. At most 6 players per match, any of them human.
 
 ## Roster
 - **Definition:** The ordered list of slots for a match, each with a colour and a binding.

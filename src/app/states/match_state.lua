@@ -120,6 +120,8 @@ end
 function State:keypressed(key)
 	if key == "escape" then
 		self.flow:pause()
+	elseif key == "p" then
+		self.flow:screenshot()
 	elseif key == "r" then
 		self.flow:rematch(self)
 	elseif (key == "return" or key == "kpenter" or key == "space") and RoundSystem.matchOver(self.ctx.round) then

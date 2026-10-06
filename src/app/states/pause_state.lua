@@ -7,7 +7,7 @@ local PauseState = {}
 PauseState.__index = PauseState
 
 function PauseState.new(flow)
-	local self = setmetatable({ name = "pause", overlay = true, selected = 1, stick = MenuNav.newStick() }, PauseState)
+	local self = setmetatable({ name = "pause", flow = flow, overlay = true, selected = 1, stick = MenuNav.newStick() }, PauseState)
 	self.items = {
 		{ label = "RESUME", sound = "back", action = function() flow.stack:pop() end },
 		{ label = "SETTINGS", sound = "forward", action = function() flow:openSettings() end },
@@ -18,6 +18,10 @@ function PauseState.new(flow)
 end
 
 function PauseState:keypressed(key)
+	if key == "p" then
+		self.flow:screenshot()
+		return
+	end
 	MenuNav.apply(self, MenuNav.fromKey(key))
 end
 

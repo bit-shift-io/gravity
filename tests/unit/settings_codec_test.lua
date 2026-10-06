@@ -157,11 +157,19 @@ test("duplicate keyboard layouts and pads are rebound so each device binds one s
 	assertValid(settings, { 1 })
 end)
 
-test("more than the maximum humans are demoted to AI", function()
-	local settings = SettingsCodec.decode(
-		encodeSlots("slot 1 keyboard wasd", "slot 2 keyboard arrows", "slot 3 keyboard ijkl", "slot 4 gamepad 1", "slot 5 gamepad 2"), { 1, 2 })
-	assertEqual(6, #settings.roster)
-	assertValid(settings, { 1, 2 })
+test("a six-human roster round-trips and validates", function()
+	local roster = {
+		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
+		{ color = 2, binding = { kind = "keyboard", layout = "arrows" } },
+		{ color = 3, binding = { kind = "keyboard", layout = "ijkl" } },
+		{ color = 4, binding = { kind = "gamepad", id = 1 } },
+		{ color = 5, binding = { kind = "gamepad", id = 2 } },
+		{ color = 6, binding = { kind = "gamepad", id = 3 } },
+	}
+	local settings = SettingsCodec.decode(SettingsCodec.encode({ roster = roster }), { 1, 2, 3 })
+	assertEqual(6, #Roster.humans(settings.roster))
+	assertEqual(3, settings.roster[6].binding.id)
+	assertValid(settings, { 1, 2, 3 })
 end)
 
 local function assertPermutation(roster)

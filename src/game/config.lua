@@ -227,7 +227,7 @@ local Config = {
 		min = 2,
 		minHumans = 1,
 		max = 6,
-		maxHumans = 4,
+		maxHumans = 6,
 		palette = {
 			{ 0.3, 0.8, 1, 1 },
 			{ 1, 0.6, 0.3, 1 },

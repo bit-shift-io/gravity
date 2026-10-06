@@ -11,7 +11,6 @@ local Hud = {}
 local BAR_WIDTH = 200
 local BAR_HEIGHT = 16
 local MARGIN = 16
-local CHARGE_BAR_WIDTH = 200
 local CHARGE_BAR_HEIGHT = 6
 local HUD_FONT_SIZE = 24
 
@@ -26,28 +25,66 @@ local SCREEN_HEIGHT = 720
 -- no block. `top` is the block's top edge; the block grows downward from it.
 Hud.BLOCK_HEIGHT = MARGIN + BAR_HEIGHT + 8 + CHARGE_BAR_HEIGHT + 12 + PIP_RADIUS * 2 - MARGIN
 
-function Hud.blockLayout(index)
+-- Up to four blocks keep the corner layout. Five or six squeeze into one
+-- row along the top: narrower bars and a small gap so each block (bar plus
+-- the turret-angle text beside the charge bar) still fits.
+local MAX_CORNER_BLOCKS = 4
+local ANGLE_TEXT_RESERVE = 8 + 56 -- gap to the bar plus room for "-180"
+local ROW_GAP = 8
+
+local function rowBarWidth(count)
+	local slot = (SCREEN_WIDTH - 2 * MARGIN - (count - 1) * ROW_GAP) / count
+	return math.floor(slot - ANGLE_TEXT_RESERVE)
+end
+
+function Hud.blockLayout(index, count)
+	count = count or MAX_CORNER_BLOCKS
+	if count > MAX_CORNER_BLOCKS then
+		local barWidth = rowBarWidth(count)
+		local width = barWidth + ANGLE_TEXT_RESERVE
+		return {
+			left = true,
+			top = MARGIN,
+			x = MARGIN + (index - 1) * (width + ROW_GAP),
+			barWidth = barWidth,
+			width = width,
+		}
+	end
 	local row = math.ceil(index / 2)
+	local left = index % 2 == 1
 	return {
-		left = index % 2 == 1,
+		left = left,
 		top = row == 1 and MARGIN or SCREEN_HEIGHT - MARGIN - Hud.BLOCK_HEIGHT,
+		x = left and MARGIN or SCREEN_WIDTH - MARGIN - BAR_WIDTH,
+		barWidth = BAR_WIDTH,
+		width = BAR_WIDTH + ANGLE_TEXT_RESERVE,
 	}
 end
 
--- One { slot, layout } per human slot, in slot order.
-function Hud.humanBlocks(roster)
+-- One { slot, layout } per slot of the chosen set, in slot order: "humans"
+-- (default) or "all" slots.
+function Hud.blocks(roster, which)
+	local slots = {}
+	if which == "all" then
+		for slot = 1, #roster do
+			slots[slot] = slot
+		end
+	else
+		slots = Roster.humans(roster)
+	end
 	local blocks = {}
-	for index, slot in ipairs(Roster.humans(roster)) do
-		blocks[index] = { slot = slot, layout = Hud.blockLayout(index) }
+	for index, slot in ipairs(slots) do
+		blocks[index] = { slot = slot, layout = Hud.blockLayout(index, #slots) }
 	end
 	return blocks
 end
 
+function Hud.humanBlocks(roster)
+	return Hud.blocks(roster, "humans")
+end
+
 local function barX(layout)
-	if layout.left then
-		return MARGIN
-	end
-	return SCREEN_WIDTH - MARGIN - BAR_WIDTH
+	return layout.x
 end
 
 local function drawFuelBar(color, layout, fuel)
@@ -56,10 +93,10 @@ local function drawFuelBar(color, layout, fuel)
 	local ratio = fuel.amount / fuel.capacity
 
 	love.graphics.setColor(1, 1, 1, 0.3)
-	love.graphics.rectangle("line", x, y, BAR_WIDTH, BAR_HEIGHT)
+	love.graphics.rectangle("line", x, y, layout.barWidth, BAR_HEIGHT)
 
 	love.graphics.setColor(color)
-	love.graphics.rectangle("fill", x, y, BAR_WIDTH * math.max(0, ratio), BAR_HEIGHT)
+	love.graphics.rectangle("fill", x, y, layout.barWidth * math.max(0, ratio), BAR_HEIGHT)
 end
 
 -- Draws a fixed charge bar under the fuel bar. Shows current charge level,
@@ -77,16 +114,16 @@ local function drawChargeBar(ship, ctx, color, layout)
 
 	-- Draw bar outline (always visible)
 	love.graphics.setColor(1, 1, 1, 0.3)
-	love.graphics.rectangle("line", barX, barY, CHARGE_BAR_WIDTH, CHARGE_BAR_HEIGHT)
+	love.graphics.rectangle("line", barX, barY, layout.barWidth, CHARGE_BAR_HEIGHT)
 
 	-- Draw current charge fill
 	love.graphics.setColor(color)
-	love.graphics.rectangle("fill", barX, barY, CHARGE_BAR_WIDTH * ratio, CHARGE_BAR_HEIGHT)
+	love.graphics.rectangle("fill", barX, barY, layout.barWidth * ratio, CHARGE_BAR_HEIGHT)
 
 	-- Draw previous charge line (vertical line in player color)
 	if ship.weapon.prevChargeThisRound > 0 then
 		local prevRatio = math.min(1, ship.weapon.prevChargeThisRound / chargeTime)
-		local lineX = barX + CHARGE_BAR_WIDTH * prevRatio
+		local lineX = barX + layout.barWidth * prevRatio
 		love.graphics.setColor(color)
 		love.graphics.setLineWidth(2)
 		love.graphics.line(lineX, barY, lineX, barY + CHARGE_BAR_HEIGHT)
@@ -104,7 +141,7 @@ local function drawChargeBar(ship, ctx, color, layout)
 	if layout.left then
 		-- Left block: angle text to the right of the bar
 		love.graphics.setFont(Fonts.get(HUD_FONT_SIZE))
-		love.graphics.print(angleText, barX + CHARGE_BAR_WIDTH + 8, barY)
+		love.graphics.print(angleText, barX + layout.barWidth + 8, barY)
 	else
 		-- Right block: angle text to the left of the bar (toward center)
 		local font = Fonts.get(HUD_FONT_SIZE)
@@ -123,23 +160,24 @@ local function drawScorePips(ctx, player, color, layout)
 	for i = 1, total do
 		local x
 		if layout.left then
-			x = MARGIN + PIP_RADIUS + (i - 1) * PIP_SPACING
+			x = layout.x + PIP_RADIUS + (i - 1) * PIP_SPACING
 		else
-			x = SCREEN_WIDTH - MARGIN - PIP_RADIUS - (i - 1) * PIP_SPACING
+			x = layout.x + layout.barWidth - PIP_RADIUS - (i - 1) * PIP_SPACING
 		end
 		love.graphics.setColor(color)
 		love.graphics.circle(i <= wins and "fill" or "line", x, y, PIP_RADIUS)
 	end
 end
 
-function Hud.draw(ctx)
+-- opts.slots: "humans" (default) or "all" to draw a block for every slot.
+function Hud.draw(ctx, opts)
 	local shipsBySlot = {}
 	for _, ship in ipairs(ctx.pools.ships) do
 		if not ship.dead or not shipsBySlot[ship.player] then
 			shipsBySlot[ship.player] = ship
 		end
 	end
-	for _, block in ipairs(Hud.humanBlocks(ctx.roster)) do
+	for _, block in ipairs(Hud.blocks(ctx.roster, opts and opts.slots)) do
 		local color = PlayerColors.get(ctx, block.slot)
 		drawScorePips(ctx, block.slot, color, block.layout)
 		local ship = shipsBySlot[block.slot]

@@ -8,6 +8,8 @@ local Pipeline = require("src.app.post.pipeline")
 local Compat = require("src.app.compat")
 local SettingsStore = require("src.app.settings_store")
 local Audio = require("src.app.audio")
+local Screenshot = require("src.app.screenshot")
+local Toast = require("src.app.render.toast")
 
 -- Fixed timestep of 1/60 s (docs/ARCHITECTURE.md "Rules"): the simulation
 -- must be deterministic for a given seed and input sequence, which a
@@ -20,6 +22,7 @@ local App = {}
 App.flow = nil
 App.accumulator = 0
 App.lastTop = nil
+App.screenshot = nil
 
 local function findArg(args, arg)
 	for _, a in ipairs(args or {}) do
@@ -59,6 +62,7 @@ function love.load(args)
 	end
 
 	love.graphics.setBackgroundColor(0, 0, 0)
+	App.screenshot = Screenshot.new({ capture = Compat.captureScreenshot })
 	-- Setup's randomise action draws from math.random.
 	math.randomseed(os.time())
 	Compat.loadGamepadMappings("res/gamecontrollerdb.txt")
@@ -80,6 +84,7 @@ function love.load(args)
 		onStart = SettingsStore.save,
 		onSettingsChanged = SettingsStore.save,
 		quit = love.event.quit,
+		onScreenshot = function() App.screenshot:request() end,
 		intro = true,
 	})
 	Audio.setEnabled(App.flow.settings.sound)
@@ -118,6 +123,7 @@ function love.joystickremoved(joystick)
 end
 
 function love.update(dt)
+	App.screenshot:update(dt)
 	-- Pausing, resuming or changing screen drops the leftover time, so a state
 	-- change never bursts catch-up steps.
 	local top = App.flow.stack:top()
@@ -144,6 +150,12 @@ function love.draw()
 	Pipeline.draw(fit, App.flow.settings.postMode, function()
 		App.flow:draw()
 	end)
+	-- After the whole composite: the capture sees the finished window, and
+	-- a toast never appears in a shot.
+	if not App.screenshot.pending then
+		Toast.draw(App.screenshot:toast())
+	end
+	App.screenshot:afterDraw()
 end
 
 return App

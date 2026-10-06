@@ -27,7 +27,7 @@ test("the player limits and palette live in config", function()
 	assertEqual(2, Config.players.min)
 	assertEqual(1, Config.players.minHumans)
 	assertEqual(6, Config.players.max)
-	assertEqual(4, Config.players.maxHumans)
+	assertEqual(6, Config.players.maxHumans)
 	assertTrue(#Config.players.palette >= Config.players.max)
 end)
 
@@ -95,30 +95,45 @@ test("AI bindings may repeat across slots", function()
 	assertEqual(0, #Roster.validate(roster, {}))
 end)
 
-test("cycling an AI slot at four humans skips human bindings and says why", function()
+test("cycling an AI slot at six humans skips human bindings and says why", function()
 	local roster = {
 		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
 		{ color = 2, binding = { kind = "keyboard", layout = "arrows" } },
 		{ color = 3, binding = { kind = "keyboard", layout = "ijkl" } },
 		{ color = 4, binding = { kind = "gamepad", id = 1 } },
-		{ color = 5, binding = { kind = "none" } },
+		{ color = 5, binding = { kind = "gamepad", id = 2 } },
+		{ color = 6, binding = { kind = "gamepad", id = 3 } },
+		{ color = 7, binding = { kind = "none" } },
 	}
-	local ok, note = Roster.cycleBinding(roster, 5, { 1, 2 }, 1) -- none wraps; every human is refused
+	local ok, note = Roster.cycleBinding(roster, 7, { 1, 2, 3, 4 }, 1) -- every free human binding is refused
 	assertTrue(ok)
-	assertEqual("easy", roster[5].binding.level)
-	assertEqual("MAX 4 HUMANS", note)
+	assertEqual("easy", roster[7].binding.level)
+	assertEqual("MAX 6 HUMANS", note)
 end)
 
-test("validate demands two players and flags more than four humans", function()
+test("validate accepts six humans on three keyboard layouts and three gamepads", function()
+	local six = {
+		{ color = 1, binding = { kind = "keyboard", layout = "wasd" } },
+		{ color = 2, binding = { kind = "keyboard", layout = "arrows" } },
+		{ color = 3, binding = { kind = "keyboard", layout = "ijkl" } },
+		{ color = 4, binding = { kind = "gamepad", id = 1 } },
+		{ color = 5, binding = { kind = "gamepad", id = 2 } },
+		{ color = 6, binding = { kind = "gamepad", id = 3 } },
+	}
+	assertEqual(0, #Roster.validate(six, { 1, 2, 3 }))
+end)
+
+test("validate demands two players and flags more than six players", function()
 	local problems = Roster.validate({ ai(1) }, {})
 	assertEqual("NEED AT LEAST 2 PLAYERS", problems[1].reason)
 
-	local five = {}
-	for color = 1, 5 do
-		five[color] = { color = color, binding = { kind = "gamepad", id = color } }
+	local seven, pads = {}, {}
+	for color = 1, 7 do
+		seven[color] = { color = color, binding = { kind = "gamepad", id = color } }
+		pads[color] = color
 	end
-	problems = Roster.validate(five, { 1, 2, 3, 4, 5 })
-	assertEqual("MAX 4 HUMANS", problems[1].reason)
+	problems = Roster.validate(seven, pads)
+	assertEqual("MAX 6 PLAYERS", problems[1].reason)
 end)
 
 test("validate rejects a keyboard layout bound to two slots", function()
@@ -181,7 +196,7 @@ test("cycling a binding ends with empty after the AI levels, then wraps to the f
 	assertEqual("none", roster[3].binding.kind)
 end)
 
-test("empty is never refused, even at four humans", function()
+test("empty is never refused, even at four humans bound", function()
 	local roster = Roster.defaultSetup()
 	roster[3].binding = { kind = "keyboard", layout = "ijkl" }
 	roster[4].binding = { kind = "gamepad", id = 1 }

@@ -125,7 +125,7 @@ function Capture.render(entry)
 	if flags.hud then
 		love.graphics.push()
 		love.graphics.scale(frame.uiScale)
-		Hud.draw(ctx)
+		Hud.draw(ctx, { slots = "all" })
 		ScoreCard.draw(ctx)
 		MatchOver.draw(ctx)
 		love.graphics.pop()

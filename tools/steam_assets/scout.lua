@@ -137,7 +137,7 @@ function Scout.start(args)
 		MatchState.drawWorld(view, frame.centreX, frame.centreY, frame.worldScale)
 		love.graphics.push()
 		love.graphics.scale(frame.uiScale)
-		Hud.draw(ctx)
+		Hud.draw(ctx, { slots = "all" })
 		if state.helpOn then
 			love.graphics.setColor(1, 1, 1, 0.85)
 			love.graphics.print(string.format(table.concat(HELP, "\n"), seed, state.step, state.speed,

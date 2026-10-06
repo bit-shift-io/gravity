@@ -28,6 +28,22 @@ function Compat.newShader(source)
 	return love.graphics.newShader(source)
 end
 
+-- Writes the next presented frame (the whole window) as a PNG at `path` in
+-- the save directory, then calls done(). The callback form is the same on
+-- 11.5 and 12; it runs after the frame is drawn, so call it from love.draw.
+function Compat.captureScreenshot(path, done)
+	local dir = path:match("^(.*)/[^/]*$")
+	if dir then
+		love.filesystem.createDirectory(dir)
+	end
+	love.graphics.captureScreenshot(function(imageData)
+		imageData:encode("png", path)
+		if done then
+			done()
+		end
+	end)
+end
+
 -- Connected joysticks by ordinal (position in LÖVE's connected list), so a
 -- roster binding's `id` survives persistence. Unplugged pads drop out.
 function Compat.getJoysticks()
