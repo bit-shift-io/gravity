@@ -4,6 +4,7 @@ Local vector-style space duel for 2–6 players (1–4 human, the rest AI) with 
 
 - Architecture and rules: `docs/ARCHITECTURE.md` — composed pools; no `love.*` outside `src/app/`.
 - Glossary: `docs/CONTEXT.md`
+- Steam store images (scout and render): `docs/STEAM_ASSETS.md`
 - Decisions: `docs/adr/`
 - Repo memory: `docs/memory/README.md`
 
