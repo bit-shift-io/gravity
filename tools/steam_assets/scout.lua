@@ -1,4 +1,4 @@
--- steam=scout seed=N: an interactive match for picking manifest frames. Steps
+-- steam=scout seed=N (or entry=NAME for a manifest entry's seed and roster): an interactive match for picking manifest frames. Steps
 -- with Scene.step (one Match.step per step, counted exactly) rather than the
 -- app accumulator, so the printed step reproduces the frame. Pan and zoom
 -- replace only the camera this view draws with; ctx.camera (the sim camera) is
@@ -39,16 +39,34 @@ local function keyDown(...)
 end
 
 function Scout.start(args)
-	local seed
+	local seed, entryName
 	for _, a in ipairs(args or {}) do
 		seed = seed or tonumber(a:match("^seed=(.+)$"))
+		entryName = entryName or a:match("^entry=(.+)$")
+	end
+
+	-- entry=NAME scouts a manifest entry's own seed and roster, so the frame
+	-- matches what steam=build renders; seed=N still overrides the seed.
+	local roster = { ai(1, "hard"), ai(2, "hard"), ai(3, "easy"), ai(4, "easy") }
+	if entryName then
+		local found
+		for _, entry in ipairs(require("tools.steam_assets.manifest")) do
+			if entry.name == entryName then
+				found = entry
+			end
+		end
+		if not found then
+			io.stderr:write("steam scout: no manifest entry '" .. entryName .. "'\n")
+			return love.event.quit(1)
+		end
+		seed = seed or found.seed
+		roster = found.roster
 	end
 	if not seed then
-		io.stderr:write("steam scout needs seed=N\n")
+		io.stderr:write("steam scout needs seed=N or entry=NAME\n")
 		return love.event.quit(1)
 	end
 
-	local roster = { ai(1, "hard"), ai(2, "hard"), ai(3, "easy"), ai(4, "easy") }
 	local state = { ctx = nil, step = 0, paused = false, speed = 1, acc = 0, view = nil, helpOn = true }
 
 	local function restart()
