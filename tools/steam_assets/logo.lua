@@ -60,14 +60,17 @@ function Logo.stack(titleWidth, titleHeight, subtitleWidth, subtitleHeight)
 end
 
 -- Draws the logo on the current target. `size` is the logo's width as a
--- fraction of `width`; `colors` ({ c1, c2 }) tint the slashes.
-function Logo.draw(width, height, anchor, size, colors)
+-- fraction of `width`; `colors` ({ c1, c2 }) tint the slashes; `offsetX`
+-- and `offsetY` (optional, output pixels) nudge the logo right and down.
+function Logo.draw(width, height, anchor, size, colors, offsetX, offsetY)
 	local reference = Fonts.get(REFERENCE_SIZE)
 	local fontSize = Logo.fontSize(width * size, REFERENCE_SIZE, reference:getWidth(TITLE))
 	local font = Fonts.get(fontSize)
 	local subFont = Fonts.get(math.max(1, math.floor(fontSize * SUBTITLE_SCALE + 0.5)))
 	local box = Logo.stack(font:getWidth(TITLE), font:getHeight(), subFont:getWidth(SUBTITLE), subFont:getHeight())
 	local left, top = Logo.place(width, height, anchor, box.width, box.height)
+	left = left + (offsetX or 0)
+	top = top + (offsetY or 0)
 	local x = left + box.titleX
 	love.graphics.setFont(font)
 	for _, part in ipairs(Menu.titleParts(TITLE, colors)) do

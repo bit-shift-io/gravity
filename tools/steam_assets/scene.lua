@@ -10,6 +10,7 @@ local Roster = require("src.game.roster")
 local Scene = {}
 
 local FIXED_DT = 1 / 60
+local LINE_THICKNESS = 2 -- every render draws world outlines at 2x, whatever the saved setting
 
 -- One fixed step, exactly as Scene.build runs them; scout mode steps live.
 function Scene.step(ctx)
@@ -28,6 +29,7 @@ function Scene.build(entry)
 	for _ = 1, entry.step do
 		Scene.step(ctx)
 	end
+	ctx.lineThickness = LINE_THICKNESS
 	if entry.camera then
 		ctx.camera = { x = entry.camera.x, y = entry.camera.y, zoom = entry.camera.zoom }
 	end

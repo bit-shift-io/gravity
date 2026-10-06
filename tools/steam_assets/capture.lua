@@ -20,6 +20,8 @@ local Capture = {}
 
 local crtShader
 
+local ICON_CORNER_RADIUS = 0.18 -- of the icon's side
+
 -- Glow of `scene` added back onto it. Glow.render leaves the window as the
 -- target, so callers set their own target afterwards.
 local function addGlow(scene, width, height, uiScale)
@@ -76,17 +78,46 @@ local function renderLogoOnly(entry)
 	return imageData
 end
 
--- The monogram (G//) alone on a near-black canvas: icon only, no game context.
+-- Coverage (0..1) of pixel (x, y) by a size x size square with rounded
+-- corners of `radius`: the distance to the corner arc, so the edge is
+-- anti-aliased.
+local function roundedCoverage(x, y, size, radius)
+	local px, py = x + 0.5, y + 0.5
+	local dx = math.max(radius - px, px - (size - radius), 0)
+	local dy = math.max(radius - py, py - (size - radius), 0)
+	local distance = math.sqrt(dx * dx + dy * dy) - radius
+	return math.min(1, math.max(0, 0.5 - distance))
+end
+
+-- The monogram (G//) alone on a near-black square: icon only, no game context.
+-- Glow and CRT run on the full opaque square like any scene; the rounded
+-- corners are cut afterwards (alpha 0 outside them), since CRT fills black.
 local function renderMonogramOnly(entry)
-	local canvas = Compat.newCanvas(entry.width, entry.height)
+	local frame = Framing.transform(entry.width, entry.height, { zoom = 1 })
+	local flags = Flags.resolve(entry, SettingsStore.load().postMode)
+	local scene = Compat.newCanvas(entry.width, entry.height)
 	love.graphics.push("all")
-	love.graphics.setCanvas(canvas)
+	love.graphics.setCanvas(scene)
 	love.graphics.clear(10/255, 10/255, 10/255, 1)
 	Monogram.draw(entry.width, slashColors(entry), entry.glyphScale)
 	love.graphics.setCanvas()
+	if flags.glow then
+		addGlow(scene, entry.width, entry.height, frame.uiScale)
+	end
+	local result = scene
+	if flags.crt then
+		result = applyCrt(scene, entry.width, entry.height)
+	end
 	love.graphics.pop()
-	local imageData = canvas:newImageData()
-	canvas:release()
+	local imageData = result:newImageData()
+	if result ~= scene then
+		result:release()
+	end
+	scene:release()
+	local radius = entry.width * ICON_CORNER_RADIUS
+	imageData:mapPixel(function(x, y, r, g, b)
+		return r, g, b, roundedCoverage(x, y, entry.width, radius)
+	end)
 	return imageData
 end
 
@@ -132,7 +163,7 @@ function Capture.render(entry)
 	end
 	-- Inside the scene so glow and CRT treat it like the title screen does.
 	if entry.overlay == "logo" then
-		Logo.draw(entry.width, entry.height, entry.logoAnchor, entry.logoSize, slashColors(entry))
+		Logo.draw(entry.width, entry.height, entry.logoAnchor, entry.logoSize, slashColors(entry), entry.logoOffsetX, entry.logoOffsetY)
 	end
 	love.graphics.setCanvas()
 

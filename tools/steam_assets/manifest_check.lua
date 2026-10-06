@@ -65,6 +65,11 @@ local function problem(entry, name)
 			return name .. ": logoSize must be above 0 and at most 1"
 		end
 	end
+	for _, field in ipairs({ "logoOffsetX", "logoOffsetY" }) do
+		if entry[field] ~= nil and type(entry[field]) ~= "number" then
+			return string.format("%s: %s must be a number", name, field)
+		end
+	end
 	if entry.transparent ~= nil then
 		if entry.transparent ~= true and entry.transparent ~= false then
 			return name .. ": transparent must be true or false"
