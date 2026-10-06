@@ -26,22 +26,20 @@ local SCREEN_HEIGHT = 720
 Hud.BLOCK_HEIGHT = MARGIN + BAR_HEIGHT + 8 + CHARGE_BAR_HEIGHT + 12 + PIP_RADIUS * 2 - MARGIN
 
 -- Up to four blocks keep the corner layout. Five or six squeeze into one
--- row along the top: narrower bars and a small gap so each block (bar plus
--- the turret-angle text beside the charge bar) still fits.
+-- row along the top: narrower bars and a small gap so each block fits.
 local MAX_CORNER_BLOCKS = 4
-local ANGLE_TEXT_RESERVE = 8 + 56 -- gap to the bar plus room for "-180"
 local ROW_GAP = 8
 
 local function rowBarWidth(count)
 	local slot = (SCREEN_WIDTH - 2 * MARGIN - (count - 1) * ROW_GAP) / count
-	return math.floor(slot - ANGLE_TEXT_RESERVE)
+	return math.min(BAR_WIDTH, math.floor(slot))
 end
 
 function Hud.blockLayout(index, count)
 	count = count or MAX_CORNER_BLOCKS
 	if count > MAX_CORNER_BLOCKS then
 		local barWidth = rowBarWidth(count)
-		local width = barWidth + ANGLE_TEXT_RESERVE
+		local width = barWidth
 		return {
 			left = true,
 			top = MARGIN,
@@ -57,7 +55,7 @@ function Hud.blockLayout(index, count)
 		top = row == 1 and MARGIN or SCREEN_HEIGHT - MARGIN - Hud.BLOCK_HEIGHT,
 		x = left and MARGIN or SCREEN_WIDTH - MARGIN - BAR_WIDTH,
 		barWidth = BAR_WIDTH,
-		width = BAR_WIDTH + ANGLE_TEXT_RESERVE,
+		width = BAR_WIDTH,
 	}
 end
 
@@ -99,8 +97,8 @@ local function drawFuelBar(color, layout, fuel)
 	love.graphics.rectangle("fill", x, y, layout.barWidth * math.max(0, ratio), BAR_HEIGHT)
 end
 
--- Draws a fixed charge bar under the fuel bar. Shows current charge level,
--- a vertical line at the previous charge level, and the turret angle in degrees.
+-- Draws a fixed charge bar under the fuel bar. Shows current charge level
+-- and a vertical line at the previous charge level.
 local function drawChargeBar(ship, ctx, color, layout)
 	if not ship.weapon then
 		return
@@ -129,41 +127,41 @@ local function drawChargeBar(ship, ctx, color, layout)
 		love.graphics.line(lineX, barY, lineX, barY + CHARGE_BAR_HEIGHT)
 		love.graphics.setLineWidth(1)
 	end
+end
 
-	-- Draw turret angle in degrees
-	local angleText = "0"
-	if ship.turret and ship.turret.angle then
-		local degrees = math.deg(ship.turret.angle)
-		angleText = string.format("%.0f", degrees)
+-- Turret angle in whole degrees, zero-padded to two digits, "+" when positive.
+local function formatAngle(angle)
+	local degrees = math.floor(math.deg(angle) + 0.5)
+	if degrees > 0 then
+		return string.format("+%02d", degrees)
+	elseif degrees < 0 then
+		return string.format("-%02d", -degrees)
 	end
+	return "00"
+end
 
+-- Turret angle on the pip row, its right edge flush with the bars' right edge.
+local function drawTurretAngle(ship, color, layout)
+	if not (ship.turret and ship.turret.angle) then
+		return
+	end
+	local font = Fonts.get(HUD_FONT_SIZE)
+	local text = formatAngle(ship.turret.angle)
+	local y = layout.top + BAR_HEIGHT + 8 + CHARGE_BAR_HEIGHT + 12 + PIP_RADIUS - font:getHeight() / 2
 	love.graphics.setColor(color)
-	if layout.left then
-		-- Left block: angle text to the right of the bar
-		love.graphics.setFont(Fonts.get(HUD_FONT_SIZE))
-		love.graphics.print(angleText, barX + layout.barWidth + 8, barY)
-	else
-		-- Right block: angle text to the left of the bar (toward center)
-		local font = Fonts.get(HUD_FONT_SIZE)
-		love.graphics.setFont(font)
-		local textWidth = font:getWidth(angleText)
-		love.graphics.print(angleText, barX - textWidth - 8, barY)
-	end
+	love.graphics.setFont(font)
+	love.graphics.print(text, layout.x + layout.barWidth - font:getWidth(text), y)
 end
 
 -- One pip per round win needed: filled for each win, outlined for the rest.
--- Sits under the charge bar, growing inward from the player's screen edge.
+-- Sits under the charge bar, growing from the bars' left edge so the turret
+-- angle can own the right edge.
 local function drawScorePips(ctx, player, color, layout)
 	local total = ctx.config.round.winsToWin
 	local wins = ctx.round.score[player]
 	local y = layout.top + BAR_HEIGHT + 8 + CHARGE_BAR_HEIGHT + 12
 	for i = 1, total do
-		local x
-		if layout.left then
-			x = layout.x + PIP_RADIUS + (i - 1) * PIP_SPACING
-		else
-			x = layout.x + layout.barWidth - PIP_RADIUS - (i - 1) * PIP_SPACING
-		end
+		local x = layout.x + PIP_RADIUS + (i - 1) * PIP_SPACING
 		love.graphics.setColor(color)
 		love.graphics.circle(i <= wins and "fill" or "line", x, y, PIP_RADIUS)
 	end
@@ -184,6 +182,7 @@ function Hud.draw(ctx, opts)
 		if ship then
 			drawFuelBar(color, block.layout, ship.fuel)
 			drawChargeBar(ship, ctx, color, block.layout)
+			drawTurretAngle(ship, color, block.layout)
 		end
 	end
 

@@ -53,7 +53,7 @@ test("five and six blocks sit in one narrower row without overlapping", function
 		for index = 1, count do
 			local layout = Hud.blockLayout(index, count)
 			local left, right = extent(layout)
-			assertTrue(layout.barWidth < 200, "bars are narrower")
+			assertTrue(layout.barWidth <= 200, "bars are no wider than a corner bar")
 			assertTrue(left >= 0 and right <= 1280, "block " .. index .. " stays on screen")
 			assertTrue(left >= prevRight, "block " .. index .. " clears its neighbour")
 			assertEqual(16, layout.top)
@@ -62,10 +62,9 @@ test("five and six blocks sit in one narrower row without overlapping", function
 	end
 end)
 
-test("a squished block holds the angle text and the win pips", function()
+test("a squished block holds the win pips", function()
 	local layout = Hud.blockLayout(1, 6)
 	local pips = 7
-	assertTrue(layout.width >= layout.barWidth + 8 + 56, "angle text fits beside the bar")
 	assertTrue(layout.barWidth >= (pips - 1) * 18 + 12, "pips fit under the bar")
 end)
 
