@@ -226,3 +226,23 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 ## Scout mode
 - **Definition:** An interactive match that prints a manifest entry for the current frame.
 - **Boundary:** Never writes images. Not part of normal play.
+
+## Trailer manifest
+- **Definition:** `tools/trailer/manifest.lua`: the shots, cards, sequence and music that make up the Steam trailer.
+- **Boundary:** Not the Steam asset manifest, which defines still images.
+
+## Shot
+- **Definition:** A trailer manifest entry: a seed, roster, step range (`from`..`to`), camera and flags, rendered as moving video.
+- **Boundary:** Not a round or a match. A shot always replays its match from step 0 and shows only its range.
+
+## Card
+- **Definition:** A full-screen trailer item with no gameplay: text on black, or the logo end card.
+- **Boundary:** Not a caption, which draws over a shot.
+
+## Caption
+- **Definition:** Text drawn over a shot for a time range within it, with fades.
+- **Boundary:** Trailer-only. Not part of the HUD.
+
+## Highlight finder
+- **Definition:** A headless script that runs seeded AI matches and ranks step windows by event density, to suggest shots.
+- **Boundary:** Suggests only. Never writes the trailer manifest.

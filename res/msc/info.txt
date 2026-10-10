@@ -1,0 +1,24 @@
+license: Pixabay Content License (free for commercial use, no attribution required)
+license summary: https://pixabay.com/service/license-summary/
+downloaded: 2026-10-10
+
+synthwave_the_mountain.mp3 (primary)
+  title: Synthwave
+  artist: The_Mountain
+  link: https://pixabay.com/music/synthwave-synthwave-593074/
+
+midnight_synthwave_the_mountain.mp3
+  title: Midnight Synthwave
+  artist: The_Mountain
+  link: https://pixabay.com/music/synthwave-midnight-synthwave-317752/
+
+synthwave_mondamusic.mp3
+  title: Synthwave
+  artist: MondaMusic
+  link: https://pixabay.com/music/synthwave-synthwave-572999/
+
+synthwave_arpmedia.mp3
+  title: Synthwave
+  artist: ARPMedia
+  link: https://pixabay.com/music/synthwave-synthwave-569472/
+  note: Content ID registered; expect YouTube claims unless the channel is whitelisted

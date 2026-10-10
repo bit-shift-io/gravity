@@ -17,3 +17,4 @@ Situational facts: true only when touching a particular area. One fact per file.
 - [register-new-test-files.md](register-new-test-files.md) — unit and integration runners use fixed file lists; register new tests or they never run
 - [new-pooled-kind-reshuffles-seeded-draws.md](new-pooled-kind-reshuffles-seeded-draws.md) — adding a pooled AI kind reshuffles seeded draws; bind behavior in tests
 - [steam-capture-own-canvas.md](steam-capture-own-canvas.md) — Steam capture uses its own canvas at output size; transparent assets clear to alpha 0
+- [match-events-stay-in-ctx.md](match-events-stay-in-ctx.md) — `ctx.events` persists for a retention window; dedupe by event identity when consuming
