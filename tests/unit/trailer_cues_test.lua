@@ -135,3 +135,34 @@ test("Trailer Cues ignores thrust from a dead ship", function()
 	end
 	assertEqual(0, #recorder:result().thrust)
 end)
+
+test("Trailer Cues cues events in the extra frames before frame 1 at negative times", function()
+	local shot = { from = 60, to = 66, speed = 2 }
+	-- pre = 3: frames k = -2..0 show steps 56, 58, 60; frame 1 shows 62.
+	local result
+	do
+		local ctx = newCtx()
+		local recorder = Cues.new(shot, 3)
+		for step = 1, 66 do
+			if step == 50 then
+				raise(ctx, "fire") -- before the first extra frame (step 56): pre-roll
+			elseif step == 57 then
+				raise(ctx, "blast") -- first shown by frame k = -1 (step 58)
+			end
+			recorder:observe(ctx, step)
+		end
+		result = recorder:result()
+	end
+	assertEqual("blast", kinds(result.cues))
+	assertNear(-2 / 60, result.cues[1].time, 1e-9) -- frame k = -1 plays at (k - 1) / 60
+end)
+
+test("Trailer Cues extra frames land at their trailer times once the item start is added", function()
+	local Timeline = require("tools.trailer.timeline")
+	local timeline = {
+		items = { { start = 600 } },
+		frames = 600,
+	}
+	local sound = Timeline.sound(timeline, { { cues = { { time = -15 / 60, kind = "blast" } }, thrust = {}, duration = 1 } })
+	assertNear(9.75, sound.cues[1].time, 1e-9)
+end)

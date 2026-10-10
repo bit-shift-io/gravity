@@ -4,10 +4,13 @@
 -- docs/memory/match-events-stay-in-ctx.md), blast and crash in one frame give
 -- one blast, split shares the asteroidDeath sound, and with speed > 1 at most
 -- one one-shot plays per frame (the game's fast-forward rule). Events already
--- in the list at `from` are marked seen and never cued.
+-- in the list before the shot's first frame are marked seen and never cued.
 --
 -- Frame k (from 1) shows the state after step from + k * speed and plays at
 -- (k - 1) / FPS, so a cue sounds on the first frame that shows its event.
+-- A shot overlapping the one before it also shows `pre` frames before frame 1
+-- (k = 0 and below): their cues have negative times, which is their trailer
+-- time once the item's start is added.
 local Thruster = require("src.game.components.thruster")
 
 local Cues = {}
@@ -16,10 +19,12 @@ Cues.__index = Cues
 local FPS = 60
 local SOUND = { blast = "blast", crash = "blast", asteroidDeath = "asteroidDeath", asteroidSplit = "asteroidDeath", fire = "fire" }
 
--- `shot` needs from, to and optional speed (default 1).
-function Cues.new(shot)
+-- `shot` needs from, to and optional speed (default 1); `pre` is the number
+-- of extra frames shown before frame 1 (default 0).
+function Cues.new(shot, pre)
 	return setmetatable({
 		from = shot.from,
+		firstStep = shot.from - (pre or 0) * (shot.speed or 1),
 		speed = shot.speed or 1,
 		frames = (shot.to - shot.from) / (shot.speed or 1),
 		seen = {},
@@ -39,7 +44,7 @@ end
 
 -- Call after every Match.step with that step's number (from 1).
 function Cues:observe(ctx, step)
-	if step <= self.from then
+	if step <= self.firstStep then
 		for _, event in ipairs(ctx.events) do
 			self.seen[event] = true
 		end

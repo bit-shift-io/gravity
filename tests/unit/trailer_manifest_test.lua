@@ -237,3 +237,54 @@ test("Trailer ManifestCheck rejects a negative music start", function()
 	assertFalse(ok)
 	assertEqual("music start must be a number of seconds, 0 or more", err)
 end)
+
+local function twoShots(firstOverrides, secondOverrides)
+	local first = shot(firstOverrides)
+	local second = shot(secondOverrides or { name = "other", from = 100, to = 340 })
+	return { shots = { first, second }, sequence = { first.name, second.name } }
+end
+
+test("Trailer ManifestCheck rejects a negative warp", function()
+	local ok, err = ManifestCheck.validate({ shots = { shot({ warp = -1 }) } })
+	assertFalse(ok)
+	assertEqual("duel_opening: warp must be a number of seconds, 0 or more", err)
+end)
+
+test("Trailer ManifestCheck accepts a warp of 0 and an overlap that fits", function()
+	assertTrue(ManifestCheck.validate(twoShots({ warp = 0 }, { name = "other", from = 0, to = 240 })))
+	assertTrue(ManifestCheck.validate(twoShots({})))
+end)
+
+test("Trailer ManifestCheck rejects a warp longer than the outgoing shot", function()
+	local ok, err = ManifestCheck.validate(twoShots({ to = 30, warp = 1 }))
+	assertFalse(ok)
+	assertEqual("duel_opening: warp (1s) is longer than shot duel_opening (0.5s)", err)
+end)
+
+test("Trailer ManifestCheck rejects a warp longer than the incoming shot", function()
+	local ok, err = ManifestCheck.validate(twoShots({ warp = 1 }, { name = "other", from = 100, to = 130 }))
+	assertFalse(ok)
+	assertEqual("duel_opening: warp (1s) is longer than shot other (0.5s)", err)
+end)
+
+test("Trailer ManifestCheck rejects an incoming shot whose from is too early for the warp", function()
+	local ok, err = ManifestCheck.validate(twoShots({}, { name = "other", from = 10, to = 250 }))
+	assertFalse(ok)
+	assert(err:find("other: from (10) is too early for the warp", 1, true), err)
+end)
+
+test("Trailer ManifestCheck counts the incoming half in steps, so speed widens it", function()
+	local fast = { name = "other", from = 20, to = 260, speed = 2 }
+	assertFalse(ManifestCheck.validate(twoShots({}, fast)))
+	fast.from = 30
+	fast.to = 270
+	assertTrue(ManifestCheck.validate(twoShots({}, fast)))
+end)
+
+test("Trailer ManifestCheck lets a shot after a card start at step 0", function()
+	local manifest = {
+		shots = { shot() },
+		sequence = { { card = "X", seconds = 1 }, "duel_opening" },
+	}
+	assertTrue(ManifestCheck.validate(manifest))
+end)

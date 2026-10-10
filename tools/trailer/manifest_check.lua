@@ -108,6 +108,9 @@ local function problem(shot, name)
 			return string.format("%s: %s must be a number of seconds, 0 or more", name, field)
 		end
 	end
+	if shot.warp ~= nil and (type(shot.warp) ~= "number" or shot.warp < 0) then
+		return name .. ": warp must be a number of seconds, 0 or more"
+	end
 	local fades = (shot.fadeIn or 0) + (shot.fadeOut or 0)
 	local seconds = (shot.to - shot.from) / speed / 60
 	if fades > seconds then
@@ -155,6 +158,33 @@ local function cardProblem(card)
 	end
 	if (card.fadeIn or 0) + (card.fadeOut or 0) > card.seconds then
 		return "fadeIn + fadeOut is longer than the card"
+	end
+	return nil
+end
+
+-- The first problem with the shot-to-shot overlaps of a valid sequence, or nil:
+-- a warp longer than either shot, or a shot with too few steps before `from`
+-- for its incoming half.
+local function overlapProblem(manifest)
+	local timeline = Timeline.build({ shots = manifest.shots, sequence = manifest.sequence or {} })
+	for _, overlap in ipairs(timeline.overlaps) do
+		local out, into = timeline.items[overlap.out], timeline.items[overlap.into]
+		local warp = out.shot.warp or Timeline.WARP
+		for _, item in ipairs({ out, into }) do
+			if warp > item.frames / Timeline.FPS then
+				return string.format("%s: warp (%gs) is longer than shot %s (%gs)", out.shot.name, warp,
+					item.shot.name, item.frames / Timeline.FPS)
+			end
+		end
+	end
+	for _, item in ipairs(timeline.items) do
+		if item.pre > 0 then
+			local needed = item.pre * (item.shot.speed or 1)
+			if item.shot.from < needed then
+				return string.format("%s: from (%d) is too early for the warp into it, which plays %d steps before from"
+					.. " (move from later, or set warp = 0 on the shot before it)", item.shot.name, item.shot.from, needed)
+			end
+		end
 	end
 	return nil
 end
@@ -228,6 +258,10 @@ function ManifestCheck.validate(manifest)
 		elseif not seen[item] then
 			return false, string.format("sequence item %d: no shot named '%s'", index, tostring(item))
 		end
+	end
+	local overlapErr = overlapProblem(manifest)
+	if overlapErr then
+		return false, overlapErr
 	end
 	local lengthErr = lengthProblem(manifest)
 	if lengthErr then

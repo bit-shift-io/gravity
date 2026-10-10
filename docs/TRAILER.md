@@ -35,11 +35,28 @@ love . trailer=build
 Checks the manifest, then renders its `sequence` into one `trailer/trailer.mp4` and exits. Same format as the clips (1920x1080, 60 fps, H.264 `yuv420p`, AAC 48 kHz stereo). The video and sound-effects tracks are the same length.
 
 - Shots play in `sequence` order, back to back. Every frame streams into one ffmpeg process. Clips are not rendered and joined, so cuts land on exact frames with nothing dropped or doubled.
-- Cuts are hard. A shot's `fadeIn` fades it up from black over its first seconds, and `fadeOut` fades it down to black over its last. A fade covers the shot's own frames and does not lengthen it. To fade through black between two shots, give the first a `fadeOut` and the second a `fadeIn`.
+- A cut between two shots is a warp (see Warps): the shots overlap for 0.4 s, centred on the cut. Cuts to or from a card are hard (the card fades). A shot's `fadeIn` fades it up from black over its first seconds, and `fadeOut` fades it down to black over its last. A fade covers the shot's own frames and does not lengthen it. To fade through black between two shots, set `warp = 0` on the first and give it a `fadeOut` and the second a `fadeIn`.
 - The black is laid over the finished frame, after glow and CRT, so the CRT vignette does not change during a fade.
 - One sound-effects track covers the whole trailer, with the music bed under it if the manifest has one (see The manifest). Each shot's cues (see Sound effects) start at that shot's start time. Fades do not change the sound.
 
 It fails the same way as `trailer=clips`, and also when the manifest has no `sequence`. The build writes `trailer/trailer.video.mp4` and `trailer/trailer.wav`, muxes them into `trailer/trailer.mp4.part`, and renames that when the build finishes. The intermediate files are always deleted, and a failed build leaves no partial file (a `trailer.mp4` from an earlier build is kept).
+
+## Warps
+
+Every cut between two shots overlaps them for `warp` seconds (default 0.4), centred on the cut. The outgoing shot plays half the overlap past its `to`, and the incoming shot starts half the overlap before its `from`. The cut times and the trailer's length do not change, and the scouted `from..to` range still shows in full at its old trailer times. The incoming shot's weight `t` goes from 0 on the first frame of the overlap to 1 on the last, and the distortion follows it (curves in `tools/trailer/warp.lua`, shader `tools/trailer/shaders/warp.glsl`, composite pass `Capture.warpComposite`):
+
+- The outgoing shot zoom-blurs outward from the frame centre and zooms in as it fades (blur 0 at `t = 0`, rising to the maximum at `t = 1`).
+- The incoming shot starts at the maximum blur and zoom and settles to plain at `t = 1`.
+- A short additive brightness lift peaks at `t = 0.5` and is 0 at both ends.
+- CRT runs once, over the composited frame. The first and last overlap frames are the plain shots (the shader is skipped when blur is 0 and zoom is 1).
+
+- `warp` (seconds, on the outgoing shot, default 0.4) sets the length of the transition to the next shot. `warp = 0` is a hard cut. It is rounded to a whole, even number of frames (half each side). Cuts to or from a card never warp.
+- Each shot is rendered before CRT (glow included) and the two are blended, then CRT runs once over the result, so the vignette never shifts mid-transition. Both shots' matches advance together frame by frame; each replays from step 0 as always.
+- The check rejects a `warp` below 0, a `warp` longer than either neighbouring shot, and a shot whose `from` is too early for its incoming half: `from` must be at least `warp / 2 * 60 * speed` steps (12 steps at the default, 24 at `speed = 2`). If a shot starts earlier, move its `from` later or set `warp = 0` on the shot before it.
+- A warp replaces `fadeIn` on the incoming side and `fadeOut` on the outgoing side of that cut (set `warp = 0` to keep a fade).
+- The extra steps can cross a round reset, which the check cannot see: look at the frames around each cut after a re-scout.
+- Sound cues from the extra steps sound at their trailer times (a cue just before the cut belongs to the incoming shot and sounds before it). Events before the extended start are pre-roll and never sound. Captions keep their timing from the shot's `from` frame, so one in the overlap starts later or earlier than the cut accordingly.
+- `trailer=clips` ignores `warp`.
 
 ## The draft trailer
 
@@ -48,13 +65,13 @@ It fails the same way as `trailer=clips`, and also when the manifest has no `seq
 | Time | Beat | Items in `sequence` |
 |---|---|---|
 | 0–4 s | cold open, no text | `cold_open` (fades in from black) |
-| 4–17 s | gravity | `gravity_flight`: one ship slings round a planet and lands on another (caption `GRAVITY IS THE WEAPON`; `gravity_launch` and `gravity_orbit` are spares) |
+| 4–17 s | gravity | `gravity_flight`: one ship slings round a planet and lands on another (caption `GRAVITY // IS THE WEAPON`; `gravity_launch` and `gravity_orbit` are spares) |
 | 17–32 s | arsenal | `arsenal_asteroids`, `arsenal_tanks`, `arsenal_airburst` (`arsenal_detonate` is a spare, not in `sequence`) |
-| 32–47 s | chaos | `chaos_blob` (caption `UP TO 6 PLAYERS / ONE SCREEN`), `chaos_snake`, `chaos_blob_2` |
-| 47–54 s | couch pitch | `couch_kill`, `couch_card` (score card, caption `HUMANS OR AI / 1-6 LOCAL`, fades out) |
+| 32–47 s | chaos | `chaos_blob` (caption `UP TO 6 PLAYERS // ONE SCREEN`), `chaos_snake`, `chaos_blob_2` |
+| 47–54 s | couch pitch | `couch_kill`, `couch_card` (score card, caption `HUMANS OR AI // 1-6 LOCAL`, fades out) |
 | 54–61 s | end card | `{ card = "logo", seconds = 7, sub = "WISHLIST ON STEAM" }`, held until the music ends |
 
-The game font (Kernel Panic NBP) has no `·` or `–` glyph, so the captions use `/` and `-` instead.
+The game font (Kernel Panic NBP) has no `·` or `–` glyph, so the captions use `-` and `//` instead.
 
 **Re-scout after game changes.** Every shot replays a seeded all-AI match. Any change to the sim, the AI or level generation (even adding a pooled kind, see `docs/memory/new-pooled-kind-reshuffles-seeded-draws.md`) can change what those seeds play, so the shots no longer show what their names say. After such a change, render the clips and look at them again, and re-scout any that broke (Finding highlights, Scouting shots).
 
@@ -97,6 +114,7 @@ The game font (Kernel Panic NBP) has no `·` or `–` glyph, so the captions use
 | `speed` | whole steps per video frame (default 1). `to - from` must be a multiple of it |
 | `camera` | optional: one fixed `{ x, y, zoom }`, or a list of keyframes (see Camera keyframes); omitted means the sim's own camera |
 | `hud` | draw the HUD (default true) |
+| `warp` | `trailer=build` only: seconds the shot overlaps the shot after it (default 0.4; 0 is a hard cut). Must be 0 or more and no longer than either shot; the next shot's `from` must leave room (see Warps) |
 | `fadeIn`, `fadeOut` | `trailer=build` only: seconds to fade from black at the start, or to black at the end (default none, a hard cut). Each must be 0 or more, and together they must fit in the shot |
 | `captions` | optional list of `{ text, from, to, anchor }` (see Cards, captions and the end card) |
 | `glow`, `crt` | post effects; set them on every shot so output does not depend on the saved in-game look |
@@ -117,9 +135,9 @@ All text uses the game font and is drawn in output pixels inside the scene canva
 - Cards have glow and CRT on, no HUD, and make no sound: the effects track stays silent under them.
 - A bad card fails the check as `sequence item N: ...` (empty text, no length, fades longer than the card).
 
-**Captions** go in a shot's `captions` list: `{ text, from, to, anchor }`, `from` and `to` in seconds from the shot's first frame.
+**Captions** go in a shot's `captions` list: `{ text, from, to, anchor }`, `from` and `to` in seconds from the shot's first frame. Each `//` in a caption or text card is drawn in the logo's two slash colours (players 1 and 2); the rest is white.
 
-- Each caption fades in over 0.3 s after `from` and out over 0.3 s before `to` (`Timeline.CAPTION_FADE`), and is invisible outside `from..to`. A caption shorter than 0.6 s never reaches full brightness.
+- Each caption slides in from the right while fading in over 0.4 s after `from`, holds in place, then slides out to the left while fading out over 0.4 s before `to` (`Timeline.CAPTION_FADE`; eased, one ramp for motion and fade). It is invisible outside `from..to`. The slide is 100 px of a 1920-wide frame (`Timeline.CAPTION_SLIDE`, scaled to the output width), drawn in output pixels, in both `trailer=clips` and `trailer=build`. A caption shorter than 0.8 s never reaches its hold or full brightness; it still moves without a jump.
 - Every caption must lie within the shot (`0 <= from < to <= shot length`), have non-empty text, and use a known anchor, or the check fails (`name: caption 1 must lie within the shot (0 to 4s)`).
 - `anchor` (default `bottom`) is one of `top`, `center`, `bottom`, `lowerLeft`. Text sits inside a safe area 8% in from the left and right and 16% in from the top and bottom, clear of the HUD's score blocks (corners, or the top row with five or six humans, which stay within 10% of the edge). Text wraps at 75% of the safe width.
 

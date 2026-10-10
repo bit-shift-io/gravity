@@ -19,6 +19,7 @@ local Config = require("src.game.config")
 local Capture = {}
 
 local crtShader
+local warpShader
 
 local ICON_CORNER_RADIUS = 0.18 -- of the icon's side
 
@@ -66,6 +67,9 @@ function Capture.releaseCanvases(canvases)
 	canvases.scene:release()
 	if canvases.crt then
 		canvases.crt:release()
+	end
+	if canvases.warp then
+		canvases.warp:release()
 	end
 end
 
@@ -150,18 +154,14 @@ local function postProcess(canvases, flags, uiScale, grainTime)
 	return scene
 end
 
--- Draw one frame of `ctx` (stars, world, HUD, logo overlay, glow, CRT) into
--- `canvases` (Capture.newCanvases at the output size) and return the canvas
--- holding the finished frame. `entry` gives the overlay fields; `flags` is
--- Flags.resolve's { hud, glow, crt }. `overlay(width, height)`, when given,
--- draws in output pixels over everything, before glow and CRT. Leaves the
--- window as the target.
-function Capture.drawFrame(ctx, entry, flags, canvases, grainTime, overlay)
+-- Stars, world, HUD, logo overlay and `overlay` into canvases.scene. Returns
+-- the Framing transform. Call inside a push("all"); the window is the target
+-- afterwards.
+local function renderScene(ctx, entry, flags, canvases, overlay)
 	local width, height = canvases.width, canvases.height
 	local frame = Framing.transform(width, height, ctx.camera)
 	local scene = canvases.scene
 
-	love.graphics.push("all")
 	love.graphics.setCanvas(scene)
 	love.graphics.clear(0, 0, 0, 1)
 
@@ -197,8 +197,85 @@ function Capture.drawFrame(ctx, entry, flags, canvases, grainTime, overlay)
 		overlay(width, height)
 	end
 	love.graphics.setCanvas()
+	return frame
+end
 
+-- Draw one frame of `ctx` (stars, world, HUD, logo overlay, glow, CRT) into
+-- `canvases` (Capture.newCanvases at the output size) and return the canvas
+-- holding the finished frame. `entry` gives the overlay fields; `flags` is
+-- Flags.resolve's { hud, glow, crt }. `overlay(width, height)`, when given,
+-- draws in output pixels over everything, before glow and CRT. Leaves the
+-- window as the target.
+function Capture.drawFrame(ctx, entry, flags, canvases, grainTime, overlay)
+	love.graphics.push("all")
+	local frame = renderScene(ctx, entry, flags, canvases, overlay)
 	local result = postProcess(canvases, flags, frame.uiScale, grainTime)
+	love.graphics.pop()
+	return result
+end
+
+-- The first half of drawFrame: the frame up to and including glow, left in
+-- canvases.scene (returned), for compositing before Capture.finish applies CRT.
+function Capture.drawScene(ctx, entry, flags, canvases, overlay)
+	love.graphics.push("all")
+	local frame = renderScene(ctx, entry, flags, canvases, overlay)
+	if flags.glow then
+		addGlow(canvases.scene, canvases.width, canvases.height, frame.uiScale)
+	end
+	love.graphics.pop()
+	return canvases.scene
+end
+
+-- Draws `source` over the whole target, zoom-blurred about its centre by
+-- `curve` ({ strength, scale }, see tools/trailer/warp.lua). A plain curve
+-- skips the shader so the first and last overlap frames match the plain shot.
+local function drawWarped(source, curve)
+	if curve.strength <= 0 and curve.scale == 1 then
+		love.graphics.setShader()
+	else
+		warpShader = warpShader or Compat.newShader(love.filesystem.read("tools/trailer/shaders/warp.glsl"))
+		warpShader:send("strength", curve.strength)
+		warpShader:send("scale", curve.scale)
+		love.graphics.setShader(warpShader)
+	end
+	love.graphics.draw(source, 0, 0)
+	love.graphics.setShader()
+end
+
+-- Warp transition: base's scene is the outgoing shot, over's the incoming,
+-- `t` the incoming weight. Each is zoom-blurred per its curve (Warp.outgoing
+-- / Warp.incoming), the incoming drawn over at alpha t (so the outgoing fades
+-- as 1 - t), then an additive brightness lift. The result is left in base.scene.
+function Capture.warpComposite(base, over, t, outgoing, incoming, brightness)
+	local width, height = base.width, base.height
+	base.warp = base.warp or Compat.newCanvas(width, height)
+	love.graphics.push("all")
+	love.graphics.setCanvas(base.warp)
+	love.graphics.setColor(1, 1, 1, 1)
+	love.graphics.setBlendMode("replace", "premultiplied")
+	love.graphics.draw(base.scene, 0, 0)
+	love.graphics.setBlendMode("alpha")
+	love.graphics.setCanvas(base.scene)
+	love.graphics.clear(0, 0, 0, 1)
+	drawWarped(base.warp, outgoing)
+	love.graphics.setColor(1, 1, 1, t)
+	drawWarped(over.scene, incoming)
+	if brightness > 0 then
+		love.graphics.setBlendMode("add")
+		love.graphics.setColor(brightness, brightness, brightness, 1)
+		love.graphics.rectangle("fill", 0, 0, width, height)
+	end
+	love.graphics.pop()
+end
+
+-- The second half of drawFrame: CRT (if flags.crt) over canvases.scene, and the
+-- canvas holding the result.
+function Capture.finish(canvases, flags, grainTime)
+	if not flags.crt then
+		return canvases.scene
+	end
+	love.graphics.push("all")
+	local result = applyCrt(canvases.scene, crtCanvas(canvases), canvases.width, canvases.height, grainTime)
 	love.graphics.pop()
 	return result
 end

@@ -243,6 +243,10 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Definition:** Text drawn over a shot for a time range within it, with fades.
 - **Boundary:** Trailer-only. Not part of the HUD.
 
+## Warp
+- **Definition:** The trailer's shot-to-shot transition: a crossfade with radial distortion, centred on the cut. Each shot plays half the overlap beyond its range.
+- **Boundary:** Trailer-only. Cuts to or from a card use fades, not a warp.
+
 ## Highlight finder
 - **Definition:** A headless script that runs seeded AI matches and ranks step windows by event density, to suggest shots.
 - **Boundary:** Suggests only. Never writes the trailer manifest.

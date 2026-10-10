@@ -9,7 +9,8 @@
 -- Every shot comes from a seeded all-AI match, so any change to the sim, AI
 -- or level generation reshuffles them: re-scout after such a change.
 --
--- The game font has no "·" or "–" glyphs, so captions use "/" and "-".
+-- The game font has no "·" or "–" glyphs, so captions use "-" and "//" (drawn
+-- in the logo's two slash colours; see tools/trailer/text.lua).
 
 -- All-AI roster of `players` hard bots in palette order (as the highlight
 -- finder plays them, so its seeds and steps replay here).
@@ -74,7 +75,7 @@ return {
 			},
 			hud = true,
 			captions = {
-				{ text = "GRAVITY IS THE WEAPON", from = 0.8, to = 6.4, anchor = "bottom" },
+				{ text = "GRAVITY // IS THE WEAPON", from = 0.8, to = 6.4, anchor = "bottom" },
 			},
 			glow = true,
 			crt = true,
@@ -100,7 +101,7 @@ return {
 			},
 			hud = true,
 			captions = {
-				{ text = "GRAVITY IS THE WEAPON", from = 1.5, to = 6, anchor = "bottom" },
+				{ text = "GRAVITY // IS THE WEAPON", from = 1.5, to = 6, anchor = "bottom" },
 			},
 			glow = true,
 			crt = true,
@@ -185,7 +186,7 @@ return {
 			},
 			hud = true,
 			captions = {
-				{ text = "UP TO 6 PLAYERS / ONE SCREEN", from = 0.6, to = 4.7, anchor = "bottom" },
+				{ text = "UP TO 6 PLAYERS // ONE SCREEN", from = 0.6, to = 4.7, anchor = "bottom" },
 			},
 			glow = true,
 			crt = true,
@@ -232,6 +233,7 @@ return {
 			roster = bots(6),
 			from = 340,
 			to = 520,
+			warp = 0, -- hard cut into the score card
 			camera = { x = 55, y = 90, zoom = 2.0 },
 			hud = true,
 			glow = true,
@@ -247,7 +249,7 @@ return {
 			hud = true,
 			fadeOut = 0.5,
 			captions = {
-				{ text = "HUMANS OR AI / 1-6 LOCAL", from = 0.9, to = 4, anchor = "bottom" },
+				{ text = "HUMANS OR AI // 1-6 LOCAL", from = 0.9, to = 4, anchor = "bottom" },
 			},
 			glow = true,
 			crt = true,
@@ -259,7 +261,7 @@ return {
 	-- (seconds of the track to skip) are optional. The track's first 5 s are a
 	-- near-silent intro, so it starts 5 s in and still ends on the 1:06 phrase.
 	length = 61,
-	music = { path = "res/msc/synthwave_the_mountain.mp3", volume = 0.8, fadeOut = 1, start = 5 },
+	music = { path = "res/msc/synthwave_the_mountain.mp3", volume = 1.0, fadeOut = 1, start = 5 },
 	-- Play order: shot names, or cards (`card` text or "logo", `seconds`, and
 	-- for the logo an optional `sub` line). Cuts are hard unless a shot or card
 	-- sets fadeIn/fadeOut; cards fade 0.5 s by default.

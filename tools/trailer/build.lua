@@ -14,6 +14,7 @@ local Timeline = require("tools.trailer.timeline")
 local Sounds = require("tools.trailer.sounds")
 local Audio = require("src.app.audio")
 local Text = require("tools.trailer.text")
+local Warp = require("tools.trailer.warp")
 local Capture = require("tools.steam_assets.capture")
 local Logo = require("tools.steam_assets.logo")
 local Config = require("src.game.config")
@@ -75,11 +76,12 @@ local function captionOverlay(shot, k)
 		return nil
 	end
 	local t = (k - 1) / Encoder.FPS
+	local palette = Config.players.palette
 	return function(width, height)
 		for _, caption in ipairs(shot.captions) do
 			local alpha = Timeline.captionAlpha(caption, t)
 			if alpha > 0 then
-				Text.drawCaption(caption, alpha, width, height)
+				Text.drawCaption(caption, alpha, width, height, Timeline.captionOffset(caption, t), { palette[1], palette[2] })
 			end
 		end
 	end
@@ -111,11 +113,11 @@ end
 -- (the Steam logo with an optional line under it).
 local function drawCard(item)
 	return function(width, height)
+		local palette = Config.players.palette
 		if item.card ~= "logo" then
-			Text.drawCard(item.card, width, height)
+			Text.drawCard(item.card, width, height, { palette[1], palette[2] })
 			return
 		end
-		local palette = Config.players.palette
 		Logo.draw(width, height, "centre", 0.4, { palette[1], palette[2] }, 0, -height * 0.08)
 		if item.sub then
 			Text.drawSub(item.sub, width, height)
@@ -184,27 +186,75 @@ local function renderShot(shot, canvases, postMode, sounds)
 	return addSound(result, sounds, videoPath, base .. ".wav", base .. ".mp4")
 end
 
+-- A shot item opened for stepping: its stepper (with the item's extra frames
+-- before and after), its cue log and its flags.
+local function openLive(item, postMode)
+	local cues = Cues.new(item.shot, item.pre)
+	local stepper = ShotRunner.open(item.shot, { pre = item.pre, post = item.post }, function(ctx, step)
+		cues:observe(ctx, step)
+	end)
+	return { item = item, stepper = stepper, cues = cues, flags = Flags.resolve(item.shot, postMode) }
+end
+
+-- Draws the live shot's next frame (up to glow, before CRT) into `canvases`.
+-- Returns its step and k.
+local function drawLive(live, canvases)
+	local view, step, k = live.stepper:next()
+	Capture.drawScene(view, live.item.shot, live.flags, canvases, captionOverlay(live.item.shot, k))
+	return step, k
+end
+
+-- Renders shot item `index`: its frames outside the overlaps one by one, then
+-- the overlap with the next shot, which advances both shots together. Returns
+-- the item's live shot and the next one (opened for the overlap, or nil).
+local function renderShotItem(timeline, index, live, canvases, overlayCanvases, encoder, postMode)
+	local item = timeline.items[index]
+	live = live or openLive(item, postMode)
+	for _ = 1, item.frames - item.pre - item.post do
+		local step, k = drawLive(live, canvases)
+		writeFrame(Capture.finish(canvases, live.flags, step / Encoder.FPS), encoder, Timeline.alpha(item, k))
+	end
+	if not item.overlap then
+		return live, nil
+	end
+	local incoming = openLive(timeline.items[item.overlap.into], postMode)
+	for w = 1, item.overlap.frames do
+		local step = drawLive(live, canvases)
+		drawLive(incoming, overlayCanvases)
+		local t = Timeline.blend(item.overlap, w)
+		Capture.warpComposite(canvases, overlayCanvases, t, Warp.outgoing(t), Warp.incoming(t), Warp.brightness(t))
+		-- CRT runs once, over the composite, so its vignette never shifts.
+		writeFrame(Capture.finish(canvases, live.flags, step / Encoder.FPS), encoder, 1)
+	end
+	return live, incoming
+end
+
 -- The whole sequence streams into one encoder (no clip concat, so cuts land
--- on exact frames), with one sound-effects track offset per item.
-local function renderTrailer(timeline, canvases, postMode, sounds, music)
+-- on exact frames), with one sound-effects track offset per item. Shots that
+-- overlap at a cut advance together (see Timeline.build); `overlayCanvases` is
+-- the second canvas set for the incoming one.
+local function renderTrailer(timeline, canvases, overlayCanvases, postMode, sounds, music)
 	local base = TRAILER_DIR .. "/trailer"
 	local videoPath = base .. ".video.mp4"
 	local encoder = Encoder.open(videoPath)
 	local results = {}
+	local incoming
 	for index, item in ipairs(timeline.items) do
-		local ok, err, result
+		local ok, err, live
 		if item.kind == "card" then
 			ok, err = renderCard(item, canvases, encoder)
 		else
-			ok, err, result = renderFrames(item.shot, canvases, postMode, encoder, function(k)
-				return Timeline.alpha(item, k)
+			ok, err = pcall(function()
+				live, incoming = renderShotItem(timeline, index, incoming, canvases, overlayCanvases, encoder, postMode)
 			end)
+			if ok then
+				results[index] = live.cues:result()
+			end
 		end
 		if not ok then
 			encoder:abort()
-			return false, (item.shot and item.shot.name or "card " .. item.card) .. ": " .. err
+			return false, (item.shot and item.shot.name or "card " .. item.card) .. ": " .. tostring(err)
 		end
-		results[index] = result
 	end
 	local vok, verr = encoder:finish()
 	if not vok then
@@ -245,8 +295,10 @@ local function buildTrailer()
 	os.execute(string.format('mkdir -p "%s"', TRAILER_DIR))
 	local started = os.clock()
 	local canvases = Capture.newCanvases(Encoder.WIDTH, Encoder.HEIGHT)
-	local ok, err = renderTrailer(timeline, canvases, SettingsStore.load().postMode, Sounds.load(), music)
+	local overlayCanvases = Capture.newCanvases(Encoder.WIDTH, Encoder.HEIGHT)
+	local ok, err = renderTrailer(timeline, canvases, overlayCanvases, SettingsStore.load().postMode, Sounds.load(), music)
 	Capture.releaseCanvases(canvases)
+	Capture.releaseCanvases(overlayCanvases)
 	if not ok then
 		return fail(err)
 	end
