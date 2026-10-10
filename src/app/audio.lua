@@ -18,6 +18,19 @@ local FILES = {
 
 local VOLUME = { fire = 0.5, blast = 0.8, asteroidDeath = 0.8, thruster = 0.35, menuForward = 0.6, menuBack = 0.6 }
 
+-- Read-only views of FILES and VOLUME, so the trailer tool's sound mix
+-- (tools/trailer/sounds.lua) uses the same files and gains as the game.
+local function readOnly(t, name)
+	return setmetatable({}, {
+		__index = t,
+		__newindex = function()
+			error("Audio." .. name .. " is read-only", 2)
+		end,
+	})
+end
+Audio.FILES = readOnly(FILES, "FILES")
+Audio.VOLUME = readOnly(VOLUME, "VOLUME")
+
 -- Match music: streamed, played in order (primary track first), one after
 -- another for as long as a match is running. Credits in res/msc/info.txt.
 local MUSIC_FILES = {

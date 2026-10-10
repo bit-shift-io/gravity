@@ -51,6 +51,13 @@ function love.load(args)
 		require("tools.steam_assets.build").run(steamMode, args)
 		return
 	end
+	-- trailer=clips renders the trailer manifest's shots to MP4 and exits
+	-- (tools/trailer). Dev-only; inert unless the argument is given.
+	local trailerMode = findArg(args, "^trailer=(.+)$")
+	if trailerMode then
+		require("tools.trailer.build").run(trailerMode, args)
+		return
+	end
 
 	local e2eTestFile = findE2ETestFile(args)
 	if e2eTestFile then

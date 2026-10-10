@@ -71,6 +71,15 @@ local defaultTestFiles = {
 	"tests/unit/steam_logo_test.lua",
 	"tests/unit/steam_icon_test.lua",
 	"tests/unit/steam_entry_format_test.lua",
+	"tests/unit/trailer_manifest_test.lua",
+	"tests/unit/trailer_cues_test.lua",
+	"tests/unit/trailer_mixer_test.lua",
+	"tests/unit/trailer_keyframes_test.lua",
+	"tests/unit/trailer_shot_format_test.lua",
+	"tests/unit/trailer_timeline_test.lua",
+	"tests/unit/trailer_text_test.lua",
+	"tests/unit/trailer_encoder_test.lua",
+	"tests/unit/trailer_highlights_test.lua",
 }
 
 require("tests.support.bake_cache")

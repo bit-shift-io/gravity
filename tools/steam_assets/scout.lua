@@ -38,7 +38,13 @@ local function keyDown(...)
 	return false
 end
 
-function Scout.start(args)
+-- `hooks` (all optional; the Steam scout passes none) lets another tool reuse
+-- this scout: hooks.resolve(args) -> seed, roster, startStep (or nil, message)
+-- replaces the entry=NAME lookup; hooks.title replaces "SCOUT"; hooks.help is
+-- extra help lines; hooks.keypressed(key, api) sees keys the scout does not
+-- handle, and hooks.print(api) replaces what p prints; api = { step, view (own view or false), simCamera, seed, roster }.
+function Scout.start(args, hooks)
+	hooks = hooks or {}
 	local seed, entryName
 	for _, a in ipairs(args or {}) do
 		seed = seed or tonumber(a:match("^seed=(.+)$"))
@@ -48,7 +54,15 @@ function Scout.start(args)
 	-- entry=NAME scouts a manifest entry's own seed and roster, so the frame
 	-- matches what steam=build renders; seed=N still overrides the seed.
 	local roster = { ai(1, "hard"), ai(2, "hard"), ai(3, "easy"), ai(4, "easy") }
-	if entryName then
+	local startStep = 0
+	if hooks.resolve then
+		local resolvedSeed, resolvedRoster, resolvedStep = hooks.resolve(args)
+		if not resolvedSeed then
+			io.stderr:write(tostring(resolvedRoster) .. "\n")
+			return love.event.quit(1)
+		end
+		seed, roster, startStep = resolvedSeed, resolvedRoster, resolvedStep or 0
+	elseif entryName then
 		local found
 		for _, entry in ipairs(require("tools.steam_assets.manifest")) do
 			if entry.name == entryName then
@@ -69,16 +83,23 @@ function Scout.start(args)
 
 	local state = { ctx = nil, step = 0, paused = false, speed = 1, acc = 0, view = nil, helpOn = true }
 
-	local function restart()
-		state.ctx = Scene.build({ seed = seed, step = 0, roster = roster })
-		state.step, state.acc, state.view = 0, 0, nil
-	end
-	restart()
-
 	local function advance()
 		Scene.step(state.ctx)
 		state.step = state.step + 1
 	end
+
+	-- Reaching a start step steps from 0 one Match.step at a time, paused there.
+	local function restart()
+		state.ctx = Scene.build({ seed = seed, step = 0, roster = roster })
+		state.step, state.acc, state.view = 0, 0, nil
+		for _ = 1, startStep do
+			advance()
+		end
+		if startStep > 0 then
+			state.paused = true
+		end
+	end
+	restart()
 
 	local function viewCamera()
 		return state.view or state.ctx.camera
@@ -114,6 +135,16 @@ function Scout.start(args)
 	-- scout never builds.
 	function love.textinput() end
 
+	local function hookApi()
+		return {
+			step = state.step,
+			view = state.view or false,
+			simCamera = state.ctx.camera,
+			seed = seed,
+			roster = roster,
+		}
+	end
+
 	function love.keypressed(key)
 		if key == "escape" then
 			love.event.quit(0)
@@ -130,6 +161,8 @@ function Scout.start(args)
 			state.view = nil
 		elseif key == "h" then
 			state.helpOn = not state.helpOn
+		elseif key == "p" and hooks.print then
+			hooks.print(hookApi())
 		elseif key == "p" then
 			print(EntryFormat.entry({
 				seed = seed,
@@ -137,6 +170,8 @@ function Scout.start(args)
 				roster = roster,
 				camera = state.view or false,
 			}))
+		elseif hooks.keypressed then
+			hooks.keypressed(key, hookApi())
 		end
 	end
 
@@ -162,7 +197,14 @@ function Scout.start(args)
 		Hud.draw(ctx, { slots = "all" })
 		if state.helpOn then
 			love.graphics.setColor(1, 1, 1, 0.85)
-			love.graphics.print(string.format(table.concat(HELP, "\n"), seed, state.step, state.speed,
+			local help = table.concat(HELP, "\n")
+			if hooks.help then
+				help = help .. "\n" .. table.concat(hooks.help, "\n")
+			end
+			if hooks.title then
+				help = help:gsub("^SCOUT", hooks.title)
+			end
+			love.graphics.print(string.format(help, seed, state.step, state.speed,
 				state.paused and "  PAUSED" or ""), 10, 40)
 		end
 		love.graphics.pop()

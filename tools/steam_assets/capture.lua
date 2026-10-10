@@ -32,12 +32,11 @@ local function addGlow(scene, width, height, uiScale)
 	love.graphics.setCanvas()
 end
 
--- Draw `scene` through the CRT shader into a new canvas. grainTime is fixed so
--- the same entry always gives the same image.
-local function applyCrt(scene, width, height)
+-- Draw `scene` through the CRT shader into `out`. grainTime is a parameter so
+-- a still always gives the same image and a video frame can animate the grain.
+local function applyCrt(scene, out, width, height, grainTime)
 	crtShader = crtShader or Compat.newShader(love.filesystem.read("src/app/post/shaders/crt.glsl"))
 	local cfg = Config.post.crt
-	local out = Compat.newCanvas(width, height, "linear")
 	love.graphics.setCanvas(out)
 	love.graphics.clear(0, 0, 0, 1)
 	love.graphics.setShader(crtShader)
@@ -49,12 +48,31 @@ local function applyCrt(scene, width, height)
 	crtShader:send("scanlineIntensity", cfg.scanlineIntensity)
 	crtShader:send("scanlinePitch", cfg.scanlinePitch)
 	crtShader:send("grain", cfg.grain)
-	crtShader:send("grainTime", 0)
+	crtShader:send("grainTime", grainTime)
 	love.graphics.setColor(1, 1, 1, 1)
 	love.graphics.draw(scene, 0, 0)
 	love.graphics.setShader()
 	love.graphics.setCanvas()
 	return out
+end
+
+-- Canvases for drawing frames of width x height. Reuse one set across the
+-- frames of a video: creating canvases per frame leaks VRAM.
+function Capture.newCanvases(width, height)
+	return { width = width, height = height, scene = Compat.newCanvas(width, height) }
+end
+
+function Capture.releaseCanvases(canvases)
+	canvases.scene:release()
+	if canvases.crt then
+		canvases.crt:release()
+	end
+end
+
+-- The CRT target, created on first use so stills without CRT never make one.
+local function crtCanvas(canvases)
+	canvases.crt = canvases.crt or Compat.newCanvas(canvases.width, canvases.height, "linear")
+	return canvases.crt
 end
 
 -- Slash colours of the title treatment: the entry's first two roster slots.
@@ -95,7 +113,8 @@ end
 local function renderMonogramOnly(entry)
 	local frame = Framing.transform(entry.width, entry.height, { zoom = 1 })
 	local flags = Flags.resolve(entry, SettingsStore.load().postMode)
-	local scene = Compat.newCanvas(entry.width, entry.height)
+	local canvases = Capture.newCanvases(entry.width, entry.height)
+	local scene = canvases.scene
 	love.graphics.push("all")
 	love.graphics.setCanvas(scene)
 	love.graphics.clear(10/255, 10/255, 10/255, 1)
@@ -106,14 +125,11 @@ local function renderMonogramOnly(entry)
 	end
 	local result = scene
 	if flags.crt then
-		result = applyCrt(scene, entry.width, entry.height)
+		result = applyCrt(scene, crtCanvas(canvases), entry.width, entry.height, 0)
 	end
 	love.graphics.pop()
 	local imageData = result:newImageData()
-	if result ~= scene then
-		result:release()
-	end
-	scene:release()
+	Capture.releaseCanvases(canvases)
 	local radius = entry.width * ICON_CORNER_RADIUS
 	imageData:mapPixel(function(x, y, r, g, b)
 		return r, g, b, roundedCoverage(x, y, entry.width, radius)
@@ -121,17 +137,29 @@ local function renderMonogramOnly(entry)
 	return imageData
 end
 
-function Capture.render(entry)
-	if entry.transparent then
-		return renderLogoOnly(entry)
+-- Glow then CRT on the finished scene canvas; returns the canvas holding the
+-- result. The window is the target afterwards.
+local function postProcess(canvases, flags, uiScale, grainTime)
+	local scene = canvases.scene
+	if flags.glow then
+		addGlow(scene, canvases.width, canvases.height, uiScale)
 	end
-	if entry.icon then
-		return renderMonogramOnly(entry)
+	if flags.crt then
+		return applyCrt(scene, crtCanvas(canvases), canvases.width, canvases.height, grainTime)
 	end
-	local ctx = Scene.build(entry)
-	local frame = Framing.transform(entry.width, entry.height, ctx.camera)
-	local flags = Flags.resolve(entry, SettingsStore.load().postMode)
-	local scene = Compat.newCanvas(entry.width, entry.height)
+	return scene
+end
+
+-- Draw one frame of `ctx` (stars, world, HUD, logo overlay, glow, CRT) into
+-- `canvases` (Capture.newCanvases at the output size) and return the canvas
+-- holding the finished frame. `entry` gives the overlay fields; `flags` is
+-- Flags.resolve's { hud, glow, crt }. `overlay(width, height)`, when given,
+-- draws in output pixels over everything, before glow and CRT. Leaves the
+-- window as the target.
+function Capture.drawFrame(ctx, entry, flags, canvases, grainTime, overlay)
+	local width, height = canvases.width, canvases.height
+	local frame = Framing.transform(width, height, ctx.camera)
+	local scene = canvases.scene
 
 	love.graphics.push("all")
 	love.graphics.setCanvas(scene)
@@ -142,7 +170,7 @@ function Capture.render(entry)
 	-- shifting the camera per tile so the pattern does not repeat.
 	love.graphics.push()
 	love.graphics.scale(frame.uiScale)
-	for _, tile in ipairs(Framing.starTiles(entry.width, entry.height, frame.uiScale)) do
+	for _, tile in ipairs(Framing.starTiles(width, height, frame.uiScale)) do
 		love.graphics.push()
 		love.graphics.translate(tile.x, tile.y)
 		Starfield.draw(ctx.camera.x + tile.col * 7919, ctx.camera.y + tile.row * 6007, ctx.time)
@@ -163,24 +191,45 @@ function Capture.render(entry)
 	end
 	-- Inside the scene so glow and CRT treat it like the title screen does.
 	if entry.overlay == "logo" then
-		Logo.draw(entry.width, entry.height, entry.logoAnchor, entry.logoSize, slashColors(entry), entry.logoOffsetX, entry.logoOffsetY)
+		Logo.draw(width, height, entry.logoAnchor, entry.logoSize, slashColors(entry), entry.logoOffsetX, entry.logoOffsetY)
+	end
+	if overlay then
+		overlay(width, height)
 	end
 	love.graphics.setCanvas()
 
-	if flags.glow then
-		addGlow(scene, entry.width, entry.height, frame.uiScale)
-	end
-	local result = scene
-	if flags.crt then
-		result = applyCrt(scene, entry.width, entry.height)
-	end
+	local result = postProcess(canvases, flags, frame.uiScale, grainTime)
 	love.graphics.pop()
+	return result
+end
 
-	local imageData = result:newImageData()
-	if result ~= scene then
-		result:release()
+-- A frame with no world: `draw(width, height)` paints on black (output
+-- pixels), then the same glow and CRT as drawFrame. Leaves the window as the
+-- target, like drawFrame.
+function Capture.drawCard(draw, flags, canvases, grainTime)
+	local width, height = canvases.width, canvases.height
+	love.graphics.push("all")
+	love.graphics.setCanvas(canvases.scene)
+	love.graphics.clear(0, 0, 0, 1)
+	draw(width, height)
+	love.graphics.setCanvas()
+	local result = postProcess(canvases, flags, Framing.transform(width, height, { zoom = 1 }).uiScale, grainTime)
+	love.graphics.pop()
+	return result
+end
+
+function Capture.render(entry)
+	if entry.transparent then
+		return renderLogoOnly(entry)
 	end
-	scene:release()
+	if entry.icon then
+		return renderMonogramOnly(entry)
+	end
+	local ctx = Scene.build(entry)
+	local flags = Flags.resolve(entry, SettingsStore.load().postMode)
+	local canvases = Capture.newCanvases(entry.width, entry.height)
+	local imageData = Capture.drawFrame(ctx, entry, flags, canvases, 0):newImageData()
+	Capture.releaseCanvases(canvases)
 	return imageData
 end
 
