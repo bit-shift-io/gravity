@@ -30,7 +30,14 @@ local function download(platform)
 end
 
 local function fresh_dir(path)
-	run("rm -rf " .. q(path))
+	-- Finder can recreate .DS_Store mid-delete when the folder is open, making rm fail with
+	-- "Directory not empty"; retry a few times before giving up.
+	local cmd = "rm -rf " .. q(path)
+	for _ = 1, 4 do
+		print("$ " .. cmd)
+		if Util.try(cmd .. " 2>/dev/null") then break end
+	end
+	run(cmd)
 	run("mkdir -p " .. q(path))
 end
 
