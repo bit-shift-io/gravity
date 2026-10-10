@@ -196,13 +196,20 @@ test("every non-logo entry sets glow and crt explicitly", function()
 end)
 
 test("every manifest entry has a unique seed/step/camera so images differ", function()
+	-- Entries that deliberately reuse another entry's framing (same size, same shot).
+	local intentionalDuplicates = { library_header = "capsule_header" }
 	local seen = {}
 	for _, e in ipairs(Manifest) do
 		if not e.transparent then
 			local cam = e.camera and (e.camera.x .. "," .. e.camera.y .. "," .. e.camera.zoom) or "-"
 			local key = table.concat({ e.seed, e.step, cam, e.width, e.height }, "|")
-			assertTrue(not seen[key], e.name .. " duplicates another entry")
-			seen[key] = true
+			local twin = intentionalDuplicates[e.name]
+			if twin then
+				assertEqual(twin, seen[key], e.name .. " should match " .. twin)
+			else
+				assertTrue(not seen[key], e.name .. " duplicates another entry")
+				seen[key] = e.name
+			end
 		end
 	end
 end)
