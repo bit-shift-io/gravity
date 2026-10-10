@@ -79,6 +79,32 @@ return {
 			glow = true,
 			crt = true,
 		},
+		-- The gravity beat in one take: the purple ship (slot 6) slings round
+		-- the first planet from about step 288 and lands on another at step 926.
+		-- Scouted with `trailer=scout shot=gravity_launch seed=5674`; the camera
+		-- follows the ship. gravity_launch and gravity_orbit are spares.
+		{
+			name = "gravity_flight",
+			seed = 5674,
+			roster = bots(6),
+			from = 206,
+			to = 986,
+			camera = {
+				{ t = 0, x = 480, y = 20, zoom = 1.8, ease = "in" },
+				{ t = 0.12, x = 360, y = 10, zoom = 1.8, ease = "linear" },
+				{ t = 0.31, x = 180, y = 60, zoom = 1.8, ease = "linear" },
+				{ t = 0.5, x = 180, y = -10, zoom = 1.8, ease = "linear" },
+				{ t = 0.66, x = 150, y = 150, zoom = 1.8, ease = "linear" },
+				{ t = 0.81, x = 10, y = 195, zoom = 1.9 },
+				{ t = 1, x = -30, y = 185, zoom = 2.1 },
+			},
+			hud = true,
+			captions = {
+				{ text = "GRAVITY IS THE WEAPON", from = 1.5, to = 6, anchor = "bottom" },
+			},
+			glow = true,
+			crt = true,
+		},
 		-- 3. Arsenal: an asteroid split, ships landing as tanks, tank airbursts.
 		{
 			name = "arsenal_asteroids",
@@ -226,8 +252,7 @@ return {
 	-- sets fadeIn/fadeOut; cards fade 0.5 s by default.
 	sequence = {
 		"cold_open", -- 0-4
-		"gravity_launch", -- 4-10
-		"gravity_orbit", -- 10-17
+		"gravity_flight", -- 4-17
 		"arsenal_asteroids", -- 17-21.5
 		"arsenal_tanks", -- 21.5-27.5
 		"arsenal_airburst", -- 27.5-32

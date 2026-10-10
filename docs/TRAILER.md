@@ -48,7 +48,7 @@ It fails the same way as `trailer=clips`, and also when the manifest has no `seq
 | Time | Beat | Items in `sequence` |
 |---|---|---|
 | 0–4 s | cold open, no text | `cold_open` (fades in from black) |
-| 4–17 s | gravity | `gravity_launch`, `gravity_orbit` (caption `GRAVITY IS THE WEAPON`) |
+| 4–17 s | gravity | `gravity_flight`: one ship slings round a planet and lands on another (caption `GRAVITY IS THE WEAPON`; `gravity_launch` and `gravity_orbit` are spares) |
 | 17–32 s | arsenal | `arsenal_asteroids`, `arsenal_tanks`, `arsenal_airburst` (`arsenal_detonate` is a spare, not in `sequence`) |
 | 32–47 s | chaos | `chaos_blob` (caption `UP TO 6 PLAYERS / ONE SCREEN`), `chaos_snake`, `chaos_blob_2` |
 | 47–54 s | couch pitch | `couch_kill`, `couch_card` (score card, caption `HUMANS OR AI / 1-6 LOCAL`, fades out) |
