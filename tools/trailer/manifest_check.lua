@@ -196,6 +196,9 @@ local function musicProblem(music, length)
 	if music.fadeOut ~= nil and (type(music.fadeOut) ~= "number" or music.fadeOut < 0) then
 		return "music fadeOut must be a number of seconds, 0 or more"
 	end
+	if music.start ~= nil and (type(music.start) ~= "number" or music.start < 0) then
+		return "music start must be a number of seconds, 0 or more"
+	end
 	if music.fadeOut ~= nil and length ~= nil and music.fadeOut > length then
 		return string.format("music fadeOut (%gs) is longer than length (%gs)", music.fadeOut, length)
 	end

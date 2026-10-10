@@ -22,3 +22,9 @@ test("Trailer Encoder reads the music from its path as a third input, and mixes 
 	assertTrue(plain:find("-map 1:a:0", 1, true) ~= nil, plain)
 	assertFalse(plain:find("filter_complex", 1, true) ~= nil)
 end)
+
+test("Trailer Encoder skips the first `start` seconds of the music and still fades at the trailer's end", function()
+	local filter = Encoder.mixFilter(61, 0.3, 1, 5)
+	assertEqual("[1:a]aresample=48000[fx];[2:a]aresample=48000,atrim=5:66,asetpts=PTS-STARTPTS,"
+		.. "afade=t=out:st=60:d=1,volume=0.3[mu];[fx][mu]amix=inputs=2:duration=first:normalize=0[aout]", filter)
+end)

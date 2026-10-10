@@ -64,11 +64,16 @@ end
 
 -- Pure (no love): the filter_complex that mixes the music bed (input 2) under
 -- the sound effects (input 1) into [aout]. The music is resampled to 48 kHz,
--- trimmed to `length` seconds, faded out over its last `fadeOut` seconds (none
+-- trimmed to `length` seconds starting `start` seconds in (0 when omitted;
+-- timestamps reset so the trailer still begins at 0), faded out over its last `fadeOut` seconds (none
 -- when 0) and set to `volume`. amix with normalize=0 keeps both inputs at full
 -- level, and duration=first ends the mix with the effects track.
-function Encoder.mixFilter(length, volume, fadeOut)
-	local music = { "aresample=48000", "atrim=0:" .. num(length) }
+function Encoder.mixFilter(length, volume, fadeOut, start)
+	start = start or 0
+	local music = { "aresample=48000", "atrim=" .. num(start) .. ":" .. num(start + length) }
+	if start > 0 then
+		table.insert(music, "asetpts=PTS-STARTPTS")
+	end
 	if fadeOut > 0 then
 		table.insert(music, string.format("afade=t=out:st=%s:d=%s", num(length - fadeOut), num(fadeOut)))
 	end
@@ -78,7 +83,7 @@ function Encoder.mixFilter(length, volume, fadeOut)
 end
 
 -- Pure (no love): the ffmpeg command that copies the video of `videoPath` and
--- adds `wavPath` as AAC into `partPath`. `music` ({ path, volume, fadeOut, length })
+-- adds `wavPath` as AAC into `partPath`. `music` ({ path, volume, fadeOut, length, start? })
 -- is mixed under the effects when given; the source file is read in place.
 function Encoder.muxCommand(videoPath, wavPath, partPath, music)
 	local inputs = string.format('-i "%s" -i "%s"', videoPath, wavPath)
@@ -86,7 +91,7 @@ function Encoder.muxCommand(videoPath, wavPath, partPath, music)
 	if music then
 		inputs = inputs .. string.format(' -i "%s"', music.path)
 		audio = string.format('-filter_complex "%s" -map "[aout]"',
-			Encoder.mixFilter(music.length, music.volume, music.fadeOut))
+			Encoder.mixFilter(music.length, music.volume, music.fadeOut, music.start))
 	end
 	return table.concat({
 		"ffmpeg -y -loglevel error",

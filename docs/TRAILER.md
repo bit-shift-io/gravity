@@ -43,16 +43,16 @@ It fails the same way as `trailer=clips`, and also when the manifest has no `seq
 
 ## The draft trailer
 
-`tools/trailer/manifest.lua` holds the first-draft trailer: 66 s in six beats, with the music bed (`res/msc/synthwave_the_mountain.mp3`, volume 0.3, 1 s fade-out). `love . trailer=build` renders it to `trailer/trailer.mp4` (about 100 s of wall time).
+`tools/trailer/manifest.lua` holds the first-draft trailer: 61 s in six beats, with the music bed (`res/msc/synthwave_the_mountain.mp3` from 5 s in, past its near-silent intro, so it still ends on the 1:06 phrase; volume 0.6, 1 s fade-out). `love . trailer=build` renders it to `trailer/trailer.mp4` (about 100 s of wall time).
 
 | Time | Beat | Items in `sequence` |
 |---|---|---|
 | 0–4 s | cold open, no text | `cold_open` (fades in from black) |
 | 4–17 s | gravity | `gravity_launch`, `gravity_orbit` (caption `GRAVITY IS THE WEAPON`) |
-| 17–35 s | arsenal | `arsenal_asteroids`, `arsenal_tanks`, `arsenal_airburst`, `arsenal_detonate` |
-| 35–50 s | chaos | `chaos_blob` (caption `UP TO 6 PLAYERS / ONE SCREEN`), `chaos_snake`, `chaos_blob_2` |
-| 50–57 s | couch pitch | `couch_kill`, `couch_card` (score card, caption `HUMANS OR AI / 1-6 LOCAL`, fades out) |
-| 57–66 s | end card | `{ card = "logo", seconds = 9, sub = "WISHLIST ON STEAM" }`, held until the music ends |
+| 17–32 s | arsenal | `arsenal_asteroids`, `arsenal_tanks`, `arsenal_airburst` (`arsenal_detonate` is a spare, not in `sequence`) |
+| 32–47 s | chaos | `chaos_blob` (caption `UP TO 6 PLAYERS / ONE SCREEN`), `chaos_snake`, `chaos_blob_2` |
+| 47–54 s | couch pitch | `couch_kill`, `couch_card` (score card, caption `HUMANS OR AI / 1-6 LOCAL`, fades out) |
+| 54–61 s | end card | `{ card = "logo", seconds = 7, sub = "WISHLIST ON STEAM" }`, held until the music ends |
 
 The game font (Kernel Panic NBP) has no `·` or `–` glyph, so the captions use `/` and `-` instead.
 
@@ -63,11 +63,11 @@ The game font (Kernel Panic NBP) has no `·` or `–` glyph, so the captions use
 1. Find a candidate: `luajit tools/trailer/find_highlights.lua seeds=1-200 players=6 jobs=12` (or a smaller seed range, other `players=`, or `window=` for longer shots), or mark one in `love . trailer=scout seed=N`.
 2. Paste the entry into `shots`, rename it, and set `hud`, `glow`, `crt` and a `camera`. The sim camera is usually zoomed out too far for a trailer, so most shots use a fixed or keyframed camera on the action.
 3. Render it alone with `love . trailer=clips shot=NAME` and look at frames (for example `ffmpeg -i trailer/clips/NAME.mp4 -vf "select='not(mod(n\,30))',scale=640:-1,tile=4x4" -frames:v 1 -fps_mode vfr sheet.png`).
-4. Put its name in `sequence` in place of the old one. Keep the beat's length: a shot runs `(to - from) / speed / 60` seconds, `to - from` must be a multiple of `speed`, and `length = 66` must still equal the sequence total, or the check fails. To lengthen a shot, move `from` or `to` and check the new steps stay busy and do not cross a round reset (the scene jumps there).
+4. Put its name in `sequence` in place of the old one. Keep the beat's length: a shot runs `(to - from) / speed / 60` seconds, `to - from` must be a multiple of `speed`, and `length = 61` must still equal the sequence total, or the check fails. To lengthen a shot, move `from` or `to` and check the new steps stay busy and do not cross a round reset (the scene jumps there).
 
 **Edit a caption.** Change its `text`, `from` or `to` (seconds from the shot's first frame) in that shot's `captions`. A caption must fit inside its shot. Captions sit at the bottom by default: check a frame that the text clears the action and, on `couch_card`, the score list.
 
-**Edit the end card.** The `logo` card's `sub` is the call to action. Its `seconds` makes up the rest of the 66 s; `fadeOut = 1` matches the music fade.
+**Edit the end card.** The `logo` card's `sub` is the call to action. Its `seconds` makes up the rest of the 61 s; `fadeOut = 1` matches the music fade.
 
 ## The manifest
 
@@ -80,10 +80,11 @@ The game font (Kernel Panic NBP) has no `·` or `–` glyph, so the captions use
 | `length` | the trailer's length in seconds. Must match the `sequence` total to within one frame, or the check fails (`length is 13s but the sequence runs 12s`). Required when there is `music`; optional otherwise. `trailer=clips` ignores it |
 | `music` | optional music bed for `trailer=build`, see below. Ignored by `trailer=clips` |
 
-**Music bed.** `music = { path, volume, fadeOut }` plays the mp3 at `path` (read in place, never copied or changed) from 0:00 under the sound effects. It is trimmed to `length`, so the video and audio end together.
+**Music bed.** `music = { path, volume, fadeOut, start }` plays the mp3 at `path` (read in place, never copied or changed) from the trailer's 0:00 under the sound effects. It is trimmed to `length`, so the video and audio end together.
 
 - `path` is required. The file is checked at build time, not by the manifest check: a missing file prints `trailer build warning: music file not found, building with sound effects only: PATH` and the build goes on without music.
 - `volume` (default `0.3`, about −10 dB) sets the music level under the effects. It must be greater than 0.
+- `start` (default `0`) skips that many seconds of the track, so the trailer opens `start` seconds into the music. Changing it moves where the track ends: the trailer plays source time `start` to `start + length`. It must be 0 or more.
 - `fadeOut` (default `1`) fades the music to silence over its last seconds, so the cut at `length` does not click. Set `0` for no fade. It must be 0 or more and no longer than `length`.
 - The music is resampled to 48 kHz and mixed with `amix` (`normalize=0`, so neither input is halved). The mix ends with the effects track.
 

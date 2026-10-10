@@ -232,6 +232,7 @@ local function resolveMusic()
 		volume = music.volume or ManifestCheck.MUSIC_DEFAULTS.volume,
 		fadeOut = music.fadeOut or ManifestCheck.MUSIC_DEFAULTS.fadeOut,
 		length = Manifest.length,
+		start = music.start or 0,
 	}
 end
 
