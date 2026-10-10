@@ -16,9 +16,3 @@ synthwave_mondamusic.mp3
   title: Synthwave
   artist: MondaMusic
   link: https://pixabay.com/music/synthwave-synthwave-572999/
-
-synthwave_arpmedia.mp3
-  title: Synthwave
-  artist: ARPMedia
-  link: https://pixabay.com/music/synthwave-synthwave-569472/
-  note: Content ID registered; expect YouTube claims unless the channel is whitelisted

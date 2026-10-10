@@ -258,3 +258,13 @@ test("sound and fullscreen accept 0 and 1 values", function()
 	assertFalse(settings.sound)
 	assertTrue(settings.fullscreen)
 end)
+
+test("music round-trips and defaults to on", function()
+	local off = SettingsCodec.decode(SettingsCodec.encode({ roster = mixedRoster(), music = false }), { 1, 2 })
+	assertFalse(off.music)
+	local old = SettingsCodec.decode(SettingsCodec.encode({ roster = mixedRoster() }), { 1, 2 })
+	assertTrue(old.music)
+	local garbage = "gravity-settings 1\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nmusic banana\n"
+	assertTrue(SettingsCodec.decode(garbage, {}).music)
+	assertTrue(SettingsCodec.decode(nil, {}).music)
+end)

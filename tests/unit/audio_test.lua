@@ -3,24 +3,34 @@ local Audio = require("src.app.audio")
 -- A love.audio that counts plays and tracks the thruster loop, installed for
 -- the duration of one test. Audio caches its sources after the first load, so
 -- they all write to one shared `log`, reset per test.
-local log = { plays = 0, loopPlaying = false }
+local log = { plays = 0, loopPlaying = false, musicPlays = 0 }
 
 local function withFakeAudio(fn)
 	local saved = _G.love
-	log.plays, log.loopPlaying = 0, false
+	log.plays, log.loopPlaying, log.musicPlays = 0, false, 0
 	local function newSource(path)
 		local source = {}
+		local playing = false
 		function source.setVolume() end
 		function source.setLooping() end
+		function source.seek() end
+		function source:isPlaying()
+			return playing
+		end
 		function source:play()
-			if path:find("thruster") then
+			if path:find("msc") then
+				playing = true
+				log.musicPlays = log.musicPlays + 1
+			elseif path:find("thruster") then
 				log.loopPlaying = true
 			else
 				log.plays = log.plays + 1
 			end
 		end
 		function source:stop()
-			if path:find("thruster") then
+			if path:find("msc") then
+				playing = false
+			elseif path:find("thruster") then
 				log.loopPlaying = false
 			end
 		end
@@ -33,7 +43,9 @@ local function withFakeAudio(fn)
 	local ok, err = pcall(fn, log)
 	_G.love = saved
 	Audio.setEnabled(true)
+	Audio.setMusicEnabled(true)
 	Audio.stopAll()
+	Audio.stopMusic()
 	if not ok then
 		error(err, 0)
 	end
@@ -111,5 +123,41 @@ test("fast-forwarding keeps the thruster loop off", function()
 		assertTrue(log.loopPlaying)
 		Audio.update(ctx, true)
 		assertFalse(log.loopPlaying)
+	end)
+end)
+
+test("music starts with the first update and keeps one track playing", function()
+	withFakeAudio(function(log)
+		local ctx = { events = {}, pools = { ships = {} }, intents = {} }
+		Audio.update(ctx)
+		assertEqual(1, log.musicPlays)
+		Audio.update(ctx)
+		assertEqual(1, log.musicPlays)
+	end)
+end)
+
+test("music stays silent when music or sound is disabled, and resumes when re-enabled", function()
+	withFakeAudio(function(log)
+		local ctx = { events = {}, pools = { ships = {} }, intents = {} }
+		Audio.setMusicEnabled(false)
+		Audio.update(ctx)
+		assertEqual(0, log.musicPlays)
+		Audio.setMusicEnabled(true)
+		Audio.setEnabled(false)
+		Audio.update(ctx)
+		assertEqual(0, log.musicPlays)
+		Audio.setEnabled(true)
+		Audio.update(ctx)
+		assertEqual(1, log.musicPlays)
+	end)
+end)
+
+test("stopMusic ends the track; the next update starts the next one", function()
+	withFakeAudio(function(log)
+		local ctx = { events = {}, pools = { ships = {} }, intents = {} }
+		Audio.update(ctx)
+		Audio.stopMusic()
+		Audio.update(ctx)
+		assertEqual(2, log.musicPlays)
 	end)
 end)

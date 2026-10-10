@@ -261,12 +261,32 @@ test("Back from settings returns to the title, by Esc and by pad B", function()
 	end)
 end)
 
+test("the MUSIC row toggles the setting (on by default), saving the change", function()
+	withLove(function()
+		local changes = 0
+		local flow = Flow.new({ seed = 12345, onSettingsChanged = function() changes = changes + 1 end })
+		assertTrue(flow.settings.music)
+		assertFalse(Flow.new({ music = false }).settings.music)
+		openSettings(flow)
+		flow:keypressed("down") -- SOUND -> MUSIC
+		local top = flow.stack:top()
+		assertEqual("MUSIC  ON", top.items[top.selected].label)
+		flow:keypressed("return")
+		assertFalse(flow.settings.music)
+		assertEqual("MUSIC  OFF", top.items[top.selected].label)
+		flow:keypressed("left")
+		assertTrue(flow.settings.music)
+		assertEqual(2, changes)
+	end)
+end)
+
 test("the POST FX row cycles off, glow, glow+CRT and wraps, saving each change", function()
 	withLove(function()
 		local changes = 0
 		local flow = Flow.new({ seed = 12345, postMode = "off", onSettingsChanged = function() changes = changes + 1 end })
 		openSettings(flow)
-		flow:keypressed("down") -- SOUND -> POST FX
+		flow:keypressed("down") -- SOUND -> MUSIC
+		flow:keypressed("down") -- -> POST FX
 		local top = flow.stack:top()
 		assertEqual("POST FX  OFF", top.items[top.selected].label)
 		flow:keypressed("return")
@@ -290,7 +310,8 @@ test("the FULLSCREEN row toggles through the window hook, saving each change", f
 			onSettingsChanged = function() changes = changes + 1 end,
 		})
 		openSettings(flow)
-		flow:keypressed("down") -- SOUND -> POST FX
+		flow:keypressed("down") -- SOUND -> MUSIC
+		flow:keypressed("down") -- -> POST FX
 		flow:keypressed("down") -- -> FULLSCREEN
 		local top = flow.stack:top()
 		assertEqual("FULLSCREEN  OFF", top.items[top.selected].label)
@@ -312,6 +333,7 @@ test("without a window hook the FULLSCREEN row only flips the setting", function
 		openSettings(flow)
 		flow:keypressed("down")
 		flow:keypressed("down")
+		flow:keypressed("down")
 		flow:keypressed("return")
 		assertTrue(flow.settings.fullscreen)
 	end)
@@ -327,7 +349,7 @@ test("opening settings shows the real window state, not the saved value", functi
 		})
 		openSettings(flow)
 		local top = flow.stack:top()
-		assertEqual("FULLSCREEN  OFF", top.items[3].label)
+		assertEqual("FULLSCREEN  OFF", top.items[4].label)
 		assertFalse(flow.settings.fullscreen)
 	end)
 end)

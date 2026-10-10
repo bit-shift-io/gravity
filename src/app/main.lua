@@ -76,6 +76,7 @@ function love.load(args)
 		seed = tonumber(findArg(args, "^seed=(.+)$")),
 		roster = saved.roster,
 		sound = saved.sound,
+		music = saved.music,
 		postMode = saved.postMode,
 		fullscreen = saved.fullscreen,
 		lineThickness = saved.lineThickness,
@@ -88,6 +89,7 @@ function love.load(args)
 		intro = true,
 	})
 	Audio.setEnabled(App.flow.settings.sound)
+	Audio.setMusicEnabled(App.flow.settings.music)
 	Compat.setFullscreen(App.flow.settings.fullscreen)
 end
 

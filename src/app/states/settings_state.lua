@@ -1,4 +1,4 @@
--- Settings screen: value rows (SOUND, POST FX, FULLSCREEN, LINES) and BACK, pushed over the title. A row's
+-- Settings screen: value rows (SOUND, MUSIC, POST FX, FULLSCREEN, LINES) and BACK, pushed over the title. A row's
 -- confirm and left/right all flip it, applying and saving at once through
 -- flow:settingsChanged(). Add a row by appending to the list in `rows`.
 local MenuNav = require("src.app.menu.menu_nav")
@@ -35,6 +35,14 @@ function SettingsState:toggleSound()
 	self.flow:settingsChanged()
 end
 
+function SettingsState:toggleMusic()
+	local settings = self.flow.settings
+	settings.music = not settings.music
+	Audio.setMusicEnabled(settings.music)
+	self:refresh()
+	self.flow:settingsChanged()
+end
+
 function SettingsState:cyclePostMode()
 	local settings = self.flow.settings
 	settings.postMode = PostMode.next(settings.postMode)
@@ -62,11 +70,13 @@ end
 -- Rebuilds the row labels from the current settings.
 function SettingsState:refresh()
 	local toggle = function() self:toggleSound() end
+	local toggleMusic = function() self:toggleMusic() end
 	local cyclePost = function() self:cyclePostMode() end
 	local toggleFullscreen = function() self:toggleFullscreen() end
 	local cycleLines = function() self:cycleLineThickness() end
 	self.items = {
 		{ label = "SOUND  " .. onOff(self.flow.settings.sound), action = toggle, adjust = toggle },
+		{ label = "MUSIC  " .. onOff(self.flow.settings.music), action = toggleMusic, adjust = toggleMusic },
 		{ label = "POST FX  " .. POST_LABELS[self.flow.settings.postMode], action = cyclePost, adjust = cyclePost },
 		{ label = "FULLSCREEN  " .. onOff(self.flow.settings.fullscreen), action = toggleFullscreen, adjust = toggleFullscreen },
 		{ label = "LINES  " .. string.format("%gX", self.flow.settings.lineThickness), action = cycleLines, adjust = cycleLines },

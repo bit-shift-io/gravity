@@ -24,6 +24,7 @@ local function launch(args)
 	return Flow.new({
 		roster = saved.roster,
 		sound = saved.sound,
+		music = saved.music,
 		postMode = saved.postMode,
 		fullscreen = saved.fullscreen,
 		seed = args.seed,
@@ -160,10 +161,26 @@ test("a POST FX mode changed on the settings screen is restored after a relaunch
 		assertEqual("glowCrt", flow.settings.postMode)
 		flow:keypressed("down") -- PLAY -> SETTINGS
 		flow:keypressed("return")
-		flow:keypressed("down") -- SOUND -> POST FX
+		flow:keypressed("down") -- SOUND -> MUSIC
+		flow:keypressed("down") -- -> POST FX
 		flow:keypressed("return") -- glowCrt -> off
 	end)
 	withLove(files, function()
 		assertEqual("off", launch().settings.postMode)
+	end)
+end)
+
+test("MUSIC turned off on the settings screen is still off after a relaunch", function()
+	local files = {}
+	withLove(files, function()
+		local flow = launch()
+		assertTrue(flow.settings.music)
+		flow:keypressed("down") -- PLAY -> SETTINGS
+		flow:keypressed("return")
+		flow:keypressed("down") -- SOUND -> MUSIC
+		flow:keypressed("return") -- MUSIC off
+	end)
+	withLove(files, function()
+		assertFalse(launch().settings.music)
 	end)
 end)

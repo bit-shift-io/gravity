@@ -24,13 +24,14 @@ function Flow.new(opts)
 	-- field text ("" is random). It outlives matches, so setup
 	-- reopens as it was left. opts.roster seeds the six setup rows (default otherwise);
 	-- opts.onSettingsChanged(settings) fires after every setup edit;
--- opts.sound / opts.postMode / opts.fullscreen / opts.lineThickness seed the saved display and audio
--- fields (sound defaults on); the settings screen edits them.
+-- opts.sound / opts.music / opts.postMode / opts.fullscreen / opts.lineThickness seed the saved display and audio
+-- fields (sound and music default on); the settings screen edits them.
 -- opts.onStart(settings) fires when Start launches a match (not on rematch).
 	self.settings = {
 		roster = opts.roster or Roster.defaultSetup(),
 		seedText = opts.seed and string.format("%d", opts.seed) or "",
 		sound = opts.sound ~= false,
+		music = opts.music ~= false,
 		postMode = opts.postMode or Config.post.defaultMode,
 		fullscreen = opts.fullscreen or false,
 		lineThickness = opts.lineThickness or LineWidth.DEFAULT,
@@ -111,6 +112,7 @@ end
 -- Discards the match (and any pause over it).
 function Flow:toTitle()
 	Audio.stopAll()
+	Audio.stopMusic()
 	self.stack:reset(TitleState.new(self))
 end
 

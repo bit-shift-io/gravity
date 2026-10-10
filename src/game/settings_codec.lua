@@ -1,14 +1,15 @@
--- Settings codec: the roster, sound, postMode, fullscreen, and lineThickness
+-- Settings codec: the roster, sound, music, postMode, fullscreen, and lineThickness
 -- as a small line-based text (pure -- no `love.*`, no file access;
 -- src/app/settings_store.lua does the I/O).
 --   gravity-settings 1
 --   slot <color> keyboard <layout> | gamepad <ordinal> | ai <level> | none
 --   sound 0|1
+--   music 0|1
 --   postMode off|glow|glowCrt
 --   fullscreen 0|1
 --   lineThickness <step of LineWidth.STEPS>
 -- Setup has six rows (one per palette colour); older files saved fewer slots
--- and are padded with empty rows on load. Missing sound, postMode,
+-- and are padded with empty rows on load. Missing sound, music, postMode,
 -- fullscreen, or lineThickness lines load their defaults. The seed is never encoded.
 -- decode never errors: garbage gives defaults.
 local Config = require("src.game.config")
@@ -40,6 +41,7 @@ function SettingsCodec.encode(settings)
 		lines[#lines + 1] = string.format("slot %d %s", slot.color, bindingText(slot.binding))
 	end
 	lines[#lines + 1] = "sound " .. ((settings.sound ~= false) and "1" or "0")
+	lines[#lines + 1] = "music " .. ((settings.music ~= false) and "1" or "0")
 	lines[#lines + 1] = "postMode " .. (settings.postMode or Config.post.defaultMode)
 	lines[#lines + 1] = "fullscreen " .. ((settings.fullscreen == true) and "1" or "0")
 	local thickness = LineWidth.isValid(settings.lineThickness) and settings.lineThickness or LineWidth.DEFAULT
@@ -173,6 +175,7 @@ function SettingsCodec.decode(text, gamepads)
 		return {
 			roster = Roster.defaultSetup(),
 			sound = true,
+			music = true,
 			postMode = Config.post.defaultMode,
 			fullscreen = false,
 			lineThickness = LineWidth.DEFAULT,
@@ -180,6 +183,7 @@ function SettingsCodec.decode(text, gamepads)
 	end
 	local roster = {}
 	local sound = true
+	local music = true
 	local postMode = Config.post.defaultMode
 	local fullscreen = false
 	local lineThickness = LineWidth.DEFAULT
@@ -208,6 +212,11 @@ function SettingsCodec.decode(text, gamepads)
 				sound = soundValue == "1"
 			end
 
+			local musicValue = line:match("^music (%d)$")
+			if musicValue then
+				music = musicValue == "1"
+			end
+
 			local postModeValue = line:match("^postMode (%w+)$")
 			if postModeValue then
 				if isValidPostMode(postModeValue) then
@@ -229,6 +238,7 @@ function SettingsCodec.decode(text, gamepads)
 	return {
 		roster = SettingsCodec.repair(roster, gamepads),
 		sound = sound,
+		music = music,
 		postMode = postMode,
 		fullscreen = fullscreen,
 		lineThickness = lineThickness,
