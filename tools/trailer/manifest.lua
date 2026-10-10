@@ -38,8 +38,8 @@ return {
 			from = 202,
 			to = 442,
 			camera = {
-				{ t = 0, x = -20, y = -130, zoom = 2.2 },
-				{ t = 1, x = -60, y = -150, zoom = 2.9 },
+				{ t = 0, x = -20, y = -130, zoom = 1.3 },
+				{ t = 1, x = -60, y = -150, zoom = 1.7 },
 			},
 			hud = true,
 			fadeIn = 0.4,
@@ -108,24 +108,35 @@ return {
 		-- 3. Arsenal: an asteroid split, ships landing as tanks, tank airbursts.
 		{
 			name = "arsenal_asteroids",
-			seed = 178,
+			-- Scouted with `trailer=scout shot=arsenal_asteroids seed=3333`: an
+			-- asteroid comes in (step 782), breaks on the first planet (920) and
+			-- its fragments hit the second planet near the players (about 1108).
+			seed = 3333,
 			roster = bots(6),
-			from = 611,
-			to = 881,
-			camera = { x = 225, y = 0, zoom = 2.4 },
+			from = 760,
+			to = 1150,
+			camera = {
+				{ t = 0, x = 450, y = 30, zoom = 1.2, ease = "out" },
+				{ t = 0.41, x = 200, y = 70, zoom = 1.2, ease = "linear" },
+				{ t = 0.67, x = -60, y = 100, zoom = 1.2 },
+				{ t = 1, x = -260, y = 180, zoom = 1.35 },
+			},
 			hud = true,
 			glow = true,
 			crt = true,
 		},
 		{
 			name = "arsenal_tanks",
-			seed = 74,
-			roster = bots(3),
-			from = 2676,
-			to = 3036,
+			-- Scouted with `trailer=scout shot=arsenal_asteroids seed=7812`: the
+			-- round starts at step 2830; the pink tank kills purple (about 2880),
+			-- then two more ships die by 3017.
+			seed = 7812,
+			roster = bots(6),
+			from = 2830,
+			to = 3070,
 			camera = {
-				{ t = 0, x = -24, y = -56, zoom = 2.0 },
-				{ t = 1, x = -24, y = -56, zoom = 2.2 },
+				{ t = 0, x = -380, y = -140, zoom = 1.5 },
+				{ t = 1, x = -380, y = -140, zoom = 1.7 },
 			},
 			hud = true,
 			glow = true,
@@ -133,13 +144,15 @@ return {
 		},
 		{
 			name = "arsenal_airburst",
-			seed = 58,
-			roster = bots(2),
-			from = 2371,
-			to = 2641,
+			-- Scouted with `trailer=scout shot=arsenal_tanks seed=2345`: orange
+			-- kills blue with an airburst (on screen about step 3535).
+			seed = 2345,
+			roster = bots(3),
+			from = 3325,
+			to = 3595,
 			camera = {
-				{ t = 0, x = 165, y = 0, zoom = 3.4 },
-				{ t = 1, x = 160, y = -20, zoom = 2.9 },
+				{ t = 0, x = -40, y = -80, zoom = 1.4 },
+				{ t = 1, x = 40, y = -50, zoom = 1.6 },
 			},
 			hud = true,
 			glow = true,
@@ -253,8 +266,8 @@ return {
 	sequence = {
 		"cold_open", -- 0-4
 		"gravity_flight", -- 4-17
-		"arsenal_asteroids", -- 17-21.5
-		"arsenal_tanks", -- 21.5-27.5
+		"arsenal_asteroids", -- 17-23.5
+		"arsenal_tanks", -- 23.5-27.5
 		"arsenal_airburst", -- 27.5-32
 		"chaos_blob", -- 32-37
 		"chaos_snake", -- 37-42
