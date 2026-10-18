@@ -119,7 +119,11 @@ end
 
 function State:keypressed(key)
 	if key == "escape" then
-		self.flow:pause()
+		if RoundSystem.matchOver(self.ctx.round) then
+			self.flow:toSetup()
+		else
+			self.flow:pause()
+		end
 	elseif key == "p" then
 		self.flow:screenshot()
 	elseif key == "r" then
@@ -134,6 +138,8 @@ function State:gamepadpressed(_, button)
 		self.flow:pause()
 	elseif button == "a" and RoundSystem.matchOver(self.ctx.round) then
 		self.flow:rematch(self, true)
+	elseif button == "b" and RoundSystem.matchOver(self.ctx.round) then
+		self.flow:toSetup()
 	end
 end
 

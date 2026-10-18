@@ -92,7 +92,6 @@ test("gamepad alone: randomise changes the seed field but a pad cannot edit its 
 
 		padDownTo(flow, pad, "SEED")
 		flow:gamepadpressed(pad, "dpright")
-		flow:gamepadpressed(pad, "a")
 		flow:textinput("") -- a pad produces no text
 		assertEqual("", setup.settings.seedText)
 
@@ -109,14 +108,34 @@ test("gamepad alone: randomise changes the seed field but a pad cannot edit its 
 	end)
 end)
 
+test("SEED row shows a hint, and pad A there randomises the seed", function()
+	withLove(function(input)
+		local pad = input:addJoystick("pad")
+		local flow = newFlow()
+		flow:gamepadpressed(pad, "a") -- Play
+		local setup = flow.stack:top()
+		assertEqual(nil, (setup:shownNotice()))
+		padDownTo(flow, pad, "SEED")
+		assertEqual("TYPE DIGITS // [A] RANDOMISES", (setup:shownNotice()))
+		flow:gamepadpressed(pad, "a")
+		assertTrue(setup.settings.seedText:match("^%d+$") ~= nil, "seed randomised")
+		padDownTo(flow, pad, "START")
+		assertTrue(setup:shownNotice() ~= "TYPE DIGITS // [A] RANDOMISES", "hint hidden off SEED")
+	end)
+end)
+
 test("a bound gamepad that disconnects in setup is flagged and blocks Start", function()
 	withLove(function(input)
 		local pad = input:addJoystick("pad")
 		local flow = newFlow()
 		flow:keypressed("return")
+		-- the pad default is PAD 1 / AI EASY: free PAD 1 for slot 2
+		goTo(flow, "SLOT 1")
+		flow:keypressed("left") -- PAD 1 -> ijkl
+		flow:keypressed("left") -- -> arrows
+		flow:keypressed("left") -- -> wasd
 		goTo(flow, "SLOT 2")
-		flow:keypressed("right") -- arrows -> ijkl
-		flow:keypressed("right") -- -> PAD 1
+		flow:keypressed("left") -- AI easy -> PAD 1
 		assertEqual("PAD 1", selectedLabel(flow):match("PAD %d"))
 
 		input:removeJoystick(pad)
@@ -260,5 +279,74 @@ test("the settings-changed hook fires after each setup edit", function()
 		goTo(flow, "RANDOMISE SEED")
 		flow:keypressed("return")
 		assertEqual(1, seen)
+	end)
+end)
+
+local function setupRows(flow)
+	local top = flow.stack:top()
+	local rows = {}
+	for slot = 1, 6 do
+		rows[slot] = top.items[slot].label
+	end
+	return rows
+end
+
+test("a pad connected after launch turns the untouched default into PAD 1 / AI EASY", function()
+	withLove(function(input)
+		local flow = newFlow()
+		input:addJoystick()
+		flow:keypressed("return") -- Play
+		local rows = setupRows(flow)
+		assertEqual("SLOT 1  PAD 1", rows[1])
+		assertEqual("SLOT 2  AI EASY", rows[2])
+		assertEqual("SLOT 3  EMPTY", rows[3])
+	end)
+end)
+
+test("a pad connecting while setup is open swaps the untouched default", function()
+	withLove(function(input)
+		local flow = newFlow()
+		flow:keypressed("return")
+		assertEqual("SLOT 1  WASD+Q", setupRows(flow)[1])
+		local pad = input:addJoystick()
+		flow:joystickadded(pad)
+		assertEqual("SLOT 1  PAD 1", setupRows(flow)[1])
+		assertEqual("SLOT 2  AI EASY", setupRows(flow)[2])
+	end)
+end)
+
+test("an edited keyboard roster stays as is when a pad connects", function()
+	withLove(function(input)
+		local flow = newFlow()
+		flow:keypressed("return")
+		goTo(flow, "SLOT 3")
+		flow:keypressed("right") -- empty -> ijkl
+		local pad = input:addJoystick()
+		flow:joystickadded(pad)
+		assertEqual("SLOT 1  WASD+Q", setupRows(flow)[1])
+		assertEqual("SLOT 3  IJKL+O", setupRows(flow)[3])
+	end)
+end)
+
+test("keyboard-only roster with a pad connected shows a warning that does not block pad START", function()
+	withLove(function(input)
+		local pad = input:addJoystick()
+		local flow = newFlow()
+		flow:gamepadpressed(pad, "a") -- Play
+		local setup = flow.stack:top()
+		padDownTo(flow, pad, "SLOT 1")
+		flow:gamepadpressed(pad, "dpright") -- PAD 1 -> next binding
+		for _ = 1, 10 do
+			if setupRows(flow)[1] == "SLOT 1  WASD+Q" then
+				break
+			end
+			flow:gamepadpressed(pad, "dpright")
+		end
+		assertEqual("SLOT 1  WASD+Q", setupRows(flow)[1])
+		assertEqual(0, #setup.problems)
+		assertEqual("NO SLOT USES A PAD // SET A SLOT TO PAD 1", setup.warnings[1].reason)
+		padDownTo(flow, pad, "START")
+		flow:gamepadpressed(pad, "a")
+		assertEqual("match", flow:topName())
 	end)
 end)

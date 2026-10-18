@@ -28,7 +28,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Roster
 - **Definition:** The ordered list of slots for a match, each with a colour and a binding.
-- **Boundary:** Setup always edits six rows (one per palette colour, empty ones allowed) and persists them. The match roster is the non-empty rows, compacted: 2–6 slots, none empty, at least one human (the rest may be AI).
+- **Boundary:** Setup always edits six rows (one per palette colour, empty ones allowed) and persists them. Setup's first-run default is one slot per connected pad plus AI to reach 2 players, or WASD + ARROWS with no pads. The match roster is the non-empty rows, compacted: 2–6 slots, none empty, at least one human (the rest may be AI).
 
 ## Slot
 - **Definition:** One seat in the roster: a colour index and a binding.
@@ -165,7 +165,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 
 ## Rematch
 - **Definition:** A fresh match with the score zeroed. The match-over rematch (Enter / Space / pad A) rolls a new seed and so a new level.
-- **Boundary:** Keeps the roster. The R dev key replays the same level and seed.
+- **Boundary:** Keeps the roster. Match-over Esc / pad B goes to setup instead. The R dev key replays the same level and seed.
 
 ## Seed
 - **Definition:** The number that determines a match's generated level and asteroid spawns.
@@ -212,7 +212,7 @@ Domain terms for GRAV//TY. Code, docs, and conversation use these words with the
 - **Boundary:** Post effects act on it alone. Letterbox bars outside it stay black.
 
 ## Settings screen
-- **Definition:** Menu state with the SOUND, POST FX and FULLSCREEN rows, opened from the title and pause menus. Values persist in `settings.txt`.
+- **Definition:** Menu state with the SOUND, MUSIC, POST FX, FULLSCREEN and LINES rows, opened from the title and pause menus. Values persist in `settings.txt`.
 - **Boundary:** Not the setup screen, which edits the roster and seed.
 
 ## Steam asset

@@ -67,7 +67,7 @@ function SettingsCodec.repair(roster, gamepads)
 		end
 	end
 	if active < Config.players.min or humans < Config.players.minHumans then
-		return Roster.defaultSetup()
+		return Roster.defaultSetup(gamepads)
 	end
 	for slot = #roster + 1, Config.players.max do
 		roster[slot] = { binding = { kind = "none" } }
@@ -124,6 +124,18 @@ function SettingsCodec.repair(roster, gamepads)
 	end
 	local function fallback()
 		if humans < Config.players.maxHumans then
+			local pads = {}
+			for id in pairs(connected) do
+				pads[#pads + 1] = id
+			end
+			table.sort(pads)
+			for _, id in ipairs(pads) do
+				if not usedPads[id] then
+					local binding = { kind = "gamepad", id = id }
+					claim(binding)
+					return binding
+				end
+			end
 			for _, layout in ipairs(Roster.LAYOUTS) do
 				if not usedLayouts[layout] then
 					local binding = { kind = "keyboard", layout = layout }
@@ -173,7 +185,7 @@ end
 function SettingsCodec.decode(text, gamepads)
 	if type(text) ~= "string" or text:match("^[^\n]*") ~= HEADER .. " " .. VERSION then
 		return {
-			roster = Roster.defaultSetup(),
+			roster = Roster.defaultSetup(gamepads),
 			sound = true,
 			music = true,
 			postMode = Config.post.defaultMode,

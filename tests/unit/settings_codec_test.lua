@@ -52,7 +52,7 @@ end)
 
 test("an unknown version loads defaults even when the body looks valid", function()
 	local text = SettingsCodec.encode({ roster = mixedRoster() }):gsub("gravity%-settings 1", "gravity-settings 2")
-	assertDefaults(SettingsCodec.decode(text, { 1, 2 }))
+	assertDefaults(SettingsCodec.decode(text, {}))
 end)
 
 local function encodeSlots(...)
@@ -65,10 +65,39 @@ local function assertValid(settings, gamepads)
 end
 
 test("a saved gamepad that is no longer connected falls back to the next unused keyboard layout", function()
-	local settings = SettingsCodec.decode(encodeSlots("slot 1 keyboard wasd", "slot 2 gamepad 2"), { 1 })
+	local settings = SettingsCodec.decode(encodeSlots("slot 1 keyboard wasd", "slot 2 gamepad 2"), {})
 	assertEqual("keyboard", settings.roster[2].binding.kind)
 	assertEqual("arrows", settings.roster[2].binding.layout)
+	assertValid(settings, {})
+end)
+
+test("a missing saved pad rebinds to the lowest free connected pad", function()
+	local settings = SettingsCodec.decode(encodeSlots("slot 1 keyboard wasd", "slot 2 gamepad 3"), { 1 })
+	assertEqual("gamepad", settings.roster[2].binding.kind)
+	assertEqual(1, settings.roster[2].binding.id)
 	assertValid(settings, { 1 })
+end)
+
+test("two missing pads with one connected: first takes the pad, second the next keyboard layout", function()
+	local settings = SettingsCodec.decode(encodeSlots("slot 1 gamepad 3", "slot 2 gamepad 4"), { 1 })
+	assertEqual("gamepad", settings.roster[1].binding.kind)
+	assertEqual(1, settings.roster[1].binding.id)
+	assertEqual("keyboard", settings.roster[2].binding.kind)
+	assertEqual("wasd", settings.roster[2].binding.layout)
+	assertValid(settings, { 1 })
+end)
+
+test("a saved valid keyboard layout stays when a pad is connected", function()
+	local settings = SettingsCodec.decode(encodeSlots("slot 1 keyboard wasd", "slot 2 ai easy"), { 1 })
+	assertEqual("keyboard", settings.roster[1].binding.kind)
+	assertEqual("wasd", settings.roster[1].binding.layout)
+end)
+
+test("a pad kept by a later slot is not reused by an earlier fallback", function()
+	local settings = SettingsCodec.decode(encodeSlots("slot 1 gamepad 3", "slot 2 gamepad 1"), { 1, 2 })
+	assertEqual(2, settings.roster[1].binding.id)
+	assertEqual(1, settings.roster[2].binding.id)
+	assertValid(settings, { 1, 2 })
 end)
 
 test("with every keyboard layout taken, a missing pad becomes AI easy", function()
@@ -267,4 +296,19 @@ test("music round-trips and defaults to on", function()
 	local garbage = "gravity-settings 1\nslot 1 keyboard wasd\nslot 2 keyboard arrows\nmusic banana\n"
 	assertTrue(SettingsCodec.decode(garbage, {}).music)
 	assertTrue(SettingsCodec.decode(nil, {}).music)
+end)
+
+test("decode of missing settings with a pad connected gives PAD 1 and AI easy", function()
+	local roster = SettingsCodec.decode(nil, { 1 }).roster
+	assertEqual("gamepad", roster[1].binding.kind)
+	assertEqual(1, roster[1].binding.id)
+	assertEqual("ai", roster[2].binding.kind)
+	assertEqual("easy", roster[2].binding.level)
+end)
+
+test("a saved keyboard roster is not rewritten when a pad is connected", function()
+	local text = SettingsCodec.encode({ roster = Roster.defaultSetup({}) })
+	local roster = SettingsCodec.decode(text, { 1 }).roster
+	assertEqual("keyboard", roster[1].binding.kind)
+	assertEqual("keyboard", roster[2].binding.kind)
 end)

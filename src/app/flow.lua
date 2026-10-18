@@ -13,6 +13,7 @@ local PauseState = require("src.app.states.pause_state")
 local SetupState = require("src.app.states.setup_state")
 local SettingsState = require("src.app.states.settings_state")
 local Audio = require("src.app.audio")
+local Compat = require("src.app.compat")
 
 local Flow = {}
 Flow.__index = Flow
@@ -28,7 +29,7 @@ function Flow.new(opts)
 -- fields (sound and music default on); the settings screen edits them.
 -- opts.onStart(settings) fires when Start launches a match (not on rematch).
 	self.settings = {
-		roster = opts.roster or Roster.defaultSetup(),
+		roster = opts.roster or Roster.defaultSetup(opts.gamepads or Compat.connectedPadIds()),
 		seedText = opts.seed and string.format("%d", opts.seed) or "",
 		sound = opts.sound ~= false,
 		music = opts.music ~= false,
@@ -114,6 +115,13 @@ function Flow:toTitle()
 	Audio.stopAll()
 	Audio.stopMusic()
 	self.stack:reset(TitleState.new(self))
+end
+
+-- Match over -> Setup, settings (roster, seed text) untouched.
+function Flow:toSetup()
+	Audio.stopAll()
+	Audio.stopMusic()
+	self.stack:reset(SetupState.new(self))
 end
 
 function Flow:quit()

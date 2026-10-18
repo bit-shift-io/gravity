@@ -20,16 +20,49 @@ function Roster.default()
 	}
 end
 
--- What setup edits: six rows (one per palette colour), wasd and arrows bound,
--- the rest empty ({ kind = "none" }).
-function Roster.defaultSetup()
+-- What setup edits: six rows (one per palette colour), the rest empty
+-- ({ kind = "none" }). With connected pads (`gamepads`, ordinals) each gets a
+-- row in ascending order (capped at maxHumans), then AI easy fills up to the
+-- minimum player count. Without pads: wasd and arrows.
+function Roster.defaultSetup(gamepads)
 	local roster = {}
 	for row = 1, Config.players.max do
 		roster[row] = { color = row, binding = { kind = "none" } }
 	end
-	roster[1].binding = { kind = "keyboard", layout = "wasd" }
-	roster[2].binding = { kind = "keyboard", layout = "arrows" }
+	local ids = {}
+	for _, id in ipairs(gamepads or {}) do
+		ids[#ids + 1] = id
+	end
+	table.sort(ids)
+	if #ids == 0 then
+		roster[1].binding = { kind = "keyboard", layout = "wasd" }
+		roster[2].binding = { kind = "keyboard", layout = "arrows" }
+		return roster
+	end
+	local rows = math.min(#ids, Config.players.maxHumans)
+	for row = 1, rows do
+		roster[row].binding = { kind = "gamepad", id = ids[row] }
+	end
+	for row = rows + 1, Config.players.min do
+		roster[row].binding = { kind = "ai", level = "easy" }
+	end
 	return roster
+end
+
+-- True when `roster` is exactly the untouched no-pad default (so setup may
+-- swap it for the pad default).
+function Roster.isKeyboardDefault(roster)
+	local default = Roster.defaultSetup({})
+	if #roster ~= #default then
+		return false
+	end
+	for row, entry in ipairs(default) do
+		local other = roster[row]
+		if other.color ~= entry.color or other.binding.kind ~= entry.binding.kind or other.binding.layout ~= entry.binding.layout then
+			return false
+		end
+	end
+	return true
 end
 
 -- An independent copy, so a running match never sees later setup edits.
@@ -210,6 +243,22 @@ function Roster.validate(roster, gamepads)
 		end
 	end
 	return problems
+end
+
+-- Non-blocking advice: a list of { reason }. With a pad connected and no human
+-- slot on a pad, suggest binding one. Never blocks Start.
+function Roster.warnings(roster, gamepads)
+	local warnings = {}
+	if #(gamepads or {}) == 0 then
+		return warnings
+	end
+	for _, slot in ipairs(Roster.humans(roster)) do
+		if roster[slot].binding.kind == "gamepad" then
+			return warnings
+		end
+	end
+	warnings[1] = { reason = "NO SLOT USES A PAD // SET A SLOT TO PAD 1" }
+	return warnings
 end
 
 return Roster

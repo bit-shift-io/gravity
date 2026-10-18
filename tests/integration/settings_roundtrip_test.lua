@@ -100,9 +100,13 @@ test("a saved gamepad that is missing at relaunch falls back and never blocks St
 		input:addJoystick("pad")
 		local flow = launch()
 		flow:keypressed("return")
+		-- the pad default is PAD 1 / AI EASY: free PAD 1 for slot 2
+		goTo(flow, "SLOT 1")
+		flow:keypressed("left") -- PAD 1 -> ijkl
+		flow:keypressed("left") -- -> arrows
+		flow:keypressed("left") -- -> wasd
 		goTo(flow, "SLOT 2")
-		flow:keypressed("right") -- arrows -> ijkl
-		flow:keypressed("right") -- -> PAD 1
+		flow:keypressed("left") -- AI easy -> PAD 1
 		goTo(flow, "START")
 		flow:keypressed("return")
 		assertEqual("match", flow:topName())

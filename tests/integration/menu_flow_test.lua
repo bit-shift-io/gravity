@@ -208,6 +208,49 @@ test("match-over rematch still works by Enter and by pad A", function()
 	end)
 end)
 
+test("match-over B and Esc return to setup with roster and seed kept; before match-over Esc pauses and B does nothing", function()
+	withLove(function(input)
+		local pad = input:addJoystick()
+		local flow = newFlow()
+		flow:play()
+		flow.settings.seedText = "4242"
+		local roster = flow.settings.roster
+		startMatch(flow)
+		assertEqual("match", flow.stack:top().name)
+
+		flow:gamepadpressed(pad, "b")
+		assertEqual("match", flow.stack:top().name)
+		flow:keypressed("escape")
+		assertEqual("pause", flow.stack:top().name)
+		flow.stack:pop()
+
+		local function endMatch()
+			local round = flow:topCtx().round
+			round.winner = 1
+			round.phase = "matchOver"
+		end
+		endMatch()
+		flow:gamepadpressed(pad, "start")
+		assertEqual("pause", flow.stack:top().name)
+		flow.stack:pop()
+
+		flow:gamepadpressed(pad, "b")
+		assertEqual("setup", flow.stack:top().name)
+		assertTrue(flow.settings.roster == roster)
+		assertEqual("4242", flow.settings.seedText)
+
+		flow:keypressed("escape")
+		assertEqual("title", flow.stack:top().name)
+
+		flow:play()
+		startMatch(flow)
+		endMatch()
+		flow:keypressed("escape")
+		assertEqual("setup", flow.stack:top().name)
+		assertEqual("4242", flow.settings.seedText)
+	end)
+end)
+
 local Audio = require("src.app.audio")
 
 local function openSettings(flow)

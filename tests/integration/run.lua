@@ -22,6 +22,7 @@ local defaultTestFiles = {
 	"tests/integration/screenshot_keys_test.lua",
 	"tests/integration/setup_flow_test.lua",
 	"tests/integration/settings_roundtrip_test.lua",
+	"tests/integration/pad_only_journey_test.lua",
 }
 
 local tests = {}

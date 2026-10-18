@@ -7,6 +7,8 @@
 -- Works by keyboard or any gamepad (a gamepad cannot type digits, but can
 -- randomise). Limits and validation live in src/game/roster.lua; this state
 -- only shows their reasons.
+-- Footer text precedence: problem (alert) > notice > seed hint (SEED row
+-- selected) > first roster warning. Confirm on SEED randomises it.
 local Config = require("src.game.config")
 local Roster = require("src.game.roster")
 local Compat = require("src.app.compat")
@@ -32,8 +34,12 @@ end
 function SetupState.new(flow)
 	local self = setmetatable({ name = "setup", flow = flow, settings = flow.settings, stick = MenuNav.newStick() }, SetupState)
 	self.onBack = function() flow:toTitle() end
+	local swapped = self:adoptPadDefault()
 	self:refresh()
 	self.selected = #self.items - 1 -- START (second to last)
+	if swapped then
+		flow:settingsChanged()
+	end
 	return self
 end
 
@@ -47,6 +53,7 @@ function SetupState:refresh()
 	local settings = self.settings
 	local previous = self.items and self.items[self.selected]
 	self.problems = Roster.validate(settings.roster, Compat.connectedPadIds())
+	self.warnings = Roster.warnings(settings.roster, Compat.connectedPadIds())
 	local flagged = {}
 	for _, problem in ipairs(self.problems) do
 		if problem.slot then
@@ -65,7 +72,9 @@ function SetupState:refresh()
 			adjust = function(dir) self:cycleBinding(slot, dir == "right" and 1 or -1) end,
 		}
 	end
-	items[#items + 1] = { id = "seed", label = "SEED  " .. (settings.seedText == "" and "RANDOM" or settings.seedText), action = function() end }
+	items[#items + 1] = { id = "seed", label = "SEED  " .. (settings.seedText == "" and "RANDOM" or settings.seedText), action = function()
+		self:edit(function() settings.seedText = randomSeedText() end)
+	end }
 	items[#items + 1] = { id = "randomise", label = "RANDOMISE SEED", action = function()
 		self:edit(function() settings.seedText = randomSeedText() end)
 	end }
@@ -155,20 +164,48 @@ function SetupState:gamepadaxis(_, axis, value)
 	apply(self, self.stick:axis(axis, value))
 end
 
+-- An untouched keyboard default roster becomes the pad default once a pad is
+-- connected; any edited or saved roster stays as it is.
+function SetupState:adoptPadDefault()
+	local pads = Compat.connectedPadIds()
+	if #pads > 0 and Roster.isKeyboardDefault(self.settings.roster) then
+		self.settings.roster = Roster.defaultSetup(pads)
+		return true
+	end
+	return false
+end
+
 function SetupState:joystickadded()
+	local swapped = self:adoptPadDefault()
 	self:refresh()
+	if swapped then
+		self.flow:settingsChanged()
+	end
 end
 
 function SetupState:joystickremoved()
 	self:refresh()
 end
 
-function SetupState:draw()
+function SetupState:shownNotice()
 	local problem = self.problems[1]
-	local notice, alert = self.notice, false
 	if problem then
-		notice, alert = self:problemText(problem), true
+		return self:problemText(problem), true
 	end
+	if self.notice then
+		return self.notice, false
+	end
+	if onSeedRow(self) then
+		return "TYPE DIGITS // [A] RANDOMISES", false
+	end
+	if self.warnings[1] then
+		return self.warnings[1].reason, false
+	end
+	return nil, false
+end
+
+function SetupState:draw()
+	local notice, alert = self:shownNotice()
 	MenuRender.draw({ title = "SETUP", items = self.items, selected = self.selected, compact = true, notice = notice, alert = alert })
 end
 

@@ -229,3 +229,57 @@ test("validate ignores empty rows for the human limit, duplicates and pads", fun
 	roster[3].binding = { kind = "ai", level = "easy" }
 	assertEqual(0, #Roster.validate(roster, {}))
 end)
+
+local function bindingsOf(roster)
+	local out = {}
+	for slot, entry in ipairs(roster) do
+		local b = entry.binding
+		out[slot] = b.kind == "gamepad" and ("pad" .. b.id) or b.kind == "ai" and ("ai" .. b.level) or b.kind == "keyboard" and b.layout or "none"
+	end
+	return table.concat(out, ",")
+end
+
+test("defaultSetup without pads is WASD and ARROWS", function()
+	assertEqual("wasd,arrows,none,none,none,none", bindingsOf(Roster.defaultSetup({})))
+	assertEqual("wasd,arrows,none,none,none,none", bindingsOf(Roster.defaultSetup()))
+end)
+
+test("defaultSetup with one pad is that pad plus AI easy", function()
+	assertEqual("pad1,aieasy,none,none,none,none", bindingsOf(Roster.defaultSetup({ 1 })))
+end)
+
+test("defaultSetup with two pads gives each a row and no AI", function()
+	assertEqual("pad1,pad2,none,none,none,none", bindingsOf(Roster.defaultSetup({ 1, 2 })))
+end)
+
+test("defaultSetup with three pads gives AI nothing", function()
+	assertEqual("pad1,pad2,pad3,none,none,none", bindingsOf(Roster.defaultSetup({ 1, 2, 3 })))
+end)
+
+test("defaultSetup caps pads at maxHumans and keeps colours 1..6 unique", function()
+	local roster = Roster.defaultSetup({ 1, 2, 3, 4, 5, 6, 7 })
+	assertEqual("pad1,pad2,pad3,pad4,pad5,pad6", bindingsOf(roster))
+	for row = 1, 6 do
+		assertEqual(row, roster[row].color)
+	end
+end)
+
+test("isKeyboardDefault is true for the no-pad default and false after any edit", function()
+	assertTrue(Roster.isKeyboardDefault(Roster.defaultSetup({})))
+	local rebound = Roster.defaultSetup({})
+	Roster.cycleBinding(rebound, 3, {}, 1)
+	assertFalse(Roster.isKeyboardDefault(rebound))
+	local recoloured = Roster.defaultSetup({})
+	Roster.cycleColor(recoloured, 1, 1)
+	assertFalse(Roster.isKeyboardDefault(recoloured))
+	assertFalse(Roster.isKeyboardDefault(Roster.defaultSetup({ 1 })))
+end)
+
+test("warnings: none without pads, none when a human is on a pad, one for keyboard-only humans with a pad", function()
+	local keyboard = Roster.defaultSetup({})
+	assertEqual(0, #Roster.warnings(keyboard, {}))
+	assertEqual(0, #Roster.warnings(Roster.defaultSetup({ 1 }), { 1 }))
+	local warnings = Roster.warnings(keyboard, { 1 })
+	assertEqual(1, #warnings)
+	assertEqual("NO SLOT USES A PAD // SET A SLOT TO PAD 1", warnings[1].reason)
+end)

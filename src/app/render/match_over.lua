@@ -19,7 +19,7 @@ function MatchOver.title(winner)
 end
 
 function MatchOver.prompt()
-	return "PRESS ENTER FOR A REMATCH"
+	return "REMATCH: ENTER / [A] // SETUP: ESC / [B]"
 end
 
 function MatchOver.draw(ctx)
