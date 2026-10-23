@@ -30,30 +30,31 @@ local function write(path, text)
 	f:close()
 end
 
--- One depot holds every platform folder side by side. Mapping the folders by name keeps build/cache,
--- build/steam and the loose gravity.love off players' disks; the .love inside each platform folder stays.
-local function depot_script(depot_id)
-	local lines = {
+-- Each platform folder goes to its own depot, keeping its folder name so the launch options keep working.
+-- Mapping the folder by name keeps build/cache, build/steam and the loose gravity.love off players' disks.
+local function depot_script(depot_id, platform)
+	return table.concat({
 		'"DepotBuildConfig"',
 		"{",
 		'	"DepotID" "' .. depot_id .. '"',
 		'	"ContentRoot" "' .. BUILD .. '"',
-	}
-	for _, platform in ipairs(PLATFORMS) do
-		lines[#lines + 1] = '	"FileMapping"'
-		lines[#lines + 1] = "	{"
-		lines[#lines + 1] = '		"LocalPath" "' .. platform .. '/*"'
-		lines[#lines + 1] = '		"DepotPath" "' .. platform .. '"'
-		lines[#lines + 1] = '		"Recursive" "1"'
-		lines[#lines + 1] = "	}"
-	end
-	lines[#lines + 1] = "}"
-	lines[#lines + 1] = ""
-	return table.concat(lines, "\n")
+		'	"FileMapping"',
+		"	{",
+		'		"LocalPath" "' .. platform .. '/*"',
+		'		"DepotPath" "' .. platform .. '"',
+		'		"Recursive" "1"',
+		"	}",
+		-- Finder litter and Claude Code's write tracking (left behind when a session's working directory sits
+		-- in a build folder); harmless, but no reason to ship either.
+		'	"FileExclusion" "*.DS_Store"',
+		'	"FileExclusion" "*.claude*"',
+		"}",
+		"",
+	}, "\n")
 end
 
 local function app_script()
-	return table.concat({
+	local lines = {
 		'"AppBuild"',
 		"{",
 		'	"AppID" "' .. steam.app_id .. '"',
@@ -63,17 +64,23 @@ local function app_script()
 		'	"SetLive" "' .. steam.branch .. '"',
 		'	"Depots"',
 		"	{",
-		'		"' .. steam.depot .. '" "' .. SCRIPTS .. "/depot_" .. steam.depot .. '.vdf"',
-		"	}",
-		"}",
-		"",
-	}, "\n")
+	}
+	for _, platform in ipairs(PLATFORMS) do
+		local id = steam.depots[platform]
+		lines[#lines + 1] = '		"' .. id .. '" "' .. SCRIPTS .. "/depot_" .. id .. '.vdf"'
+	end
+	lines[#lines + 1] = "	}"
+	lines[#lines + 1] = "}"
+	lines[#lines + 1] = ""
+	return table.concat(lines, "\n")
 end
 
 -- A dry run is for checking the generated scripts, so it tolerates placeholders.
 if not dry_run then
 	check_id("steam.app_id", steam.app_id)
-	check_id("steam.depot", steam.depot)
+	for _, platform in ipairs(PLATFORMS) do
+		check_id("steam.depots." .. platform, steam.depots[platform])
+	end
 end
 
 for _, platform in ipairs(PLATFORMS) do
@@ -85,7 +92,10 @@ end
 run("mkdir -p " .. q(SCRIPTS .. "/output"))
 -- Scripts from an earlier layout or app id would otherwise sit beside the new ones.
 run("rm -f " .. q(SCRIPTS) .. "/depot_*.vdf " .. q(SCRIPTS) .. "/app_build_*.vdf")
-write(SCRIPTS .. "/depot_" .. steam.depot .. ".vdf", depot_script(steam.depot))
+for _, platform in ipairs(PLATFORMS) do
+	local id = steam.depots[platform]
+	write(SCRIPTS .. "/depot_" .. id .. ".vdf", depot_script(id, platform))
+end
 local app_path = SCRIPTS .. "/app_build_" .. steam.app_id .. ".vdf"
 write(app_path, app_script())
 print("wrote Steam scripts to " .. SCRIPTS)

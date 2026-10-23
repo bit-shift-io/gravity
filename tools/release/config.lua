@@ -28,9 +28,14 @@ return {
 
 	steam = {
 		app_id = "5389400",
-		-- One depot for every platform: build/ ships whole, so players get windows/, macos/ and linux/ side by side.
-		-- Set the depot's OS to "All" in Steamworks and the launch options to windows/gravity.exe, macos/gravity.app, linux/gravity.sh.
-		depot = "5389401",
+		-- One depot per platform, each set to its own OS in Steamworks, so players only download their own folder.
+		-- A shared "All" depot failed on Windows: the macOS bundle's framework symlinks can't be written there
+		-- ("disk write error"). Launch options stay windows/gravity.exe, macos/gravity.app, linux/gravity.sh.
+		depots = {
+			windows = "5389401",
+			macos = "5389402",
+			linux = "5389403",
+		},
 		branch = "", -- steam branch to set live after upload; empty leaves the build unassigned
 	},
 }
